@@ -25,14 +25,42 @@ next-env.d.ts
 .vscode/
 .DS_Store
 
-# Generated datasets (keep directory placeholders)
+# Datasets.
+# Default: ignore everything under data/, then re-admit documentation, the source
+# manifest, small verified public source files, and small synthetic demo fixtures.
+# Large generated output (full synthetic populations, Synthea output, processed
+# intermediates, NHANES XPT files) stays out of git.
 data/**/*
 !data/**/
 !data/**/.gitkeep
+
+# Documentation and provenance (always committed)
+!data/README.md
+!data/metadata/*.md
+!data/reference/source_manifest.yaml
+
+# Small verified public source files
+!data/raw/scad/*.xlsx
+
+# Small synthetic demo fixtures and data cards (not full populations)
+!data/synthetic/fixtures/**
+!data/synthetic/**/data_card.md
+
+# Large or regenerable datasets — excluded even inside the paths re-admitted above
+data/raw/nhanes/
+data/synthetic/synthea/
+data/synthetic/pulsereach/
+data/processed/**
+data/reference/doh_standards/
+
 *.csv
 *.parquet
 *.sqlite3
 *.db
+
+# Re-admit committable fixtures last, so the blanket *.csv rule above cannot
+# re-exclude them (later patterns win in gitignore).
+!data/synthetic/fixtures/**
 
 # ML artifacts
 ml/**/*.pkl

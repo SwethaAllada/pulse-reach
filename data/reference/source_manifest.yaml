@@ -1,0 +1,580 @@
+# PulseReach — data source manifest
+#
+# One entry per external source that was researched for the project. The manifest records
+# ACQUISITION STATUS, not research status: `acquisition.state` says whether a file is on disk
+# in this repository, and nothing else in this file may contradict it.
+#
+# Acquisition states:
+#   researched        Source inspected online. No file obtained, and none needed.
+#   document_obtained A source DOCUMENT (standard, guideline) is held locally.
+#   dataset_obtained  A DATASET file is held locally in data/raw/.
+#   blocked           Download attempted from this environment and failed. Reason recorded verbatim.
+#   excluded          Deliberately not acquired (restricted, out of scope, or not useful).
+#
+# Validation states (datasets only):
+#   none        Not inspected.
+#   structural  File opened, sheets/columns/row counts inspected, totals cross-checked.
+#   clinical    Reviewed by a qualified healthcare professional. NOTHING here is `clinical`.
+#
+# `verification` follows docs/data-sources.md: verified | reported | unresolved.
+
+manifest_version: 1.0.0
+generated: 2026-11-14
+generated_by: Phase 2.5 data acquisition and readiness audit
+network_context: >-
+  All checks were run from a non-UAE network on 2026-11-14. Several UAE government hosts
+  (doh.gov.ae, mohap.gov.ae, addata.gov.ae) terminated the TLS handshake. That is an
+  environment limitation, NOT evidence that the sources are unavailable or that the files
+  do not exist. Re-verify from a UAE network before concluding anything about them.
+
+sources:
+
+  # ---------------------------------------------------------------------------
+  # A. Abu Dhabi / UAE government — the nine originally mandated sources
+  # ---------------------------------------------------------------------------
+
+  - id: SRC-01-DOH-OPENDATA
+    name: Abu Dhabi DoH Open Data Dashboards
+    publisher: Department of Health, Abu Dhabi (DoH)
+    url: https://www.doh.gov.ae/resources/opendata
+    provides: Aggregate Abu Dhabi health statistics rendered as Power BI / Tableau dashboards.
+    downloadable_data: false
+    file_format: null
+    acquisition:
+      state: blocked
+      checked: 2026-11-14
+      reason: >-
+        curl: (35) LibreSSL SSL_connect: SSL_ERROR_SYSCALL in connection to www.doh.gov.ae:443.
+        Failed with and without certificate verification. Note: https://www.doh.gov.ae/en
+        returned HTTP 200 in the same session, so the block is path- or WAF-specific rather
+        than a whole-host outage.
+      manual_instructions: >-
+        Open the URL from a UAE network in a browser. There are no file links to download;
+        figures must be read from the dashboards and transcribed by hand with the dashboard
+        name and date recorded.
+    coverage: Emirate of Abu Dhabi, aggregate only. Per-dashboard refresh cadence not stated.
+    relevance: Narrative context for the pitch. Not a pipeline input.
+    limitations:
+      - Not machine-readable; no dataset files; no published API.
+      - No licence stated on the page (verification: unresolved).
+      - Aggregate only — can never drive patient-level logic.
+    belongs_in: nowhere
+    verification: verified   # verified in prior research by page-source inspection
+    validation: none
+
+  - id: SRC-01B-ADDATA
+    name: Abu Dhabi Open Data Platform (DoH publisher group)
+    publisher: Abu Dhabi Government
+    url: https://addata.gov.ae/group/department-health
+    provides: >-
+      Reported ~33 DoH aggregate CSV datasets (Birth Statistics, Death Statistics, Blood Banks,
+      Health Facilities by Sector). Contents NOT confirmed from the portal itself.
+    downloadable_data: unknown
+    file_format: CSV (reported)
+    acquisition:
+      state: blocked
+      checked: 2026-11-14
+      reason: >-
+        curl: (60) SSL certificate problem: self signed certificate; with -k, curl: (35)
+        LibreSSL SSL_connect: SSL_ERROR_SYSCALL in connection to addata.gov.ae:443.
+        Same failure as the earlier research pass — unchanged, not transient.
+      manual_instructions: >-
+        From a UAE network, open the group page, list the datasets, and for each record the
+        resource URL, format, last-modified date and the stated licence before download.
+    coverage: Unverified. Where visible in search results, some resources looked dated (2022).
+    relevance: Would be the only downloadable official Abu Dhabi health aggregates.
+    limitations:
+      - Unreachable from this environment; inventory and licence unverified.
+      - Aggregate only.
+    belongs_in: data/raw/addata/   # if and when obtained from a UAE network
+    verification: reported
+    validation: none
+
+  - id: SRC-02-IFHAS
+    name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults (IFHAS)
+    publisher: DoH / Abu Dhabi Public Health Center (ADPHC)
+    document_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025
+    version: V10
+    published: 2025-07
+    url: https://www.doh.gov.ae/-/media/EE758C3B77314BC394F2479AEF803AA2.ashx
+    programme_page: https://www.adphc.gov.ae/en/Public-Health-Programs/IFHAS
+    provides: Adult screening eligibility, 20 packages with age bands and frequencies, test components, referral pathway, KPIs.
+    downloadable_data: false   # it is a document, not a dataset
+    file_format: PDF (24 pp)
+    acquisition:
+      state: blocked
+      checked: 2026-11-14
+      reason: >-
+        curl: (35) LibreSSL SSL_connect: SSL_ERROR_SYSCALL in connection to www.doh.gov.ae:443.
+        The PDF was read during the Phase 1.5 research pass and its content is transcribed in
+        data-pipeline/rules/ifhas/ifhas_rules.yaml, but NO local copy of the PDF exists in this
+        repository and it could not be re-fetched today.
+      manual_instructions: >-
+        Fetch the URL from a UAE network and save to data/reference/doh_standards/.
+        Verify by internal reference number (DoH/SD/ADPHC-CHS/IFHAS/V10/2025), not filename.
+    coverage: Emirate of Abu Dhabi. Revision due July 2028.
+    relevance: Primary rule source for the adult pathway. Already transcribed into the rules config.
+    limitations:
+      - Clinical standard only; contains no population or patient data.
+      - Age ceiling unresolved (OQ-IFHAS-AGE-CEILING).
+      - Conflicts with the later Cervical Cancer Screening Standard (OQ-IFHAS-CERVICAL-CONFLICT).
+    belongs_in: data/reference/doh_standards/
+    verification: verified
+    validation: none
+
+  - id: SRC-03-WCV
+    name: Standard for Well-Child Visits
+    publisher: DoH / ADPHC
+    document_reference: DOH/WCV/SD/10/2025
+    version: V10 (Revised)
+    published: 2025-12
+    effective_date: TBD   # stated as TBD in the document itself
+    url: https://www.doh.gov.ae/-/media/Feature/Resources/Standards/2025/Well-Child-Visit-Standard.ashx
+    provides: 14-visit schedule (1 month to 6 years), per-age screening battery, M-CHAT-R / IDAQ tiers, follow-up windows.
+    downloadable_data: false
+    file_format: PDF (32 pp)
+    acquisition:
+      state: blocked
+      checked: 2026-11-14
+      reason: Same TLS failure as SRC-02. Content transcribed in rules/; no local PDF in the repo.
+      manual_instructions: Fetch from a UAE network; save to data/reference/doh_standards/; verify by reference DOH/WCV/SD/10/2025.
+    coverage: Emirate of Abu Dhabi. Revision due December 2029.
+    relevance: Primary rule source for the child pathway.
+    limitations:
+      - Effective Date is TBD — published standard, not a confirmed in-force regulation (OQ-WCV-EFFECTIVE-DATE).
+      - No due/grace/overdue window for any visit (OQ-WCV-DUE-WINDOW).
+      - Immunisation delegated to EPI circular 39/2024 (not held).
+    belongs_in: data/reference/doh_standards/
+    verification: verified
+    validation: none
+
+  - id: SRC-04-RAI
+    name: Responsible Artificial Intelligence (AI) Standard
+    publisher: DoH Data and Digital Governance Office (DDGO)
+    document_reference: DoH/ST/DDGO/RAI/V1/2025
+    version: V1
+    published: 2025-10
+    url: https://www.doh.gov.ae/-/media/Feature/Resources/Standards/2025/Responsible-AI-Standard-V1.ashx
+    provides: AI governance requirements — human oversight, UAE data residency, explainability, bias audits, opt-out, traceability, risk tiers.
+    downloadable_data: false
+    file_format: PDF (15 pp)
+    acquisition:
+      state: blocked
+      checked: 2026-11-14
+      reason: Same TLS failure as SRC-02.
+      manual_instructions: Fetch from a UAE network; save to data/reference/doh_standards/.
+    coverage: DoH and all licensed healthcare entities in Abu Dhabi.
+    relevance: >-
+      Governs this project's data handling directly. §3.1.4.4.2 forbids training on production
+      data; §3.1.5.1.1 requires training data to reflect the target population (the reason NHANES
+      is scaffolding only); §3.2.1.5 requires Legal review of open-data licences; §3.2.4–3.2.5
+      require dataset versioning and data cards.
+    limitations:
+      - Requirements only; no data.
+      - §3.1.4.5.1 UAE residency conflicts with the repo's GCP Cloud Run target (OQ-GOV-DATA-RESIDENCY).
+    belongs_in: data/reference/doh_standards/
+    verification: verified
+    validation: none
+
+  - id: SRC-05-ADHICS
+    name: Guidelines for the Implementation of Abu Dhabi Healthcare Information and Cyber Security (ADHICS) v2
+    publisher: DoH Information & Cyber Security Office
+    document_reference: DOH/GL/ICSO/ADHICS/V2/2024
+    version: V2
+    published: 2024-05
+    effective: 2024-08
+    url: https://www.doh.gov.ae/-/media/Feature/Resources/Guidelines/ADHICS-v2-implemetation-guideline.ashx
+    provides: Security and privacy controls; data residency; consent; retention; audit logging.
+    downloadable_data: false
+    file_format: PDF (286 pp)
+    acquisition:
+      state: excluded
+      checked: 2026-11-14
+      reason: >-
+        Reference material, not a rule source for this phase, and 286 pp is too large to carry in
+        the repo for the value it adds here. Also TLS-blocked from this environment.
+      manual_instructions: Fetch from a UAE network if a local copy is later needed.
+    coverage: Any entity generating/accessing/storing/transmitting health information in Abu Dhabi.
+    relevance: Constrains the deployment story (PHI must not leave the UAE; right to object to automated processing).
+    limitations:
+      - Implementation guideline only — the ADHICS Standard governs on contradiction.
+      - Control tier cannot be self-assigned.
+    belongs_in: nowhere   # reference by citation; no local copy held
+    verification: verified
+    validation: none
+
+  - id: SRC-06-UAE-DIGITAL-ECONOMY
+    name: UAE Digital Economy — Country Commercial Guide
+    publisher: U.S. International Trade Administration (foreign government, NOT a UAE legal source)
+    url: https://www.trade.gov/country-commercial-guides/united-arab-emirates-digital-economy
+    provides: Plain-language orientation on UAE health data localisation, PDPL, Federal Law No. 2 of 2019.
+    downloadable_data: false
+    file_format: HTML
+    acquisition:
+      state: researched
+      checked: 2026-11-14
+      note: Reachable (HTTP 200). No file needed — orientation only, never cited for a legal claim.
+    coverage: UAE, as of the guide's last publication (reported 2024-09; not re-confirmed on the page today).
+    relevance: Confirms that hosting region is a compliance decision, not only an engineering one.
+    limitations:
+      - A foreign government's summary of UAE law. Cite UAE instruments directly instead.
+    belongs_in: nowhere
+    verification: reported
+    validation: none
+
+  # ---------------------------------------------------------------------------
+  # B. Public datasets
+  # ---------------------------------------------------------------------------
+
+  - id: SRC-07-NHANES
+    name: CDC NHANES, August 2021 – August 2023 cycle (`_L` suffix)
+    publisher: CDC / National Center for Health Statistics
+    url: https://wwwn.cdc.gov/nchs/nhanes/
+    file_url_pattern: https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2021/DataFiles/<FILE>.xpt
+    provides: Individual-level de-identified US survey measurements.
+    downloadable_data: true
+    file_format: SAS XPT transport files
+    acquisition:
+      state: excluded
+      checked: 2026-11-14
+      availability: >-
+        CONFIRMED AVAILABLE. HTTP 200 with Content-Length returned today for DEMO_L (2,582,160 B),
+        BMX_L (1,563,200 B), BPXO_L (696,720 B), GHB_L (174,000 B), TCHOL_L (259,520 B),
+        GLU_L (129,200 B), DIQ_L (847,600 B). No registration, no login.
+      reason: >-
+        Deliberately deferred, not blocked. NHANES is useful only for value DISTRIBUTIONS and
+        pipeline smoke-testing, and nothing in Phase 3 (database implementation) consumes it.
+        Downloading ~5.3 MB of US survey data before there is a pipeline to test it with would
+        put US data in the repo ahead of any use for it. Acquire at the point the transformation
+        or ML code needs it.
+      when_needed: >-
+        Fetch DEMO_L, BMX_L, BPXO_L, GHB_L, TCHOL_L into data/raw/nhanes/ (5 files, ~5.3 MB).
+        Not the full cycle; not dietary; not limited-access.
+    coverage: United States, Aug 2021 – Aug 2023. Complex multistage probability sample.
+    relevance: >-
+      BMI, waist circumference, BP, HbA1c and lipids map almost one-to-one onto the IFHAS Major
+      Package measures, which makes NHANES a realistic shape for pipeline and model mechanics.
+    limitations:
+      - MUST NOT be used as Abu Dhabi prevalence or to validate local thresholds. US sample.
+      - Under RAI §3.1.5.1.1 an NHANES-derived model is a technical scaffold and must be labelled so.
+      - Contains no well-child, IFHAS, outreach, appointment or completion constructs.
+      - NCHS Data User Agreement terms not read in full (unresolved); Legal review required per RAI §3.2.1.5.
+    belongs_in: data/raw/nhanes/   # when acquired
+    verification: verified
+    validation: none
+
+  - id: SRC-08-SYNTHEA
+    name: Synthea synthetic patient generator
+    publisher: The MITRE Corporation
+    url: https://synthetichealth.github.io/synthea/
+    repository: https://github.com/synthetichealth/synthea
+    provides: Synthetic patients with longitudinal encounters, conditions, observations, medications, care plans.
+    downloadable_data: true
+    file_format: Runnable JAR (generator); output as FHIR R4/STU3/DSTU2, C-CDA, CSV
+    licence: Apache-2.0
+    acquisition:
+      state: excluded
+      checked: 2026-11-14
+      availability: >-
+        CONFIRMED AVAILABLE. GitHub API: licence Apache-2.0; release tag `master-branch-latest`
+        published 2026-10-21; asset `synthea-with-dependencies.jar`, 197,026,434 B (~188 MB).
+        Local Java is openjdk 21.0.8, which satisfies the generator's runtime requirement.
+      reason: >-
+        Deliberately deferred. A ~188 MB JAR is a build-time tool, not repository data, and
+        Phase 7 of this task explicitly forbids generating the synthetic population yet.
+      when_needed: >-
+        Download the JAR OUTSIDE the repository (or to a git-ignored tools/ path), record the
+        release tag and SHA-256 in this manifest, and write its output to data/synthetic/synthea/.
+        Never commit the JAR.
+    coverage: Models US care patterns, payers and demographics.
+    relevance: The only practical way to obtain individual-level patient records legally. Base population layer.
+    limitations:
+      - No Abu Dhabi Well-Child Visit schedule; no pediatric-preventive module.
+      - No IFHAS packages, outreach, appointments, opt-out, Thiqa, Emirates ID or Abu Dhabi region.
+      - No structured M-CHAT-R / IDAQ / PHQ-9 / GAD-7 results.
+      - US-centric module coverage — generated patients are not an Abu Dhabi population.
+    belongs_in: data/synthetic/synthea/   # output only; never the JAR
+    verification: verified
+    validation: none
+
+  # ---------------------------------------------------------------------------
+  # C. Hackathon reference
+  # ---------------------------------------------------------------------------
+
+  - id: SRC-09-FUTURE-HEALTH-CHALLENGE
+    name: Future Health Digital Innovation Challenge
+    publisher: Future Health (Abu Dhabi initiative) via Hack2skill
+    url: https://hack2skill.com/event/futurehealthchallenge/
+    provides: Challenge statements, judging criteria, submission rules. No datasets are supplied to participants.
+    downloadable_data: false
+    file_format: HTML
+    acquisition:
+      state: researched
+      checked: 2026-11-14
+      note: >-
+        Reachable (HTTP 200). Re-read today: registration 15 Oct – 10 Nov 2026; prototype
+        submission 20 Nov 2026; evaluation 20–30 Nov 2026; awards at GITEX 7–11 Dec 2026.
+        The page confirms NO official datasets are provided. The "What data can we use?" FAQ
+        answer is not rendered in the fetched content — unresolved, and it directly affects this
+        project. The full Challenge Rules page has not been read.
+    coverage: n/a
+    relevance: PulseReach competes under Population Health; responsible AI and data governance is a scored criterion.
+    limitations:
+      - Dates "may change" per the page.
+      - Data-use rules not fully read (see acquisition note).
+    belongs_in: nowhere
+    verification: verified
+    validation: none
+
+  # ---------------------------------------------------------------------------
+  # D. Additional Abu Dhabi / UAE sources investigated in this phase
+  # ---------------------------------------------------------------------------
+
+  - id: SRC-10-SCAD-HEALTH-2022
+    name: SCAD Health Statistics 2022
+    publisher: Statistics Centre – Abu Dhabi (SCAD)
+    landing_page: https://scad.gov.ae/health?ThemeID=221&tab=Publications
+    source_url: https://scad.gov.ae/documents/20122/2316810/publication_33115_57_1_1_2022_EN.xlsx/ca6f621d-78d4-a77f-7c19-02078232a641
+    provides: >-
+      Abu Dhabi health facilities, hospital beds, health professionals and patient counts broken
+      down by region (Abu Dhabi / Al Ain / Al Dhafra) and sector; infectious disease percentages
+      by age group and citizenship; blood donation units.
+    downloadable_data: true
+    file_format: XLSX (Microsoft Excel 2007+), bilingual EN/AR
+    acquisition:
+      state: dataset_obtained
+      local_path: data/raw/scad/scad_health_statistics_2022_en.xlsx
+      source_url_recorded: true
+      downloaded: 2026-11-14
+      http_status: 200
+      content_type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      content_disposition_filename: publication_33115_57_1_1_2022_EN.xlsx
+      last_modified_header: 2023-11-06T19:19:55Z
+      bytes: 1173070
+      sha256: 398529220d625a7b68dec04a34a902fa5603f9c026ee3a47d2920d4c4a76ff27
+      renamed_from: publication_33115_57_1_1_2022_EN.xlsx
+      modified_after_download: false
+    reference_period: 2022 (calendar year)
+    publication_date_evidence: >-
+      The workbook carries no publication date field. The HTTP Last-Modified header
+      (2023-11-06) is the only date evidence held, and it is a server timestamp, not a
+      stated publication date.
+    data_source_within_file: "Source: Health Department - Abu Dhabi" (stated on each table)
+    coverage: Emirate of Abu Dhabi, by region. Aggregate only — no individual records.
+    permitted_reuse: >-
+      SCAD site terms of use, read 2026-11-14: "The content of this website, including
+      publications, tables, etc., may be reproduced, in whole or in part, and by any means,
+      without further permission from SCAD, provided that SCAD is fully acknowledged with the
+      following statements: Source: Statistics Centre – Abu Dhabi; year of publication, name of
+      the statistical product, catalogue and archive numbers, reference period and page(s)."
+      Reproduction is therefore permitted WITH attribution. The terms do not address commercial
+      use explicitly — Legal review still required per RAI §3.2.1.5.
+    relevance: >-
+      The only verified, downloadable, official Abu Dhabi health file obtained. Gives real
+      regional facility counts for the synthetic facility layer and real denominators for
+      narrative framing.
+    limitations:
+      - Reference period is 2022 — four years old as of today.
+      - Aggregate only. Must never be joined to patient records or used as individual data.
+      - Facility counts are totals by type and region; there are NO facility names or coordinates.
+      - Infectious-disease age groups are percentages, unrelated to screening coverage.
+      - No screening-coverage or preventive-care indicators of any kind.
+    belongs_in: data/raw/scad/
+    verification: verified
+    validation: structural
+
+  - id: SRC-11-SCAD-BIRTHS-2024
+    name: SCAD Birth Statistics 2024
+    publisher: Statistics Centre – Abu Dhabi (SCAD)
+    landing_page: https://scad.gov.ae/population?ThemeID=227&tab=Publications
+    source_url: https://scad.gov.ae/documents/20122/0/Publication_both_PID_17_2024_Annual_Yearly_both_v1+%281%29.xlsx/786ebf48-0b38-c3f9-07bb-341d2b1a1584?version=1.0&t=1753956876035
+    provides: Live births by citizenship, gender and region; by month; sex ratio at birth; average age of mother at first birth.
+    downloadable_data: true
+    file_format: XLSX, bilingual EN/AR
+    acquisition:
+      state: dataset_obtained
+      local_path: data/raw/scad/scad_birth_statistics_2024_en.xlsx
+      source_url_recorded: true
+      downloaded: 2026-11-14
+      http_status: 200
+      content_type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      content_disposition_filename: "Publication_both_PID_17_2024_Annual_Yearly_both_v1 (1).xlsx"
+      last_modified_header: 2025-07-31T10:14:36Z
+      bytes: 1177885
+      sha256: bba301a8e8538d7358819022c2414ceb0f9355bb8932fb98d7ea8b10f4a7eb23
+      renamed_from: "Publication_both_PID_17_2024_Annual_Yearly_both_v1 (1).xlsx"
+      modified_after_download: false
+    reference_period: 2024 (calendar year)
+    publication_date_evidence: HTTP Last-Modified 2025-07-31. No publication date field in the workbook.
+    data_source_within_file: "Source: Department of Health – Abu Dhabi"
+    coverage: Emirate of Abu Dhabi, by region and citizenship. Aggregate only.
+    permitted_reuse: As SRC-10 — SCAD terms of use permit reproduction with full attribution.
+    relevance: >-
+      The Well-Child pathway's birth cohort. 39,333 live births in 2024, split by region and
+      citizenship, is the real-world shape the synthetic 0–6 population should be calibrated
+      against for plausibility (NOT for any clinical claim).
+    limitations:
+      - Births only. Says nothing about well-child visit attendance, screening uptake or outcomes.
+      - Aggregate. Never individual-level.
+      - Contains explicit missing-data categories ("Not Stated") that must be preserved, not dropped.
+    belongs_in: data/raw/scad/
+    verification: verified
+    validation: structural
+
+  - id: SRC-12-SCAD-CENSUS-POPULATION-2024
+    name: SCAD Abu Dhabi population 2024 (census portal)
+    publisher: Statistics Centre – Abu Dhabi (SCAD)
+    url: https://census.scad.gov.ae/home/PReport?lang=en
+    provides: >-
+      Abu Dhabi population 2024 by region, by gender, and a 5-year age-group pyramid by sex
+      (18 bands, 0-4 through 85+).
+    downloadable_data: false
+    file_format: null
+    acquisition:
+      state: blocked
+      checked: 2026-11-14
+      reason: >-
+        Page is reachable (HTTP 200) but publishes NO data file. The "download" buttons call a
+        client-side `downloadSection(...)` that rasterises the chart with html2canvas into a PNG
+        image. There is no CSV, XLSX or JSON endpoint, and no API. The age-by-sex figures exist
+        only as JavaScript literals inside /Scripts/_CustomChart.js (function `populationChart`),
+        i.e. hard-coded page assets, not a published dataset.
+      manual_instructions: >-
+        Two legitimate routes: (1) email info@scad.gov.ae and request the population-by-age-group
+        table as a file (the page itself invites contact for non-revised Census 2023 R0 results);
+        (2) check SCAD's Bayaan platform (https://scad.gov.ae/en/bayaan) from a UAE network.
+        Do NOT scrape the chart's JavaScript literals into data/raw/ and present them as a dataset
+        — they are page assets with no accompanying metadata, methodology note or licence scope.
+    coverage: Emirate of Abu Dhabi, as of September 2024. 2024 figures derived from integrated administrative registers.
+    figures_read_from_page:   # context only — recorded here, deliberately NOT written to data/raw/
+      total_population_2024: 4135985
+      total_population_2023_R1: 3847585
+      by_region: {abu_dhabi: 2823340, al_ain: 986910, al_dhafra: 325735}
+      by_gender: {male: 2767060, female: 1368925}
+      median_age_years: 33
+      note: >-
+        Region shares are printed as 68% / 24% / 8%. An age-by-sex pyramid is present in the page
+        script; its bands sum to ~4,136,000 which is consistent with the stated total, but it
+        carries no methodology, no revision status and no licence of its own.
+    permitted_reuse: SCAD terms of use (reproduction with full attribution). Figures above are reproduced under those terms.
+    relevance: >-
+      The best available Abu Dhabi adult and child population distribution. Needed to make the
+      synthetic population's age/sex/region shape plausible.
+    limitations:
+      - Not downloadable; no machine-readable form; no API.
+      - 2024 figures are subject to SCAD's statistical revision policy.
+      - Aggregate. Never individual data, never a prevalence source.
+    belongs_in: nowhere   # until a real file is obtained from SCAD
+    verification: verified   # the page was read directly; the figures are as printed
+    validation: none
+
+  - id: SRC-13-MOHAP-OPEN-DATA
+    name: MOHAP Open Data (incl. Geocoded Location of Health Facilities 2022)
+    publisher: UAE Ministry of Health and Prevention (MOHAP)
+    url: https://mohap.gov.ae/en/open-data/mohap-open-data
+    provides: >-
+      Reported to include "Geocoded Location of Health Facilities 2022" published separately for
+      MOHAP, DOH and DHA, plus "Healthcare facilities in the UAE 2023" and an annual licensed-
+      medical-facilities series. File formats and coordinate fields NOT confirmed.
+    downloadable_data: unknown
+    file_format: unknown (XLSX reported for some series)
+    acquisition:
+      state: blocked
+      checked: 2026-11-14
+      reason: >-
+        curl: (35) LibreSSL SSL_connect: SSL_ERROR_SYSCALL in connection to mohap.gov.ae:443.
+        Both mohap.gov.ae and www.mohap.gov.ae failed, on the portal root and on individual
+        dataset pages. A fetch via the search tool also failed to return the page.
+        Everything known about these datasets comes from search-result snippets — NOT from the
+        portal, and NOT from any file. No download link, format, column list, coordinate system
+        or licence has been verified.
+      manual_instructions: >-
+        From a UAE network, open the portal, locate "Geocoded Location of Health Facilities 2022
+        DOH" (reported posted 2023-10), and before download record: resource URL, file format,
+        column names, coordinate reference system, and the stated licence. MOHAP open data is
+        reported to be reusable without restriction under UAE open data policy — VERIFY that on
+        the portal rather than trusting this note.
+    coverage: Claimed UAE-wide with per-regulator files (DOH file would cover Abu Dhabi). Unverified.
+    relevance: >-
+      The highest-value unacquired source. Real facility coordinates would let the synthetic
+      facility layer use true locations instead of invented ones, which matters for any
+      geographic outreach view.
+    limitations:
+      - Entirely unverified from this environment. Treat as a lead, not a source.
+      - 2022 reference period would be four years old.
+      - Facility locations only — no screening or population data.
+    belongs_in: data/raw/mohap/   # if and when obtained and verified
+    verification: reported
+    validation: none
+
+  - id: SRC-14-BAYANAT
+    name: Bayanat.ae — UAE federal open data portal
+    publisher: UAE Government
+    url: https://bayanat.ae/en/Datasets
+    provides: Federal open datasets. MOHAP states its open data is published to Bayanat.
+    downloadable_data: true (for the datasets it lists)
+    file_format: varies
+    acquisition:
+      state: blocked
+      checked: 2026-11-14
+      reason: >-
+        Portal is reachable (HTTP 200) but its dataset catalogue could not be searched from here.
+        The listing page renders a fixed set of dataset cards; appending `?q=health+facilities`
+        changed the returned cards but produced only infrastructure and energy datasets
+        (Federal Bridges, Federal Roads, Consumption of Energy) — i.e. the query is not honoured
+        server-side as a search. No CKAN-style API path was found and no form field for a text
+        query exists in the markup. NO health dataset was located and NO file was obtained.
+      manual_instructions: >-
+        Browse the catalogue in a real browser (the search is client-side), or filter by the
+        Health topic facet, and record each candidate dataset's URL, format and licence.
+    coverage: UAE federal. Unverified for health content.
+    relevance: Possible route to the MOHAP facility data if the MOHAP portal stays unreachable.
+    limitations:
+      - Catalogue not searchable from this environment; health holdings unconfirmed.
+    belongs_in: nowhere   # until a specific dataset is identified and verified
+    verification: unresolved
+    validation: none
+
+  - id: SRC-15-FCSC-OPENDATA
+    name: Federal Competitiveness and Statistics Centre open data
+    publisher: FCSC (UAE federal)
+    url: https://opendata.fcsc.gov.ae/
+    provides: Reported UAE population estimates by gender and age group, and UAE health facility/bed counts.
+    downloadable_data: unknown
+    file_format: unknown
+    acquisition:
+      state: blocked
+      checked: 2026-11-14
+      reason: "HTTP 403 Forbidden on the portal root and on individual dataset paths. Access denied to this client."
+      manual_instructions: Open in a browser from a permitted network; record dataset URL, format, reference period and licence.
+    coverage: UAE federal — NOT Abu Dhabi-specific. An emirate breakdown would have to be checked per dataset.
+    relevance: >-
+      Lower priority than SCAD. UAE-wide figures are not Abu Dhabi figures, and SCAD is the
+      authoritative source for the emirate.
+    limitations:
+      - Inaccessible (403). Federal scope, not emirate scope.
+    belongs_in: nowhere
+    verification: unresolved
+    validation: none
+
+  # ---------------------------------------------------------------------------
+  # E. Restricted — never acquired
+  # ---------------------------------------------------------------------------
+
+  - id: SRC-16-RESTRICTED
+    name: Malaffi (HIE), Shafafiya (e-claims), Sahatna (patient app), NHANES Limited Access Data
+    publisher: various
+    provides: Real patient records / restricted research data.
+    downloadable_data: false
+    acquisition:
+      state: excluded
+      checked: 2026-11-14
+      reason: >-
+        Requires DoH/provider authorisation or an NCHS Research Data Center application.
+        No access was attempted and none will be. Any real patient data is out of scope.
+    relevance: Named in IFHAS §4.11.4.1 as the production tracking path — relevant to the architecture narrative only.
+    limitations:
+      - Excluded from the MVP entirely.
+    belongs_in: nowhere
+    verification: verified
+    validation: none
