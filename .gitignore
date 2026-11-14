@@ -1,0 +1,40 @@
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Generated datasets (keep directory placeholders)
+data/**/*
+!data/**/
+!data/**/.gitkeep
+*.csv
+*.parquet
+*.sqlite3
+*.db
+
+# ML artifacts
+ml/**/*.pkl
+ml/**/*.joblib
+ml/**/*.pt
