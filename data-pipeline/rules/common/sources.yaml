@@ -1,0 +1,33 @@
+# Source registry for PulseReach clinical rules.
+# Every rule's `source_name` and `source_version` must match an entry here
+# (checked by the loader). Page numbers elsewhere in the rules refer to the
+# PDF page index of the document listed here (not the printed page number).
+#
+# Primary-text check: both standards were downloaded from the official DoH URLs
+# below and their text was compared with docs/data-sources.md on 2026-11-14.
+sources:
+  - source_name: "Standard for the Provision of the Periodic Comprehensive Screening Program for Adults - IFHAS"
+    source_version: "V10"
+    document_ref: "DoH/SD/ADPHC-CHS/IFHAS/V10/2025"
+    publisher: "Department of Health - Abu Dhabi / Abu Dhabi Public Health Center (ADPHC)"
+    publication_date: "2025-07"
+    effective_date: "2025-07"          # stated on PDF p.2
+    effective_date_note: null
+    revision_date: "2028-07"
+    pdf_pages: 24
+    url: "https://www.doh.gov.ae/-/media/EE758C3B77314BC394F2479AEF803AA2.ashx"
+    contact: "IFHAS.Support@adphc.gov.ae"
+    status_note: "Current published standard; Effective Date stated as July 2025."
+
+  - source_name: "Standard for Well-Child Visits"
+    source_version: "V10"
+    document_ref: "DOH/WCV/SD/10/2025"
+    publisher: "Department of Health - Abu Dhabi / Abu Dhabi Public Health Center (ADPHC)"
+    publication_date: "2025-12"
+    effective_date: null               # the standard itself states "Effective Date: TBD" (PDF p.2)
+    effective_date_note: "The standard states 'Effective Date: TBD'. Treat as the current published standard, NOT as a confirmed in-force regulation."
+    revision_date: "2029-12"
+    pdf_pages: 32
+    url: "https://www.doh.gov.ae/-/media/Feature/Resources/Standards/2025/Well-Child-Visit-Standard.ashx"
+    contact: "WCV.Support@adphc.gov.ae"
+    status_note: "Current published standard (V10, Revised, December 2025). Effective date TBD."

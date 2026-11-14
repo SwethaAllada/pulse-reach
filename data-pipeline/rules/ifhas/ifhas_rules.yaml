@@ -1,0 +1,1091 @@
+# IFHAS adult preventive screening rules.
+# Source: DoH/SD/ADPHC-CHS/IFHAS/V10/2025 (V10, July 2025). Appendix 7 = PDF pp.19-22.
+# 20 screening packages (Appendix 7) + programme-level eligibility (4.5) + workflow timings.
+#
+# Conventions
+#  - `as_printed` fields preserve the standard's own wording; numeric fields are
+#    derived from it. Never edit one without the other.
+#  - verification_status: verified | reported | unresolved (see ../common/status_definitions.yaml).
+#  - requires_clinical_review: true blocks authoritative evaluation even where the
+#    transcription is verified (ambiguous or conflicting criteria).
+#  - Update rules by bumping rule_version and moving the old version into `history`;
+#    never delete or rewrite source_reference.
+config:
+  pathway: ifhas
+  config_version: 1.0.0
+  clinical_review_status: not_reviewed
+  disclaimer: >-
+    Transcription of a published DoH standard for engineering use. Not clinically validated; not a compliance
+    claim. All outputs require healthcare-professional review.
+rules:
+- rule_id: IFHAS-PROG-ELIG-THIQA
+  pathway: ifhas
+  rule_type: programme_eligibility
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, section 4.5.1, PDF p.6
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: Participant must be a member of the THIQA programme.
+  requires_clinical_review: false
+  open_question_ids: []
+  history: []
+  notes: Programme-level requirement. Does not establish eligibility for any package on its own.
+  spec:
+    attribute: thiqa_member
+    required_value: true
+    as_printed: Member of the THIQA program
+- rule_id: IFHAS-PROG-ELIG-MIN-AGE
+  pathway: ifhas
+  rule_type: programme_eligibility
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, section 4.5.2, PDF p.6
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: Participant must be 18 years old and above (programme-level statement; no upper bound is
+    printed here).
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-IFHAS-AGE-CEILING
+  - OQ-COMMON-AGE-CALC
+  history: []
+  notes: >-
+    Package-specific age bands (Appendix 7) are the operative rules. This clause alone must not be used
+    to treat people above 75 as eligible for any package.
+  spec:
+    attribute: age_years
+    min_years: 18
+    max_years: null
+    as_printed: 18 years old and above
+- rule_id: IFHAS-PROG-ELIG-SEX-BY-PACKAGE
+  pathway: ifhas
+  rule_type: programme_eligibility
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, section 4.5.3, PDF p.6
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: Female or male based on the specific screening programme eligibility criteria (see each
+    package rule).
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-COMMON-SEX-ATTRIBUTE
+  history: []
+  notes: null
+  spec:
+    attribute: sex
+    as_printed: Female or male based on the specific Screening Program eligibility criteria.
+- rule_id: IFHAS-PROG-AGE-CEILING
+  pathway: ifhas
+  rule_type: programme_eligibility
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, section 4.5.2 (PDF p.6) vs Appendix 7 (PDF pp.19-22)
+  verification_status: unresolved
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: >-
+    Unresolved: section 4.5.2 says 18 and above, every Appendix 7 package ends at 75 or younger, and ADPHC
+    communications are reported to say 18-75. No universal rule for people above 75 is encoded.
+  requires_clinical_review: true
+  open_question_ids:
+  - OQ-IFHAS-AGE-CEILING
+  history: []
+  notes: Placeholder that makes the ambiguity explicit data. It carries no threshold and cannot be evaluated.
+  spec:
+    engine_handling: requires_clinical_review
+    sources_in_conflict:
+    - 'IFHAS V10 section 4.5.2: ''18 years old and above'' (verified)'
+    - 'IFHAS V10 Appendix 7: package bands end at or before 75 (verified)'
+    - 'ADPHC news Feb 2024: ''aged between 18 to 75 years'' (reported, not re-checked)'
+    - 'ADPHC programme page: ''18 and above'' (reported)'
+- rule_id: IFHAS-PKG-MAJOR-18-39
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.19
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: 'Comprehensive Screening Major Package for Male & Female: target group 18-39 years; frequency
+    Every 3 years.'
+  requires_clinical_review: false
+  open_question_ids: []
+  history: []
+  notes: null
+  spec:
+    package_name: Comprehensive Screening Major Package for Male & Female
+    package_group: major_package
+    eligibility:
+      age:
+        min_years: 18
+        max_years: 39
+        as_printed: 18-39 years
+      sex:
+      - female
+      - male
+      conditions: []
+    frequency:
+      as_printed: Every 3 years
+      type: recurring
+      interval:
+        value: 3
+        unit: years
+    one_time: false
+    components:
+    - IFHAS Health Questionnaire
+    - Weight
+    - Height
+    - Body Mass Index (BMI)
+    - Waist circumference / Waist hip ratio
+    - Blood Pressure
+    - Consultation
+    - PHQ-9 Depression Screening
+    - GAD-7 Anxiety Screening
+    - Physical Exam
+    - Blood Collection
+    - Random Blood Sugar
+    - HbA1C
+    - Lipid Panel
+    - S. Creatinine
+    - CBC
+- rule_id: IFHAS-PKG-MAJOR-40-64
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.19
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: 'Comprehensive Screening Major Package for Male & Female: target group 40-64 years; frequency
+    Every 3 years.'
+  requires_clinical_review: false
+  open_question_ids: []
+  history: []
+  notes: null
+  spec:
+    package_name: Comprehensive Screening Major Package for Male & Female
+    package_group: major_package
+    eligibility:
+      age:
+        min_years: 40
+        max_years: 64
+        as_printed: 40-64 years
+      sex:
+      - female
+      - male
+      conditions: []
+    frequency:
+      as_printed: Every 3 years
+      type: recurring
+      interval:
+        value: 3
+        unit: years
+    one_time: false
+    components:
+    - IFHAS Health Questionnaire
+    - Weight
+    - Height
+    - Body Mass Index (BMI)
+    - Waist circumference / Waist hip ratio
+    - Blood Pressure
+    - Consultation
+    - PHQ-9 Depression Screening
+    - GAD-7 Anxiety Screening
+    - Physical Exam
+    - Blood Collection
+    - Random Blood Sugar
+    - HbA1C
+    - Lipid Panel
+    - S. Creatinine
+    - CBC
+- rule_id: IFHAS-PKG-MAJOR-65-75
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.20
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: 'Comprehensive Screening Major Package for Male & Female: target group 65-75 years; frequency
+    Every 3 years.'
+  requires_clinical_review: false
+  open_question_ids: []
+  history: []
+  notes: null
+  spec:
+    package_name: Comprehensive Screening Major Package for Male & Female
+    package_group: major_package
+    eligibility:
+      age:
+        min_years: 65
+        max_years: 75
+        as_printed: 65-75 years
+      sex:
+      - female
+      - male
+      conditions: []
+    frequency:
+      as_printed: Every 3 years
+      type: recurring
+      interval:
+        value: 3
+        unit: years
+    one_time: false
+    components:
+    - IFHAS Health Questionnaire
+    - Weight
+    - Height
+    - Body Mass Index (BMI)
+    - Waist circumference / Waist hip ratio
+    - Blood Pressure
+    - Consultation
+    - PHQ-9 Depression Screening
+    - GAD-7 Anxiety Screening
+    - Physical Exam
+    - Blood Collection
+    - Random Blood Sugar
+    - HbA1C
+    - Lipid Panel
+    - S. Creatinine
+    - CBC
+- rule_id: IFHAS-PKG-VISION-40-75
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.20
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: >-
+    Comprehensive Screening Minor Package for Male & Female- Vision Screening: target group 40-75 years;
+    frequency Annually.
+  requires_clinical_review: false
+  open_question_ids: []
+  history: []
+  notes: null
+  spec:
+    package_name: Comprehensive Screening Minor Package for Male & Female- Vision Screening
+    package_group: minor_package_vision
+    eligibility:
+      age:
+        min_years: 40
+        max_years: 75
+        as_printed: 40-75 years
+      sex:
+      - female
+      - male
+      conditions: []
+    frequency:
+      as_printed: Annually
+      type: recurring
+      interval:
+        value: 1
+        unit: years
+    one_time: false
+    components:
+    - Snellen Chart Visual Acuity Test
+    - Retinal Imaging
+    - Consultation+ Dilated Fundus Examination by ophthalmologist
+- rule_id: IFHAS-PKG-HEARING-DEMENTIA-50-64
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.20
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: >-
+    Comprehensive Screening Minor Package for Male & Female-Hearing and Dementia Screening: target group
+    50-64 years; frequency Every 3 years.
+  requires_clinical_review: false
+  open_question_ids: []
+  history: []
+  notes: null
+  spec:
+    package_name: Comprehensive Screening Minor Package for Male & Female-Hearing and Dementia Screening
+    package_group: minor_package_hearing_dementia
+    eligibility:
+      age:
+        min_years: 50
+        max_years: 64
+        as_printed: 50-64 years
+      sex:
+      - female
+      - male
+      conditions: []
+    frequency:
+      as_printed: Every 3 years
+      type: recurring
+      interval:
+        value: 3
+        unit: years
+    one_time: false
+    components:
+    - Consultation + Montreal Cognitive Assessment (MoCA)
+    - Pure Tone Audiometry Hearing Test
+- rule_id: IFHAS-PKG-HEARING-DEMENTIA-65-75
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.20
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: >-
+    Comprehensive Screening Minor Package for Male & Female-Hearing and Dementia Screening: target group
+    65-75 years; frequency Annually.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-IFHAS-FREQUENCY-ANCHOR
+  history: []
+  notes: >-
+    Same package as IFHAS-PKG-HEARING-DEMENTIA-50-64 but the frequency changes from every 3 years to annually
+    at this age band. How the interval carries across the band change is unresolved (OQ-IFHAS-FREQUENCY-ANCHOR).
+  spec:
+    package_name: Comprehensive Screening Minor Package for Male & Female-Hearing and Dementia Screening
+    package_group: minor_package_hearing_dementia
+    eligibility:
+      age:
+        min_years: 65
+        max_years: 75
+        as_printed: 65-75 years
+      sex:
+      - female
+      - male
+      conditions: []
+    frequency:
+      as_printed: Annually
+      type: recurring
+      interval:
+        value: 1
+        unit: years
+    one_time: false
+    components:
+    - Consultation + Montreal Cognitive Assessment (MoCA)
+    - Pure Tone Audiometry Hearing Test
+- rule_id: IFHAS-PKG-ORAL-18-75
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.20
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: 'Comprehensive Screening Oral Health Package for Male & Female: target group 18-75 years;
+    frequency Annually.'
+  requires_clinical_review: false
+  open_question_ids: []
+  history: []
+  notes: null
+  spec:
+    package_name: Comprehensive Screening Oral Health Package for Male & Female
+    package_group: oral_health_package
+    eligibility:
+      age:
+        min_years: 18
+        max_years: 75
+        as_printed: 18-75 years
+      sex:
+      - female
+      - male
+      conditions: []
+    frequency:
+      as_printed: Annually
+      type: recurring
+      interval:
+        value: 1
+        unit: years
+    one_time: false
+    components:
+    - Examination and Diagnosis, Complete, Permanent Dentition
+    - Oral Hygiene Instruction
+- rule_id: IFHAS-PKG-CERVICAL-PAP-25-29
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.21
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: 'Cervical Cancer Screening for Female: target group 25-29 years; frequency Every 3 years.'
+  requires_clinical_review: true
+  open_question_ids:
+  - OQ-IFHAS-CERVICAL-CONFLICT
+  history: []
+  notes: >-
+    Encoded exactly as printed in Appendix 7. The later Cervical Cancer Screening Standard (DoH/SD/CHS/SCCSPPR/V1/2025)
+    states different tests/frequency and extra eligibility criteria; see OQ-IFHAS-CERVICAL-CONFLICT.
+  spec:
+    package_name: Cervical Cancer Screening for Female
+    package_group: cervical_cancer_screening
+    eligibility:
+      age:
+        min_years: 25
+        max_years: 29
+        as_printed: 25-29 years
+      sex:
+      - female
+      conditions: []
+    frequency:
+      as_printed: Every 3 years
+      type: recurring
+      interval:
+        value: 3
+        unit: years
+    one_time: false
+    components:
+    - Consultation
+    - Pap Smear Test
+- rule_id: IFHAS-PKG-CERVICAL-HPV-30-65
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.21
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: 'Cervical Cancer Screening for Female: target group 30-65 years; frequency Every 5 years.'
+  requires_clinical_review: true
+  open_question_ids:
+  - OQ-IFHAS-CERVICAL-CONFLICT
+  history: []
+  notes: >-
+    Printed as 'HPV Test ONLY'. The later Cervical Cancer Screening Standard adds 'sexually active (past
+    or present) and symptom free' and exclusions that Appendix 7 does not state; see OQ-IFHAS-CERVICAL-CONFLICT.
+  spec:
+    package_name: Cervical Cancer Screening for Female
+    package_group: cervical_cancer_screening
+    eligibility:
+      age:
+        min_years: 30
+        max_years: 65
+        as_printed: 30-65 years
+      sex:
+      - female
+      conditions: []
+    frequency:
+      as_printed: Every 5 years
+      type: recurring
+      interval:
+        value: 5
+        unit: years
+    one_time: false
+    components:
+    - Consultation
+    - HPV Test ONLY
+- rule_id: IFHAS-PKG-BREAST-CBE-20-34
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.21
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: 'Standalone Screening for Breast Cancer for Female: target group 20-34 years; frequency
+    Every 3 years.'
+  requires_clinical_review: false
+  open_question_ids: []
+  history: []
+  notes: null
+  spec:
+    package_name: Standalone Screening for Breast Cancer for Female
+    package_group: breast_cancer_screening
+    eligibility:
+      age:
+        min_years: 20
+        max_years: 34
+        as_printed: 20-34 years
+      sex:
+      - female
+      conditions: []
+    frequency:
+      as_printed: Every 3 years
+      type: recurring
+      interval:
+        value: 3
+        unit: years
+    one_time: false
+    components:
+    - Consultation and Clinical Breast Exam
+- rule_id: IFHAS-PKG-BREAST-CBE-GAIL-35-39
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.21
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: 'Standalone Screening for Breast Cancer for Female: target group 35-39 years; frequency
+    Every 3 years.'
+  requires_clinical_review: false
+  open_question_ids: []
+  history: []
+  notes: null
+  spec:
+    package_name: Standalone Screening for Breast Cancer for Female
+    package_group: breast_cancer_screening
+    eligibility:
+      age:
+        min_years: 35
+        max_years: 39
+        as_printed: 35-39 years
+      sex:
+      - female
+      conditions: []
+    frequency:
+      as_printed: Every 3 years
+      type: recurring
+      interval:
+        value: 3
+        unit: years
+    one_time: false
+    components:
+    - Consultation and Clinical Breast Exam
+    - Gail Model Breast Cancer Risk Assessment
+- rule_id: IFHAS-PKG-MAMMOGRAPHY-40-75
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.21
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: 'Standalone Screening Mammography for Female: target group 40-75 years; frequency Every
+    2 years.'
+  requires_clinical_review: false
+  open_question_ids: []
+  history: []
+  notes: null
+  spec:
+    package_name: Standalone Screening Mammography for Female
+    package_group: mammography
+    eligibility:
+      age:
+        min_years: 40
+        max_years: 75
+        as_printed: 40-75 years
+      sex:
+      - female
+      conditions: []
+    frequency:
+      as_printed: Every 2 years
+      type: recurring
+      interval:
+        value: 2
+        unit: years
+    one_time: false
+    components:
+    - Consultation
+    - Mammography
+- rule_id: IFHAS-PKG-FEMALE-REPRO-20-35
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.21
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: 'Female Reproductive Health Screening: target group 20-35 years; frequency Every 3 years.'
+  requires_clinical_review: false
+  open_question_ids: []
+  history: []
+  notes: null
+  spec:
+    package_name: Female Reproductive Health Screening
+    package_group: reproductive_health_screening
+    eligibility:
+      age:
+        min_years: 20
+        max_years: 35
+        as_printed: 20-35 years
+      sex:
+      - female
+      conditions: []
+    frequency:
+      as_printed: Every 3 years
+      type: recurring
+      interval:
+        value: 3
+        unit: years
+    one_time: false
+    components:
+    - Consultation and Female Reproductive Health Questionnaire
+    - Anti- Müllerian testing (AMH Testing)
+- rule_id: IFHAS-PKG-MALE-REPRO-20-35
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.21
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: 'Male Reproductive Health Screening: target group 20-35 years; frequency Every 3 years.'
+  requires_clinical_review: false
+  open_question_ids: []
+  history: []
+  notes: null
+  spec:
+    package_name: Male Reproductive Health Screening
+    package_group: reproductive_health_screening
+    eligibility:
+      age:
+        min_years: 20
+        max_years: 35
+        as_printed: 20-35 years
+      sex:
+      - male
+      conditions: []
+    frequency:
+      as_printed: Every 3 years
+      type: recurring
+      interval:
+        value: 3
+        unit: years
+    one_time: false
+    components:
+    - Consultation and Male Reproductive Health Questionnaire
+- rule_id: IFHAS-PKG-FIT-40-75
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.21
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: >-
+    Standalone Screening Fecal immunochemical test (FIT) for Male & Female: target group 40-75 Years;
+    frequency Annually.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-IFHAS-CRC-OVERLAP
+  history: []
+  notes: null
+  spec:
+    package_name: Standalone Screening Fecal immunochemical test (FIT) for Male & Female
+    package_group: colorectal_cancer_screening
+    eligibility:
+      age:
+        min_years: 40
+        max_years: 75
+        as_printed: 40-75 Years
+      sex:
+      - female
+      - male
+      conditions: []
+    frequency:
+      as_printed: Annually
+      type: recurring
+      interval:
+        value: 1
+        unit: years
+    one_time: false
+    components:
+    - Fecal Immunochemical Test (FIT)
+- rule_id: IFHAS-PKG-LIQUID-BIOPSY-40-75
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.22
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: >-
+    Standalone Screening Liquid Biopsy test for Male & Female: target group 40-75 Years Review Criteria*;
+    frequency Every 3 years.
+  requires_clinical_review: true
+  open_question_ids:
+  - OQ-IFHAS-LIQUID-BIOPSY-CRITERIA
+  - OQ-IFHAS-CRC-OVERLAP
+  history: []
+  notes: Row header reads 'Review Criteria*'. Criteria are preserved verbatim and are not machine-evaluable.
+  spec:
+    package_name: Standalone Screening Liquid Biopsy test for Male & Female
+    package_group: colorectal_cancer_screening
+    eligibility:
+      age:
+        min_years: 40
+        max_years: 75
+        as_printed: 40-75 Years Review Criteria*
+      sex:
+      - female
+      - male
+      conditions:
+      - kind: inclusion
+        as_printed: Unwilling to have a colonoscopy or FIT
+        machine_evaluable: false
+      - kind: exclusion
+        as_printed: Personal history of colorectal cancer.
+        machine_evaluable: false
+      - kind: exclusion
+        as_printed: >-
+          Genetic disorders: Known hereditary / germline risk of Colorectal cancer (e.g., Lynch syndrome
+          or Familial Adenomatous Polyposis).
+        machine_evaluable: false
+      - kind: exclusion
+        as_printed: Inflammatory Bowel Diseases Diagnosis.
+        machine_evaluable: false
+    frequency:
+      as_printed: Every 3 years
+      type: recurring
+      interval:
+        value: 3
+        unit: years
+    one_time: false
+    components:
+    - Targeted genomic sequence analysis panel
+- rule_id: IFHAS-PKG-COLONOSCOPY-40-75
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.22
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: 'Colon Cancer Screening Male & Female: target group 40-75 years; frequency Every 10 years.'
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-IFHAS-CRC-OVERLAP
+  history: []
+  notes: null
+  spec:
+    package_name: Colon Cancer Screening Male & Female
+    package_group: colorectal_cancer_screening
+    eligibility:
+      age:
+        min_years: 40
+        max_years: 75
+        as_printed: 40-75 years
+      sex:
+      - female
+      - male
+      conditions: []
+    frequency:
+      as_printed: Every 10 years
+      type: recurring
+      interval:
+        value: 10
+        unit: years
+    one_time: false
+    components:
+    - Consultation and Colonoscopy
+- rule_id: IFHAS-PKG-DEXA-60-75
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.22
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: 'Standalone Screening DEXA scan for Male & Female: target group 60-75 Years; frequency
+    Every 2 years.'
+  requires_clinical_review: false
+  open_question_ids: []
+  history: []
+  notes: null
+  spec:
+    package_name: Standalone Screening DEXA scan for Male & Female
+    package_group: bone_health_screening
+    eligibility:
+      age:
+        min_years: 60
+        max_years: 75
+        as_printed: 60-75 Years
+      sex:
+      - female
+      - male
+      conditions: []
+    frequency:
+      as_printed: Every 2 years
+      type: recurring
+      interval:
+        value: 2
+        unit: years
+    one_time: false
+    components:
+    - Bone Mineral Density (BMD) Test
+- rule_id: IFHAS-PKG-LUNG-LDCT-55-75
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.22
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: 'Lung Cancer Screening for Male & Female: target group 55-75 years High Risk*; frequency
+    Annually.'
+  requires_clinical_review: true
+  open_question_ids:
+  - OQ-IFHAS-LUNG-CRITERIA
+  history: []
+  notes: >-
+    Footnote: 'Criteria for High-Risk Lung Cancer screening: (Refer to DoH Lung Cancer Screening Service
+    Specifications Appendix 5 for calculation of pack-year tobacco use).' The combination logic ('and/or')
+    and the pack-year method are not machine-evaluable here.
+  spec:
+    package_name: Lung Cancer Screening for Male & Female
+    package_group: lung_cancer_screening
+    eligibility:
+      age:
+        min_years: 55
+        max_years: 75
+        as_printed: 55-75 years High Risk*
+      sex:
+      - female
+      - male
+      conditions:
+      - kind: inclusion
+        as_printed: 30 Pack-year history of smoking, and/or tobacco cessation <15 years.
+        machine_evaluable: false
+      - kind: inclusion
+        as_printed: 20 Pack-year history of tobacco use, and/or tobacco cessation <15 years and one additional
+          risk factor .
+        machine_evaluable: false
+      - kind: inclusion
+        as_printed: 20 Year history of water pipe (Shisha) and/or Dokha, Medwakh and/or all other forms
+          of smoked tobacco use.
+        machine_evaluable: false
+    frequency:
+      as_printed: Annually
+      type: recurring
+      interval:
+        value: 1
+        unit: years
+    one_time: false
+    components:
+    - Consultation and Low dose CT scan
+- rule_id: IFHAS-PKG-AAA-M-65-75
+  pathway: ifhas
+  rule_type: screening_package
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 7, PDF p.22
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: >-
+    Standalone Screening Abdominal Aortic Aneurysm for Male: target group 65-75yrs who have ever smoked;
+    frequency Once in a lifetime.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-IFHAS-AAA-SMOKING-DEFINITION
+  history: []
+  notes: null
+  spec:
+    package_name: Standalone Screening Abdominal Aortic Aneurysm for Male
+    package_group: aaa_screening
+    eligibility:
+      age:
+        min_years: 65
+        max_years: 75
+        as_printed: 65-75yrs who have ever smoked
+      sex:
+      - male
+      conditions:
+      - kind: inclusion
+        as_printed: who have ever smoked
+        attribute: smoking_history.ever_smoked
+        required_value: true
+        machine_evaluable: true
+    frequency:
+      as_printed: Once in a lifetime
+      type: once_per_lifetime
+      interval: null
+    one_time: true
+    components:
+    - Abdominal Ultrasound
+- rule_id: IFHAS-WF-INVITATION-SYSTEM
+  pathway: ifhas
+  rule_type: workflow_timing
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, section 4.7.1, PDF p.6
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: >-
+    Providers must operate an 'Invitation System' for initiation of first screening, rescreening, and
+    recall for positive and insufficient results.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-IFHAS-INVITATION-OWNERSHIP
+  history: []
+  notes: null
+  spec:
+    as_printed: >-
+      An “Invitation System” for the initiation of the first screening, rescreening and recall for positive
+      and insufficient results.
+    responsible_party: provider
+- rule_id: IFHAS-WF-RESULTS-COMMUNICATION-10D
+  pathway: ifhas
+  rule_type: workflow_timing
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, section 4.9.2.1, PDF p.7
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: Results are communicated to the participant at a follow-up visit within 10 days of the
+    initial visit.
+  requires_clinical_review: false
+  open_question_ids: []
+  history: []
+  notes: The standard does not say whether 'days' are calendar or working days.
+  spec:
+    timing:
+      value: 10
+      unit: days
+      reference_event: initial visit
+    as_printed: within 10 days of the initial visit
+- rule_id: IFHAS-WF-JOURNEY-COMPLETION-15D
+  pathway: ifhas
+  rule_type: workflow_timing
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, section 4.11.4.3, PDF p.8
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: >-
+    The participant journey is completed and results reported through Shafafiya within 15 days of the
+    initial visit; if the IFHAS package is not completed, claims cannot be submitted.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-IFHAS-FREQUENCY-ANCHOR
+  history: []
+  notes: >-
+    The standard does not say whether 'days' are calendar or working days. 'Completed' is not defined
+    for interval purposes (OQ-IFHAS-FREQUENCY-ANCHOR).
+  spec:
+    timing:
+      value: 15
+      unit: days
+      reference_event: initial visit
+    as_printed: within window of 15 days from the initial visit
+- rule_id: IFHAS-WF-KPI-REPORTING-21D
+  pathway: ifhas
+  rule_type: workflow_timing
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, section 4.11.4.4, PDF p.8
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: Providers report Key Performance Indicators within a maximum of 21 days after the end of
+    each quarter.
+  requires_clinical_review: false
+  open_question_ids: []
+  history: []
+  notes: null
+  spec:
+    timing:
+      value: 21
+      unit: days
+      reference_event: end of quarter
+    as_printed: within a maximum of 21 days after the end of each quarter
+- rule_id: IFHAS-WF-REFERRAL-15WD
+  pathway: ifhas
+  rule_type: workflow_timing
+  rule_version: 1.0.0
+  source_name: Standard for the Provision of the Periodic Comprehensive Screening Program for Adults -
+    IFHAS
+  source_version: V10
+  source_reference: DoH/SD/ADPHC-CHS/IFHAS/V10/2025, Appendix 9 note, PDF p.24
+  verification_status: verified
+  effective_date: 2025-07
+  last_reviewed: '2026-11-14'
+  description: >-
+    Per the Appendix 9 referral KPI note, referrals for primary or secondary care intervention are made
+    within 15 working days of releasing the results.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-IFHAS-KPI-TARGET
+  history: []
+  notes: >-
+    Stated in a KPI definition note, not in a numbered requirement. Section 4.9.3 defers the period to
+    each Care Pathway. The KPI target printed beside it ('>100%') is not encoded.
+  spec:
+    timing:
+      value: 15
+      unit: working_days
+      reference_event: release of results
+    as_printed: within 15 working days of releasing the results

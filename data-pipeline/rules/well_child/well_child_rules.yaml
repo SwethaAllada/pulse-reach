@@ -1,0 +1,2699 @@
+# Well-Child Visit rules.
+# Source: DOH/WCV/SD/10/2025 (V10, Revised, December 2025). EFFECTIVE DATE: TBD.
+# This is the current published standard, NOT a confirmed in-force regulation.
+# 14 visits (section 3.2.3 + Appendix 1), M-CHAT-R tiers (Appendix 5.1), IDAQ (5.2),
+# follow-up windows (3.9.1). Page references are PDF page indexes.
+#
+#  - Assessment items carry their own source_reference and verification_status.
+#    Items marked `unresolved` are source discrepancies; see ../common/open_questions.yaml.
+#  - due_window is null everywhere: the standard defines visit ages only.
+#  - M-CHAT-R / IDAQ outcomes are screening results, never diagnoses.
+config:
+  pathway: well_child
+  config_version: 1.0.0
+  clinical_review_status: not_reviewed
+  publication_status: current_published_standard
+  effective_date_as_printed: TBD
+  disclaimer: >-
+    Transcription of a published DoH standard for engineering use. Not clinically validated; not a compliance
+    claim. The standard's Effective Date is TBD. All outputs require healthcare-professional review.
+rules:
+- rule_id: WCV-PROG-SCOPE
+  pathway: well_child
+  rule_type: programme_scope
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 1.1 (PDF p.3) and section 3.2.7 (PDF p.4)
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    Standard applies to Well-Child visit screening for children aged 1 month to 6 years in licensed facilities
+    in the Emirate of Abu Dhabi; newborn ages follow the Newborn Screening Standard.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-COMMON-AGE-CALC
+  history: []
+  notes: null
+  spec:
+    age_min:
+      value: 1
+      unit: months
+    age_max:
+      value: 6
+      unit: years
+    as_printed: children aged 1 month to 6 years
+    newborns: follow the newborn standard
+- rule_id: WCV-PROG-EFFECTIVE-DATE-TBD
+  pathway: well_child
+  rule_type: programme_status
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, document control table, PDF p.2
+  verification_status: unresolved
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    The Well-Child Visit standard's Effective Date is stated as TBD. It is the current published standard
+    (V10, Revised, December 2025), not a confirmed in-force regulation.
+  requires_clinical_review: true
+  open_question_ids:
+  - OQ-WCV-EFFECTIVE-DATE
+  history: []
+  notes: Surface this status wherever Well-Child outputs are shown.
+  spec:
+    effective_date_as_printed: TBD
+    publication_date: 2025-12
+    in_force_status: not_confirmed
+- rule_id: WCV-TIMING-DUE-WINDOW
+  pathway: well_child
+  rule_type: visit_timing
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 3.2.3 (PDF p.4) and Appendix 1 (PDF pp.17-23)
+  verification_status: unresolved
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    Unresolved: the standard lists the 14 visit ages but defines no due, grace or overdue window. No window
+    is encoded.
+  requires_clinical_review: true
+  open_question_ids:
+  - OQ-WCV-DUE-WINDOW
+  history: []
+  notes: null
+  spec:
+    due_window: null
+    engine_handling: requires_clinical_review
+- rule_id: WCV-VISIT-01M
+  pathway: well_child
+  rule_type: visit_schedule
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 3.2.3 (PDF p.4) and Appendix 1 (PDF p.17)
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    Well-Child visit at 1 month: age, required preventive and developmental assessments, and follow-up
+    requirements.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-DUE-WINDOW
+  - OQ-WCV-EFFECTIVE-DATE
+  - OQ-COMMON-AGE-CALC
+  history: []
+  notes: >-
+    Visit age is verified. The standard defines no due, grace or overdue window, so due_window is null.
+    Immunisation content is delegated by the standard to EPI circular No. 39/2024 and is not encoded.
+  spec:
+    visit_id: wcv_1m
+    visit_number: 1
+    visit_label: 1 month
+    timing:
+      recommended_age:
+        value: 1
+        unit: months
+        as_printed: 1 month
+      age_band: infancy
+      age_band_source: sections 3.2.5-3.2.7, PDF p.4
+      due_window: null
+      due_window_status: not_specified_by_standard
+      open_question_ids:
+      - OQ-WCV-DUE-WINDOW
+    preventive_assessments:
+    - code: physical_examination_vital_signs
+      description: Thorough physical examination including vital signs recording.
+      source_reference: DOH/WCV/SD/10/2025, section 3.2.1, PDF p.4; Appendix 1 ('1 month' row), PDF p.17
+      verification_status: verified
+      open_question_ids: []
+    - code: weight
+      description: Measure weight.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('1 month' row), PDF p.17
+      verification_status: verified
+      open_question_ids: []
+    - code: head_circumference
+      description: Measure head circumference.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('1 month' row), PDF p.17; section 3.8.1.5, PDF
+        p.7
+      verification_status: verified
+      open_question_ids: []
+    - code: growth_zscore_plot
+      description: Plot Z-scores on WHO child growth standards.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('1 month' row), PDF p.17; section 3.8.4, PDF p.8
+      verification_status: verified
+      components:
+      - Length for age
+      - Weight for age
+      - Weight for length
+      open_question_ids: []
+    - code: vision_screening
+      description: Vision and eye screening per the age-specific battery.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('1 month' row), PDF p.17; section 3.4.1, PDF p.5
+      verification_status: verified
+      components:
+      - External eye exam
+      - Red Reflex
+      open_question_ids: []
+      notes: >-
+        Appendix 1 also states: inquire further history (premature, NICU graduates, family history of
+        strabismus/amblyopia, syndromic children, retinoblastoma, congenital cataract or congenital glaucoma);
+        refer to ophthalmologists for comprehensive screening.
+    - code: hearing_screening
+      description: Hearing test.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('1 month' row), PDF p.17; section 3.3.4, PDF p.5
+      verification_status: verified
+      condition: >-
+        if not done earlier / failed in newborn hearing screening (Appendix 1); if not performed at birth,
+        complete at 1 or 2 months old (section 3.3.4)
+      open_question_ids: []
+    - code: hip_examination
+      description: Ortolani and Barlow tests for Developmental Dysplasia of the Hips (DDH).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('1 month' row), PDF p.17; section 3.5.4, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    developmental_assessments:
+    - code: parent_child_interaction_observation
+      description: General observation of parent-child interaction.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('1 month' row), PDF p.17
+      verification_status: verified
+      open_question_ids: []
+    - code: developmental_milestones
+      description: >-
+        Developmental milestone surveillance across 4 domains (Social Language and Self-help; Verbal Language;
+        Gross Motor; Fine Motor), per Appendix 6.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('1 month' row), PDF p.17; section 3.8.5, PDF p.8;
+        Appendix 6, PDF pp.28-32
+      verification_status: verified
+      open_question_ids: []
+    follow_up_requirements:
+    - code: positive_screening_follow_up
+      description: >-
+        Infants and children with positive screening results receive appropriate follow-up or referral;
+        initial follow-up referral initiated within 7 days of results; specialist evaluation or diagnostic
+        testing scheduled within 2-4 weeks depending on severity and urgency.
+      source_reference: DOH/WCV/SD/10/2025, section 3.9.1.2-3.9.1.4, PDF p.8
+      verification_status: verified
+      rule_refs:
+      - WCV-FU-REFERRAL-INITIATION-7D
+      - WCV-FU-SPECIALIST-EVALUATION-2-4W
+      open_question_ids: []
+    - code: vision_abnormality_referral
+      description: >-
+        Immediate referral to the ophthalmology clinic for any listed abnormality (structural anomaly;
+        absent, white, dull or asymmetric red reflex; infant risk factors; family history of retinoblastoma,
+        cataracts, glaucoma or retinal abnormalities).
+      source_reference: DOH/WCV/SD/10/2025, section 3.4.4, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    - code: hip_abnormality_referral
+      description: If any abnormality is detected, refer the child to the Pediatric/Ortho clinic for further
+        evaluation.
+      source_reference: DOH/WCV/SD/10/2025, section 3.5.6, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    history_components:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('1 month' row), PDF p.17
+      items:
+      - Maternal history
+      - Birth history
+      - Feeding /nutritional history
+      - Immunization
+      - Past medical history
+      - Allergy
+      - Drug history
+      - Family history
+      - Socio-economic history
+      notes: Appendix 1 numbers this list 1-6 then 8-10 (no item 7); preserved as printed.
+    counselling_elements:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('1 month' row), PDF p.17
+      items:
+      - Breastfeeding
+      - Sleeping pattern
+      - Oral hygiene
+      - General safety
+      - Nutrition
+      - Supplement (Vitamin D)
+      - Secondhand smoking prevention
+      - Physical activity
+      - Injury prevention
+      - Sudden infant death syndrome prevention (SIDS)
+- rule_id: WCV-VISIT-02M
+  pathway: well_child
+  rule_type: visit_schedule
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 3.2.3 (PDF p.4) and Appendix 1 (PDF p.17)
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    Well-Child visit at 2 months: age, required preventive and developmental assessments, and follow-up
+    requirements.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-DUE-WINDOW
+  - OQ-WCV-EFFECTIVE-DATE
+  - OQ-COMMON-AGE-CALC
+  history: []
+  notes: >-
+    Visit age is verified. The standard defines no due, grace or overdue window, so due_window is null.
+    Immunisation content is delegated by the standard to EPI circular No. 39/2024 and is not encoded.
+  spec:
+    visit_id: wcv_2m
+    visit_number: 2
+    visit_label: 2 months
+    timing:
+      recommended_age:
+        value: 2
+        unit: months
+        as_printed: 2 months
+      age_band: infancy
+      age_band_source: sections 3.2.5-3.2.7, PDF p.4
+      due_window: null
+      due_window_status: not_specified_by_standard
+      open_question_ids:
+      - OQ-WCV-DUE-WINDOW
+    preventive_assessments:
+    - code: physical_examination_vital_signs
+      description: Thorough physical examination including vital signs recording.
+      source_reference: DOH/WCV/SD/10/2025, section 3.2.1, PDF p.4; Appendix 1 ('2 months' row), PDF p.17
+      verification_status: verified
+      open_question_ids: []
+    - code: weight
+      description: Measure weight.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 months' row), PDF p.17
+      verification_status: verified
+      open_question_ids: []
+    - code: head_circumference
+      description: Measure head circumference.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 months' row), PDF p.17; section 3.8.1.5, PDF
+        p.7
+      verification_status: verified
+      open_question_ids: []
+    - code: growth_zscore_plot
+      description: Plot Z-scores on WHO child growth standards.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 months' row), PDF p.17; section 3.8.4, PDF
+        p.8
+      verification_status: verified
+      components:
+      - Length for age
+      - Weight for age
+      - Weight for length
+      open_question_ids: []
+    - code: vision_screening
+      description: Vision and eye screening per the age-specific battery.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 months' row), PDF p.17; section 3.4.1, PDF
+        p.5
+      verification_status: verified
+      components:
+      - External eye exam
+      - Red Reflex
+      - Visual Acuity (Fix and Follow)
+      open_question_ids: []
+    - code: hearing_screening
+      description: Hearing test.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 months' row), PDF p.17; section 3.3.4, PDF
+        p.5
+      verification_status: verified
+      condition: >-
+        if not done earlier / failed in newborn hearing screening (Appendix 1); if not performed at birth,
+        complete at 1 or 2 months old (section 3.3.4)
+      open_question_ids: []
+    - code: hip_examination
+      description: Ortolani and Barlow tests for Developmental Dysplasia of the Hips (DDH).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 months' row), PDF p.17; section 3.5.4, PDF
+        p.5
+      verification_status: verified
+      open_question_ids: []
+    developmental_assessments:
+    - code: parent_child_interaction_observation
+      description: General observation of parent-child interaction.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 months' row), PDF p.17
+      verification_status: verified
+      open_question_ids: []
+    - code: developmental_milestones
+      description: >-
+        Developmental milestone surveillance across 4 domains (Social Language and Self-help; Verbal Language;
+        Gross Motor; Fine Motor), per Appendix 6.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 months' row), PDF p.17; section 3.8.5, PDF
+        p.8; Appendix 6, PDF pp.28-32
+      verification_status: verified
+      open_question_ids: []
+    follow_up_requirements:
+    - code: positive_screening_follow_up
+      description: >-
+        Infants and children with positive screening results receive appropriate follow-up or referral;
+        initial follow-up referral initiated within 7 days of results; specialist evaluation or diagnostic
+        testing scheduled within 2-4 weeks depending on severity and urgency.
+      source_reference: DOH/WCV/SD/10/2025, section 3.9.1.2-3.9.1.4, PDF p.8
+      verification_status: verified
+      rule_refs:
+      - WCV-FU-REFERRAL-INITIATION-7D
+      - WCV-FU-SPECIALIST-EVALUATION-2-4W
+      open_question_ids: []
+    - code: vision_abnormality_referral
+      description: >-
+        Immediate referral to the ophthalmology clinic for any listed abnormality (structural anomaly;
+        absent, white, dull or asymmetric red reflex; infant risk factors; family history of retinoblastoma,
+        cataracts, glaucoma or retinal abnormalities).
+      source_reference: DOH/WCV/SD/10/2025, section 3.4.4, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    - code: hip_abnormality_referral
+      description: If any abnormality is detected, refer the child to the Pediatric/Ortho clinic for further
+        evaluation.
+      source_reference: DOH/WCV/SD/10/2025, section 3.5.6, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    history_components:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 months' row), PDF p.17
+      items:
+      - Maternal history
+      - Birth history
+      - Feeding /nutritional history
+      - Immunization
+      - Past medical history
+      - Allergy
+      - Drug history
+      - Family history
+      - Socio-economic history
+      notes: Appendix 1 numbers this list 1-6 then 8-10 (no item 7); preserved as printed.
+    counselling_elements:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 months' row), PDF p.17
+      items:
+      - Breastfeeding
+      - Sleeping pattern
+      - Oral hygiene
+      - General safety
+      - Nutrition
+      - Supplement (Vitamin D)
+      - Secondhand smoking prevention
+      - Physical activity
+      - Injury prevention
+      - Sudden infant death syndrome prevention (SIDS)
+- rule_id: WCV-VISIT-04M
+  pathway: well_child
+  rule_type: visit_schedule
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 3.2.3 (PDF p.4) and Appendix 1 (PDF p.18)
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    Well-Child visit at 4 months: age, required preventive and developmental assessments, and follow-up
+    requirements.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-DUE-WINDOW
+  - OQ-WCV-EFFECTIVE-DATE
+  - OQ-COMMON-AGE-CALC
+  history: []
+  notes: >-
+    Visit age is verified. The standard defines no due, grace or overdue window, so due_window is null.
+    Immunisation content is delegated by the standard to EPI circular No. 39/2024 and is not encoded.
+  spec:
+    visit_id: wcv_4m
+    visit_number: 3
+    visit_label: 4 months
+    timing:
+      recommended_age:
+        value: 4
+        unit: months
+        as_printed: 4 months
+      age_band: infancy
+      age_band_source: sections 3.2.5-3.2.7, PDF p.4
+      due_window: null
+      due_window_status: not_specified_by_standard
+      open_question_ids:
+      - OQ-WCV-DUE-WINDOW
+    preventive_assessments:
+    - code: physical_examination_vital_signs
+      description: Thorough physical examination including vital signs recording.
+      source_reference: DOH/WCV/SD/10/2025, section 3.2.1, PDF p.4; Appendix 1 ('4 months' row), PDF p.18
+      verification_status: verified
+      open_question_ids: []
+    - code: weight
+      description: Measure weight.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('4 months' row), PDF p.18
+      verification_status: verified
+      open_question_ids: []
+    - code: head_circumference
+      description: Measure head circumference.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('4 months' row), PDF p.18; section 3.8.1.5, PDF
+        p.7
+      verification_status: verified
+      open_question_ids: []
+    - code: growth_zscore_plot
+      description: Plot Z-scores on WHO child growth standards.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('4 months' row), PDF p.18; section 3.8.4, PDF
+        p.8
+      verification_status: verified
+      components:
+      - Length for age
+      - Weight for age
+      - Weight for length
+      open_question_ids: []
+    - code: vision_screening
+      description: Vision and eye screening per the age-specific battery.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('4 months' row), PDF p.18; section 3.4.1, PDF
+        p.5
+      verification_status: verified
+      components:
+      - External eye exam
+      - Red Reflex
+      - Visual Acuity (Fix and Follow)
+      open_question_ids: []
+    - code: hip_examination
+      description: Ortolani and Barlow tests for Developmental Dysplasia of the Hips (DDH).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('4 months' row), PDF p.18; section 3.5.4, PDF
+        p.5
+      verification_status: verified
+      open_question_ids: []
+    developmental_assessments:
+    - code: parent_child_interaction_observation
+      description: General observation of parent-child interaction.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('4 months' row), PDF p.18
+      verification_status: verified
+      open_question_ids: []
+    - code: developmental_milestones
+      description: >-
+        Developmental milestone surveillance across 4 domains (Social Language and Self-help; Verbal Language;
+        Gross Motor; Fine Motor), per Appendix 6.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('4 months' row), PDF p.18; section 3.8.5, PDF
+        p.8; Appendix 6, PDF pp.28-32
+      verification_status: verified
+      open_question_ids: []
+    follow_up_requirements:
+    - code: positive_screening_follow_up
+      description: >-
+        Infants and children with positive screening results receive appropriate follow-up or referral;
+        initial follow-up referral initiated within 7 days of results; specialist evaluation or diagnostic
+        testing scheduled within 2-4 weeks depending on severity and urgency.
+      source_reference: DOH/WCV/SD/10/2025, section 3.9.1.2-3.9.1.4, PDF p.8
+      verification_status: verified
+      rule_refs:
+      - WCV-FU-REFERRAL-INITIATION-7D
+      - WCV-FU-SPECIALIST-EVALUATION-2-4W
+      open_question_ids: []
+    - code: vision_abnormality_referral
+      description: >-
+        Immediate referral to the ophthalmology clinic for any listed abnormality (structural anomaly;
+        absent, white, dull or asymmetric red reflex; infant risk factors; family history of retinoblastoma,
+        cataracts, glaucoma or retinal abnormalities).
+      source_reference: DOH/WCV/SD/10/2025, section 3.4.4, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    - code: hip_abnormality_referral
+      description: If any abnormality is detected, refer the child to the Pediatric/Ortho clinic for further
+        evaluation.
+      source_reference: DOH/WCV/SD/10/2025, section 3.5.6, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    history_components:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('4 months' row), PDF p.18
+      items:
+      - Maternal history
+      - Birth history
+      - Feeding /nutritional history
+      - Immunization
+      - Past medical history
+      - Allergy
+      - Drug history
+      - Family history
+      - Socio-economic history
+      notes: Appendix 1 numbers this list 1-6 then 8-10 (no item 7); preserved as printed.
+    counselling_elements:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('4 months' row), PDF p.18
+      items:
+      - Breastfeeding
+      - Sleeping pattern
+      - Oral hygiene
+      - General safety
+      - Nutrition
+      - Supplement (Vitamin D)
+      - Secondhand smoking prevention
+      - Physical activity
+      - Injury prevention
+      - Sudden infant death syndrome prevention (SIDS)
+- rule_id: WCV-VISIT-06M
+  pathway: well_child
+  rule_type: visit_schedule
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 3.2.3 (PDF p.4) and Appendix 1 (PDF p.18)
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    Well-Child visit at 6 months: age, required preventive and developmental assessments, and follow-up
+    requirements.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-DUE-WINDOW
+  - OQ-WCV-EFFECTIVE-DATE
+  - OQ-COMMON-AGE-CALC
+  history: []
+  notes: >-
+    Visit age is verified. The standard defines no due, grace or overdue window, so due_window is null.
+    Immunisation content is delegated by the standard to EPI circular No. 39/2024 and is not encoded.
+  spec:
+    visit_id: wcv_6m
+    visit_number: 4
+    visit_label: 6 months
+    timing:
+      recommended_age:
+        value: 6
+        unit: months
+        as_printed: 6 months
+      age_band: infancy
+      age_band_source: sections 3.2.5-3.2.7, PDF p.4
+      due_window: null
+      due_window_status: not_specified_by_standard
+      open_question_ids:
+      - OQ-WCV-DUE-WINDOW
+    preventive_assessments:
+    - code: physical_examination_vital_signs
+      description: Thorough physical examination including vital signs recording.
+      source_reference: DOH/WCV/SD/10/2025, section 3.2.1, PDF p.4; Appendix 1 ('6 months' row), PDF p.18
+      verification_status: verified
+      open_question_ids: []
+    - code: weight
+      description: Measure weight.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('6 months' row), PDF p.18
+      verification_status: verified
+      open_question_ids: []
+    - code: head_circumference
+      description: Measure head circumference.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('6 months' row), PDF p.18; section 3.8.1.5, PDF
+        p.7
+      verification_status: verified
+      open_question_ids: []
+    - code: growth_zscore_plot
+      description: Plot Z-scores on WHO child growth standards.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('6 months' row), PDF p.18; section 3.8.4, PDF
+        p.8
+      verification_status: verified
+      components:
+      - Length for age
+      - Weight for age
+      - Weight for length
+      open_question_ids: []
+    - code: vision_screening
+      description: Vision and eye screening per the age-specific battery.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('6 months' row), PDF p.18; section 3.4.1, PDF
+        p.5
+      verification_status: verified
+      components:
+      - External eye exam
+      - Red Reflex
+      - Visual Acuity (Fix and Follow)
+      - Corneal light reflex test
+      open_question_ids: []
+    - code: hip_examination
+      description: Check for limited hip(s) abduction, shortening of limb(s) or asymmetrical skin folds
+        on thighs for DDH.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('6 months' row), PDF p.18; section 3.5.5, PDF
+        p.5
+      verification_status: verified
+      condition: until walking (section 3.5.5)
+      open_question_ids: []
+    developmental_assessments:
+    - code: parent_child_interaction_observation
+      description: General observation of parent-child interaction.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('6 months' row), PDF p.18
+      verification_status: verified
+      open_question_ids: []
+    - code: developmental_milestones
+      description: >-
+        Developmental milestone surveillance across 4 domains (Social Language and Self-help; Verbal Language;
+        Gross Motor; Fine Motor), per Appendix 6.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('6 months' row), PDF p.18; section 3.8.5, PDF
+        p.8; Appendix 6, PDF pp.28-32
+      verification_status: verified
+      open_question_ids: []
+    follow_up_requirements:
+    - code: positive_screening_follow_up
+      description: >-
+        Infants and children with positive screening results receive appropriate follow-up or referral;
+        initial follow-up referral initiated within 7 days of results; specialist evaluation or diagnostic
+        testing scheduled within 2-4 weeks depending on severity and urgency.
+      source_reference: DOH/WCV/SD/10/2025, section 3.9.1.2-3.9.1.4, PDF p.8
+      verification_status: verified
+      rule_refs:
+      - WCV-FU-REFERRAL-INITIATION-7D
+      - WCV-FU-SPECIALIST-EVALUATION-2-4W
+      open_question_ids: []
+    - code: vision_abnormality_referral
+      description: >-
+        Immediate referral to the ophthalmology clinic for any listed abnormality (structural anomaly;
+        absent, white, dull or asymmetric red reflex; infant risk factors; family history of retinoblastoma,
+        cataracts, glaucoma or retinal abnormalities).
+      source_reference: DOH/WCV/SD/10/2025, section 3.4.4, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    - code: hip_abnormality_referral
+      description: If any abnormality is detected, refer the child to the Pediatric/Ortho clinic for further
+        evaluation.
+      source_reference: DOH/WCV/SD/10/2025, section 3.5.6, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    history_components:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('6 months' row), PDF p.18
+      items:
+      - Maternal history
+      - Birth history
+      - Feeding /nutritional history
+      - Immunization
+      - Past medical history
+      - Allergy
+      - Drug history
+      - Family history
+      - Socio-economic history
+      notes: Appendix 1 numbers this list 1-6 then 8-10 (no item 7); preserved as printed.
+    counselling_elements:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('6 months' row), PDF p.18
+      items:
+      - Breastfeeding
+      - Sleeping pattern
+      - Oral hygiene
+      - General safety
+      - Nutrition
+      - Supplement (Vitamin D)
+      - Secondhand smoking prevention
+      - Physical activity
+      - Injury prevention
+      - Sudden infant death syndrome prevention (SIDS)
+- rule_id: WCV-VISIT-09M
+  pathway: well_child
+  rule_type: visit_schedule
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 3.2.3 (PDF p.4) and Appendix 1 (PDF p.19)
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    Well-Child visit at 9 months: age, required preventive and developmental assessments, and follow-up
+    requirements.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-DUE-WINDOW
+  - OQ-WCV-EFFECTIVE-DATE
+  - OQ-COMMON-AGE-CALC
+  history: []
+  notes: >-
+    Visit age is verified. The standard defines no due, grace or overdue window, so due_window is null.
+    Immunisation content is delegated by the standard to EPI circular No. 39/2024 and is not encoded.
+  spec:
+    visit_id: wcv_9m
+    visit_number: 5
+    visit_label: 9 months
+    timing:
+      recommended_age:
+        value: 9
+        unit: months
+        as_printed: 9 months
+      age_band: infancy
+      age_band_source: sections 3.2.5-3.2.7, PDF p.4
+      due_window: null
+      due_window_status: not_specified_by_standard
+      open_question_ids:
+      - OQ-WCV-DUE-WINDOW
+    preventive_assessments:
+    - code: physical_examination_vital_signs
+      description: Thorough physical examination including vital signs recording.
+      source_reference: DOH/WCV/SD/10/2025, section 3.2.1, PDF p.4; Appendix 1 ('9 months' row), PDF p.19
+      verification_status: verified
+      open_question_ids: []
+    - code: weight
+      description: Measure weight.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('9 months' row), PDF p.19
+      verification_status: verified
+      open_question_ids: []
+    - code: head_circumference
+      description: Measure head circumference.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('9 months' row), PDF p.19; section 3.8.1.5, PDF
+        p.7
+      verification_status: verified
+      open_question_ids: []
+    - code: growth_zscore_plot
+      description: Plot Z-scores on WHO child growth standards.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('9 months' row), PDF p.19; section 3.8.4, PDF
+        p.8
+      verification_status: verified
+      components:
+      - Length for age
+      - Weight for age
+      - Weight for length
+      open_question_ids: []
+    - code: vision_screening
+      description: Vision and eye screening per the age-specific battery.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('9 months' row), PDF p.19; section 3.4.1, PDF
+        p.5
+      verification_status: verified
+      components:
+      - External eye exam
+      - Red Reflex
+      - Visual Acuity (Fix and Follow)
+      - Corneal light reflex test
+      open_question_ids: []
+    - code: hip_examination
+      description: Check for limited hip(s) abduction, shortening of limb(s) or asymmetrical skin folds
+        on thighs for DDH.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('9 months' row), PDF p.19; section 3.5.5, PDF
+        p.5
+      verification_status: verified
+      condition: until walking (section 3.5.5)
+      open_question_ids: []
+    developmental_assessments:
+    - code: parent_child_interaction_observation
+      description: General observation of parent-child interaction.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('9 months' row), PDF p.19
+      verification_status: verified
+      open_question_ids: []
+    - code: developmental_milestones
+      description: >-
+        Developmental milestone surveillance across 4 domains (Social Language and Self-help; Verbal Language;
+        Gross Motor; Fine Motor), per Appendix 6.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('9 months' row), PDF p.19; section 3.8.5, PDF
+        p.8; Appendix 6, PDF pp.28-32
+      verification_status: verified
+      open_question_ids: []
+    follow_up_requirements:
+    - code: positive_screening_follow_up
+      description: >-
+        Infants and children with positive screening results receive appropriate follow-up or referral;
+        initial follow-up referral initiated within 7 days of results; specialist evaluation or diagnostic
+        testing scheduled within 2-4 weeks depending on severity and urgency.
+      source_reference: DOH/WCV/SD/10/2025, section 3.9.1.2-3.9.1.4, PDF p.8
+      verification_status: verified
+      rule_refs:
+      - WCV-FU-REFERRAL-INITIATION-7D
+      - WCV-FU-SPECIALIST-EVALUATION-2-4W
+      open_question_ids: []
+    - code: vision_abnormality_referral
+      description: >-
+        Immediate referral to the ophthalmology clinic for any listed abnormality (structural anomaly;
+        absent, white, dull or asymmetric red reflex; infant risk factors; family history of retinoblastoma,
+        cataracts, glaucoma or retinal abnormalities).
+      source_reference: DOH/WCV/SD/10/2025, section 3.4.4, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    - code: hip_abnormality_referral
+      description: If any abnormality is detected, refer the child to the Pediatric/Ortho clinic for further
+        evaluation.
+      source_reference: DOH/WCV/SD/10/2025, section 3.5.6, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    history_components:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('9 months' row), PDF p.19
+      items:
+      - Maternal history
+      - Birth history
+      - Feeding /nutritional history
+      - Immunization
+      - Past medical history
+      - Allergy
+      - Drug history
+      - Family history
+      - Socio-economic history
+      notes: Appendix 1 numbers this list 1-6 then 8-10 (no item 7); preserved as printed.
+    counselling_elements:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('9 months' row), PDF p.19
+      items:
+      - Breastfeeding
+      - Sleeping pattern
+      - Oral hygiene
+      - General safety
+      - Nutrition
+      - Supplement (Vitamin D)
+      - Secondhand smoking prevention
+      - Physical activity
+      - Injury prevention
+- rule_id: WCV-VISIT-12M
+  pathway: well_child
+  rule_type: visit_schedule
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 3.2.3 (PDF p.4) and Appendix 1 (PDF p.19)
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    Well-Child visit at 12 months: age, required preventive and developmental assessments, and follow-up
+    requirements.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-DUE-WINDOW
+  - OQ-WCV-EFFECTIVE-DATE
+  - OQ-COMMON-AGE-CALC
+  history: []
+  notes: >-
+    Visit age is verified. The standard defines no due, grace or overdue window, so due_window is null.
+    Immunisation content is delegated by the standard to EPI circular No. 39/2024 and is not encoded.
+  spec:
+    visit_id: wcv_12m
+    visit_number: 6
+    visit_label: 12 months
+    timing:
+      recommended_age:
+        value: 12
+        unit: months
+        as_printed: 12 months
+      age_band: early_childhood
+      age_band_source: sections 3.2.5-3.2.7, PDF p.4
+      due_window: null
+      due_window_status: not_specified_by_standard
+      open_question_ids:
+      - OQ-WCV-DUE-WINDOW
+    preventive_assessments:
+    - code: physical_examination_vital_signs
+      description: Thorough physical examination including vital signs recording.
+      source_reference: DOH/WCV/SD/10/2025, section 3.2.1, PDF p.4; Appendix 1 ('12 months' row), PDF
+        p.19
+      verification_status: verified
+      open_question_ids: []
+    - code: weight
+      description: Measure weight.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('12 months' row), PDF p.19
+      verification_status: verified
+      open_question_ids: []
+    - code: head_circumference
+      description: Measure head circumference.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('12 months' row), PDF p.19; section 3.8.1.5, PDF
+        p.7
+      verification_status: verified
+      open_question_ids: []
+    - code: growth_zscore_plot
+      description: Plot Z-scores on WHO child growth standards.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('12 months' row), PDF p.19; section 3.8.4, PDF
+        p.8
+      verification_status: verified
+      components:
+      - Length for age
+      - Weight for age
+      - Weight for length
+      open_question_ids: []
+    - code: vision_screening
+      description: Vision and eye screening per the age-specific battery.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('12 months' row), PDF p.19; section 3.4.1, PDF
+        p.5
+      verification_status: verified
+      components:
+      - External eye exam
+      - Red Reflex
+      - Visual Acuity (Fix and Follow)
+      - Corneal light reflex test
+      - Cardiff Acuity Test
+      open_question_ids: []
+    - code: hip_examination
+      description: Check for limited hip(s) abduction, shortening of limb(s) or asymmetrical skin folds
+        on thighs for DDH.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('12 months' row), PDF p.19; section 3.5.5, PDF
+        p.5
+      verification_status: verified
+      condition: until walking (section 3.5.5)
+      open_question_ids: []
+    - code: oral_examination
+      description: >-
+        Oral examination by a dentist or hygienist in a dental clinic setting (intraoral examination;
+        hard tissue, soft tissue, caries risk assessment; oral health guidance to parents).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('12 months' row), PDF p.19; section 3.7.5, PDF
+        p.6; Appendix 4, PDF pp.25-26
+      verification_status: verified
+      open_question_ids: []
+    - code: cbc
+      description: CBC for iron deficiency anemia screening.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('12 months' row), PDF p.19; section 3.6.1, PDF
+        p.5
+      verification_status: verified
+      open_question_ids: []
+    developmental_assessments:
+    - code: parent_child_interaction_observation
+      description: General observation of parent-child interaction.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('12 months' row), PDF p.19
+      verification_status: verified
+      open_question_ids: []
+    - code: developmental_milestones
+      description: >-
+        Developmental milestone surveillance across 4 domains (Social Language and Self-help; Verbal Language;
+        Gross Motor; Fine Motor), per Appendix 6.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('12 months' row), PDF p.19; section 3.8.5, PDF
+        p.8; Appendix 6, PDF pp.28-32
+      verification_status: verified
+      open_question_ids: []
+    follow_up_requirements:
+    - code: positive_screening_follow_up
+      description: >-
+        Infants and children with positive screening results receive appropriate follow-up or referral;
+        initial follow-up referral initiated within 7 days of results; specialist evaluation or diagnostic
+        testing scheduled within 2-4 weeks depending on severity and urgency.
+      source_reference: DOH/WCV/SD/10/2025, section 3.9.1.2-3.9.1.4, PDF p.8
+      verification_status: verified
+      rule_refs:
+      - WCV-FU-REFERRAL-INITIATION-7D
+      - WCV-FU-SPECIALIST-EVALUATION-2-4W
+      open_question_ids: []
+    - code: vision_abnormality_referral
+      description: >-
+        Immediate referral to the ophthalmology clinic for any listed abnormality (structural anomaly;
+        absent, white, dull or asymmetric red reflex; infant risk factors; family history of retinoblastoma,
+        cataracts, glaucoma or retinal abnormalities).
+      source_reference: DOH/WCV/SD/10/2025, section 3.4.4, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    - code: hip_abnormality_referral
+      description: If any abnormality is detected, refer the child to the Pediatric/Ortho clinic for further
+        evaluation.
+      source_reference: DOH/WCV/SD/10/2025, section 3.5.6, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    - code: anemia_further_evaluation
+      description: >-
+        Children with a laboratory finding of anemia (hemoglobin <11 g/dL for <6 years of age) should
+        be further evaluated to determine the underlying etiology.
+      source_reference: DOH/WCV/SD/10/2025, section 3.6.3, PDF p.6
+      verification_status: verified
+      open_question_ids: []
+      notes: A screening finding that triggers evaluation; not a diagnosis.
+    history_components:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('12 months' row), PDF p.19
+      items:
+      - Maternal history
+      - Birth history
+      - Feeding /nutritional history
+      - Immunization
+      - Past medical history
+      - Allergy
+      - Drug history
+      - Family history
+      - Socio-economic history
+      notes: Appendix 1 numbers this list 1-6 then 8-10 (no item 7); preserved as printed.
+    counselling_elements:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('12 months' row), PDF p.19
+      items:
+      - Breastfeeding
+      - Sleeping pattern
+      - Oral hygiene
+      - General safety
+      - Nutrition
+      - Supplement (Vitamin D)
+      - Secondhand smoking prevention
+      - Physical activity
+      - Injury prevention
+- rule_id: WCV-VISIT-15M
+  pathway: well_child
+  rule_type: visit_schedule
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 3.2.3 (PDF p.4) and Appendix 1 (PDF p.20)
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    Well-Child visit at 15 months: age, required preventive and developmental assessments, and follow-up
+    requirements.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-DUE-WINDOW
+  - OQ-WCV-EFFECTIVE-DATE
+  - OQ-COMMON-AGE-CALC
+  history: []
+  notes: >-
+    Visit age is verified. The standard defines no due, grace or overdue window, so due_window is null.
+    Immunisation content is delegated by the standard to EPI circular No. 39/2024 and is not encoded.
+  spec:
+    visit_id: wcv_15m
+    visit_number: 7
+    visit_label: 15 months
+    timing:
+      recommended_age:
+        value: 15
+        unit: months
+        as_printed: 15 months
+      age_band: early_childhood
+      age_band_source: sections 3.2.5-3.2.7, PDF p.4
+      due_window: null
+      due_window_status: not_specified_by_standard
+      open_question_ids:
+      - OQ-WCV-DUE-WINDOW
+    preventive_assessments:
+    - code: physical_examination_vital_signs
+      description: Thorough physical examination including vital signs recording.
+      source_reference: DOH/WCV/SD/10/2025, section 3.2.1, PDF p.4; Appendix 1 ('15 months' row), PDF
+        p.20
+      verification_status: verified
+      open_question_ids: []
+    - code: weight
+      description: Measure weight.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('15 months' row), PDF p.20
+      verification_status: verified
+      open_question_ids: []
+    - code: head_circumference
+      description: Measure head circumference.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('15 months' row), PDF p.20; section 3.8.1.5, PDF
+        p.7
+      verification_status: verified
+      open_question_ids: []
+    - code: growth_zscore_plot
+      description: Plot Z-scores on WHO child growth standards.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('15 months' row), PDF p.20; section 3.8.4, PDF
+        p.8
+      verification_status: verified
+      components:
+      - Length for age
+      - Weight for age
+      - Weight for length
+      open_question_ids: []
+    - code: vision_screening
+      description: Vision and eye screening per the age-specific battery.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('15 months' row), PDF p.20; section 3.4.1, PDF
+        p.5
+      verification_status: verified
+      components:
+      - External eye exam
+      - Light Reflex
+      - Visual Acuity (Fix and Follow)
+      - Corneal light reflex test
+      - Cardiff Acuity Test
+      - Cover/uncover Test
+      open_question_ids: []
+    - code: oral_examination
+      description: >-
+        Oral examination (intraoral examination; hard tissue, soft tissue, caries risk assessment; oral
+        health guidance to parents).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('15 months' row), PDF p.20; section 3.7.5, PDF
+        p.6
+      verification_status: unresolved
+      open_question_ids:
+      - OQ-WCV-ORAL-15M
+      notes: Listed in Appendix 1 at 15 months but section 3.7.5 lists 12, 18, 24 months, 2.5, 3, 4, 5,
+        6 years.
+    - code: cbc
+      description: CBC for iron deficiency anemia screening.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('15 months' row), PDF p.20; section 3.6.1, PDF
+        p.5
+      verification_status: verified
+      condition: >-
+        if not done at 12 months (section 3.6.1 also allows testing at 15 or 18 months where risk factors
+        trigger the need)
+      open_question_ids: []
+    developmental_assessments:
+    - code: parent_child_interaction_observation
+      description: General observation of parent-child interaction.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('15 months' row), PDF p.20
+      verification_status: verified
+      open_question_ids: []
+    - code: developmental_milestones
+      description: >-
+        Developmental milestone surveillance across 4 domains (Social Language and Self-help; Verbal Language;
+        Gross Motor; Fine Motor), per Appendix 6.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('15 months' row), PDF p.20; section 3.8.5, PDF
+        p.8; Appendix 6, PDF pp.28-32
+      verification_status: verified
+      open_question_ids: []
+    follow_up_requirements:
+    - code: positive_screening_follow_up
+      description: >-
+        Infants and children with positive screening results receive appropriate follow-up or referral;
+        initial follow-up referral initiated within 7 days of results; specialist evaluation or diagnostic
+        testing scheduled within 2-4 weeks depending on severity and urgency.
+      source_reference: DOH/WCV/SD/10/2025, section 3.9.1.2-3.9.1.4, PDF p.8
+      verification_status: verified
+      rule_refs:
+      - WCV-FU-REFERRAL-INITIATION-7D
+      - WCV-FU-SPECIALIST-EVALUATION-2-4W
+      open_question_ids: []
+    - code: vision_abnormality_referral
+      description: >-
+        Immediate referral to the ophthalmology clinic for any listed abnormality (structural anomaly;
+        absent, white, dull or asymmetric red reflex; infant risk factors; family history of retinoblastoma,
+        cataracts, glaucoma or retinal abnormalities).
+      source_reference: DOH/WCV/SD/10/2025, section 3.4.4, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    - code: anemia_further_evaluation
+      description: >-
+        Children with a laboratory finding of anemia (hemoglobin <11 g/dL for <6 years of age) should
+        be further evaluated to determine the underlying etiology.
+      source_reference: DOH/WCV/SD/10/2025, section 3.6.3, PDF p.6
+      verification_status: verified
+      open_question_ids: []
+      notes: A screening finding that triggers evaluation; not a diagnosis.
+    history_components:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('15 months' row), PDF p.20
+      items:
+      - Maternal history
+      - Birth history
+      - Feeding /nutritional history
+      - Immunization
+      - Past medical history
+      - Allergy
+      - Drug history
+      - Family history
+      - Socio-economic history
+      notes: Appendix 1 numbers this list 1-6 then 8-10 (no item 7); preserved as printed.
+    counselling_elements:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('15 months' row), PDF p.20
+      items:
+      - Breastfeeding
+      - Sleeping pattern
+      - Oral hygiene
+      - General safety
+      - Nutrition
+      - Supplement (Vitamin D)
+      - Secondhand smoking prevention
+      - Physical activity
+      - Injury prevention
+- rule_id: WCV-VISIT-18M
+  pathway: well_child
+  rule_type: visit_schedule
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 3.2.3 (PDF p.4) and Appendix 1 (PDF p.20)
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    Well-Child visit at 18 months: age, required preventive and developmental assessments, and follow-up
+    requirements.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-DUE-WINDOW
+  - OQ-WCV-EFFECTIVE-DATE
+  - OQ-COMMON-AGE-CALC
+  history: []
+  notes: >-
+    Visit age is verified. The standard defines no due, grace or overdue window, so due_window is null.
+    Immunisation content is delegated by the standard to EPI circular No. 39/2024 and is not encoded.
+  spec:
+    visit_id: wcv_18m
+    visit_number: 8
+    visit_label: 18 months
+    timing:
+      recommended_age:
+        value: 18
+        unit: months
+        as_printed: 18 months
+      age_band: early_childhood
+      age_band_source: sections 3.2.5-3.2.7, PDF p.4
+      due_window: null
+      due_window_status: not_specified_by_standard
+      open_question_ids:
+      - OQ-WCV-DUE-WINDOW
+    preventive_assessments:
+    - code: physical_examination_vital_signs
+      description: Thorough physical examination including vital signs recording.
+      source_reference: DOH/WCV/SD/10/2025, section 3.2.1, PDF p.4; Appendix 1 ('18 months' row), PDF
+        p.20
+      verification_status: verified
+      open_question_ids: []
+    - code: weight
+      description: Measure weight.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('18 months' row), PDF p.20
+      verification_status: verified
+      open_question_ids: []
+    - code: head_circumference
+      description: Measure head circumference.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('18 months' row), PDF p.20; section 3.8.1.5, PDF
+        p.7
+      verification_status: verified
+      open_question_ids: []
+    - code: growth_zscore_plot
+      description: Plot Z-scores on WHO child growth standards.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('18 months' row), PDF p.20; section 3.8.4, PDF
+        p.8
+      verification_status: verified
+      components:
+      - Length for age
+      - Weight for age
+      - Weight for length
+      open_question_ids: []
+    - code: vision_screening
+      description: Vision and eye screening per the age-specific battery.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('18 months' row), PDF p.20; section 3.4.1, PDF
+        p.5
+      verification_status: verified
+      components:
+      - External eye exam
+      - Light Reflex
+      - Visual Acuity (Fix and Follow)
+      - Corneal light reflex test
+      - Cardiff Acuity Test
+      - Cover/uncover Test
+      open_question_ids: []
+    - code: oral_examination
+      description: >-
+        Oral examination by a dentist or hygienist in a dental clinic setting (intraoral examination;
+        hard tissue, soft tissue, caries risk assessment; oral health guidance to parents).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('18 months' row), PDF p.20; section 3.7.5, PDF
+        p.6; Appendix 4, PDF pp.25-26
+      verification_status: verified
+      open_question_ids: []
+    - code: cbc
+      description: CBC for iron deficiency anemia screening.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('18 months' row), PDF p.20; section 3.6.1, PDF
+        p.5
+      verification_status: verified
+      condition: >-
+        if not done at 12 months (section 3.6.1 also allows testing at 15 or 18 months where risk factors
+        trigger the need)
+      open_question_ids: []
+    developmental_assessments:
+    - code: parent_child_interaction_observation
+      description: General observation of parent-child interaction.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('18 months' row), PDF p.20
+      verification_status: verified
+      open_question_ids: []
+    - code: developmental_milestones
+      description: >-
+        Developmental milestone surveillance across 4 domains (Social Language and Self-help; Verbal Language;
+        Gross Motor; Fine Motor), per Appendix 6.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('18 months' row), PDF p.20; section 3.8.5, PDF
+        p.8; Appendix 6, PDF pp.28-32
+      verification_status: verified
+      open_question_ids: []
+    - code: m_chat_r
+      description: >-
+        Autism screening with the modified checklist for autism in toddlers, revised (M-CHAT-R). A screening
+        result only; not a diagnosis.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('18 months' row), PDF p.20; section 3.8.4.1, PDF
+        p.8; Appendix 5.1, PDF p.27
+      verification_status: verified
+      open_question_ids: []
+    - code: idaq
+      description: >-
+        Interim Development Assessment Questionnaire (IDAQ, 6 questions) completed by parents and reviewed
+        at the visit by a family physician, pediatrician or general practitioner. ASQ-3/ASQ-4 to follow
+        upon DoH-ADPHC circular.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('18 months' row), PDF p.20; section 3.8.4.2, PDF
+        p.8; Appendix 5.2, PDF p.27
+      verification_status: verified
+      open_question_ids: []
+    follow_up_requirements:
+    - code: positive_screening_follow_up
+      description: >-
+        Infants and children with positive screening results receive appropriate follow-up or referral;
+        initial follow-up referral initiated within 7 days of results; specialist evaluation or diagnostic
+        testing scheduled within 2-4 weeks depending on severity and urgency.
+      source_reference: DOH/WCV/SD/10/2025, section 3.9.1.2-3.9.1.4, PDF p.8
+      verification_status: verified
+      rule_refs:
+      - WCV-FU-REFERRAL-INITIATION-7D
+      - WCV-FU-SPECIALIST-EVALUATION-2-4W
+      open_question_ids:
+      - OQ-WCV-MCHAT-FOLLOWUP-TIMING
+    - code: vision_abnormality_referral
+      description: >-
+        Immediate referral to the ophthalmology clinic for any listed abnormality (structural anomaly;
+        absent, white, dull or asymmetric red reflex; infant risk factors; family history of retinoblastoma,
+        cataracts, glaucoma or retinal abnormalities).
+      source_reference: DOH/WCV/SD/10/2025, section 3.4.4, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    - code: anemia_further_evaluation
+      description: >-
+        Children with a laboratory finding of anemia (hemoglobin <11 g/dL for <6 years of age) should
+        be further evaluated to determine the underlying etiology.
+      source_reference: DOH/WCV/SD/10/2025, section 3.6.3, PDF p.6
+      verification_status: verified
+      open_question_ids: []
+      notes: A screening finding that triggers evaluation; not a diagnosis.
+    - code: m_chat_r_tier_follow_up
+      description: Follow-up by M-CHAT-R score tier (0-2, 3-7, 8 or above).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 5.1, PDF p.27
+      verification_status: verified
+      rule_refs:
+      - WCV-MCHATR-LOW
+      - WCV-MCHATR-MODERATE
+      - WCV-MCHATR-HIGH
+      open_question_ids:
+      - OQ-WCV-MCHAT-FOLLOWUP-TIMING
+      - OQ-WCV-MCHAT-REFERRAL-TARGET
+    - code: idaq_referral
+      description: >-
+        Refer to a pediatric neurologist or neurodevelopment clinic if question 1 is YES or any of questions
+        2-6 is NO.
+      source_reference: DOH/WCV/SD/10/2025, section 3.8.4.2, PDF p.8; Appendix 5.2, PDF p.27
+      verification_status: verified
+      rule_refs:
+      - WCV-IDAQ-REFERRAL
+      open_question_ids: []
+    history_components:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('18 months' row), PDF p.20
+      items:
+      - Maternal history
+      - Birth history
+      - Feeding /nutritional history
+      - Immunization
+      - Past medical history
+      - Allergy
+      - Drug history
+      - Family history
+      - Socio-economic history
+      notes: Appendix 1 numbers this list 1-6 then 8-10 (no item 7); preserved as printed.
+    counselling_elements:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('18 months' row), PDF p.20
+      items:
+      - Breastfeeding
+      - Sleeping pattern
+      - Oral hygiene
+      - General safety
+      - Nutrition
+      - Supplement (Vitamin D)
+      - Secondhand smoking prevention
+      - Physical activity
+      - Injury prevention
+- rule_id: WCV-VISIT-24M
+  pathway: well_child
+  rule_type: visit_schedule
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 3.2.3 (PDF p.4) and Appendix 1 (PDF p.21)
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    Well-Child visit at 2 years: age, required preventive and developmental assessments, and follow-up
+    requirements.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-DUE-WINDOW
+  - OQ-WCV-EFFECTIVE-DATE
+  - OQ-COMMON-AGE-CALC
+  history: []
+  notes: >-
+    Visit age is verified. The standard defines no due, grace or overdue window, so due_window is null.
+    Immunisation content is delegated by the standard to EPI circular No. 39/2024 and is not encoded.
+  spec:
+    visit_id: wcv_24m
+    visit_number: 9
+    visit_label: 2 years
+    timing:
+      recommended_age:
+        value: 24
+        unit: months
+        as_printed: 2 years
+      age_band: early_childhood
+      age_band_source: sections 3.2.5-3.2.7, PDF p.4
+      due_window: null
+      due_window_status: not_specified_by_standard
+      open_question_ids:
+      - OQ-WCV-DUE-WINDOW
+    preventive_assessments:
+    - code: physical_examination_vital_signs
+      description: Thorough physical examination including vital signs recording.
+      source_reference: DOH/WCV/SD/10/2025, section 3.2.1, PDF p.4; Appendix 1 ('2 years' row), PDF p.21
+      verification_status: verified
+      open_question_ids: []
+    - code: weight
+      description: Measure weight.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 years' row), PDF p.21
+      verification_status: verified
+      open_question_ids: []
+    - code: head_circumference
+      description: Measure head circumference.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 years' row), PDF p.21; section 3.8.1.5, PDF
+        p.7
+      verification_status: verified
+      open_question_ids: []
+    - code: standing_height_or_recumbent_length
+      description: Measure standing height (preferred) or recumbent length.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 years' row), PDF p.21
+      verification_status: verified
+      open_question_ids: []
+    - code: growth_zscore_plot
+      description: Plot Z-scores on WHO child growth standards.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 years' row), PDF p.21; section 3.8.4, PDF p.8
+      verification_status: verified
+      components:
+      - Height for age
+      - Weight for age
+      - BMI-for age
+      open_question_ids: []
+    - code: vision_screening
+      description: Vision and eye screening per the age-specific battery.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 years' row), PDF p.21; section 3.4.1, PDF p.5
+      verification_status: verified
+      components:
+      - External eye exam
+      - Red Reflex
+      - Visual Acuity (Fix and Follow)
+      - Corneal light reflex test
+      - Cardiff Acuity Test
+      - Cover/uncover Test
+      open_question_ids: []
+    - code: oral_examination
+      description: >-
+        Oral examination by a dentist or hygienist in a dental clinic setting (intraoral examination;
+        hard tissue, soft tissue, caries risk assessment; oral health guidance to parents).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 years' row), PDF p.21; section 3.7.5, PDF p.6;
+        Appendix 4, PDF pp.25-26
+      verification_status: verified
+      open_question_ids: []
+    developmental_assessments:
+    - code: parent_child_interaction_observation
+      description: General observation of parent-child interaction.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 years' row), PDF p.21
+      verification_status: verified
+      open_question_ids: []
+    - code: developmental_milestones
+      description: >-
+        Developmental milestone surveillance across 4 domains (Social Language and Self-help; Verbal Language;
+        Gross Motor; Fine Motor), per Appendix 6.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 years' row), PDF p.21; section 3.8.5, PDF p.8;
+        Appendix 6, PDF pp.28-32
+      verification_status: verified
+      open_question_ids: []
+    - code: m_chat_r
+      description: >-
+        Autism screening with the modified checklist for autism in toddlers, revised (M-CHAT-R). A screening
+        result only; not a diagnosis.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 years' row), PDF p.21; section 3.8.4.1, PDF
+        p.8; Appendix 5.1, PDF p.27
+      verification_status: verified
+      open_question_ids: []
+    follow_up_requirements:
+    - code: positive_screening_follow_up
+      description: >-
+        Infants and children with positive screening results receive appropriate follow-up or referral;
+        initial follow-up referral initiated within 7 days of results; specialist evaluation or diagnostic
+        testing scheduled within 2-4 weeks depending on severity and urgency.
+      source_reference: DOH/WCV/SD/10/2025, section 3.9.1.2-3.9.1.4, PDF p.8
+      verification_status: verified
+      rule_refs:
+      - WCV-FU-REFERRAL-INITIATION-7D
+      - WCV-FU-SPECIALIST-EVALUATION-2-4W
+      open_question_ids:
+      - OQ-WCV-MCHAT-FOLLOWUP-TIMING
+    - code: vision_abnormality_referral
+      description: >-
+        Immediate referral to the ophthalmology clinic for any listed abnormality (structural anomaly;
+        absent, white, dull or asymmetric red reflex; infant risk factors; family history of retinoblastoma,
+        cataracts, glaucoma or retinal abnormalities).
+      source_reference: DOH/WCV/SD/10/2025, section 3.4.4, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    - code: m_chat_r_tier_follow_up
+      description: Follow-up by M-CHAT-R score tier (0-2, 3-7, 8 or above).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 5.1, PDF p.27
+      verification_status: verified
+      rule_refs:
+      - WCV-MCHATR-LOW
+      - WCV-MCHATR-MODERATE
+      - WCV-MCHATR-HIGH
+      open_question_ids:
+      - OQ-WCV-MCHAT-FOLLOWUP-TIMING
+      - OQ-WCV-MCHAT-REFERRAL-TARGET
+    history_components:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 years' row), PDF p.21
+      items:
+      - Maternal history
+      - Birth history
+      - Feeding /nutritional history
+      - Immunization
+      - Past medical history
+      - Allergy
+      - Drug history
+      - Family history
+      - Socio-economic history
+      notes: Appendix 1 numbers this list 1-6 then 8-10 (no item 7); preserved as printed.
+    counselling_elements:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2 years' row), PDF p.21
+      items:
+      - Breastfeeding
+      - Sleeping pattern
+      - Oral hygiene
+      - General safety
+      - Nutrition
+      - Supplement (Vitamin D)
+      - Secondhand smoking prevention
+      - Physical activity
+      - Injury prevention
+- rule_id: WCV-VISIT-30M
+  pathway: well_child
+  rule_type: visit_schedule
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 3.2.3 (PDF p.4) and Appendix 1 (PDF p.21)
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    Well-Child visit at 2.5 years: age, required preventive and developmental assessments, and follow-up
+    requirements.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-DUE-WINDOW
+  - OQ-WCV-EFFECTIVE-DATE
+  - OQ-COMMON-AGE-CALC
+  history: []
+  notes: >-
+    Visit age is verified. The standard defines no due, grace or overdue window, so due_window is null.
+    Immunisation content is delegated by the standard to EPI circular No. 39/2024 and is not encoded.
+  spec:
+    visit_id: wcv_30m
+    visit_number: 10
+    visit_label: 2.5 years
+    timing:
+      recommended_age:
+        value: 30
+        unit: months
+        as_printed: 2.5 years
+      age_band: early_childhood
+      age_band_source: sections 3.2.5-3.2.7, PDF p.4
+      due_window: null
+      due_window_status: not_specified_by_standard
+      open_question_ids:
+      - OQ-WCV-DUE-WINDOW
+    preventive_assessments:
+    - code: physical_examination_vital_signs
+      description: Thorough physical examination including vital signs recording.
+      source_reference: DOH/WCV/SD/10/2025, section 3.2.1, PDF p.4; Appendix 1 ('2.5 years' row), PDF
+        p.21
+      verification_status: verified
+      open_question_ids: []
+    - code: weight
+      description: Measure weight.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2.5 years' row), PDF p.21
+      verification_status: verified
+      open_question_ids: []
+    - code: head_circumference
+      description: Measure head circumference (listed in Appendix 1 Measure column).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2.5 years' row), PDF p.21; section 3.8.1.5, PDF
+        p.7
+      verification_status: unresolved
+      open_question_ids:
+      - OQ-WCV-HEAD-CIRC
+      notes: Section 3.8.1.5 says head circumference should be measured routinely for up to 2 years.
+    - code: standing_height_or_recumbent_length
+      description: Measure standing height (preferred) or recumbent length.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2.5 years' row), PDF p.21
+      verification_status: verified
+      open_question_ids: []
+    - code: growth_zscore_plot
+      description: Plot Z-scores on WHO child growth standards.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2.5 years' row), PDF p.21; section 3.8.4, PDF
+        p.8
+      verification_status: verified
+      components:
+      - Height for age
+      - Weight for age
+      - BMI-for age
+      open_question_ids: []
+    - code: vision_screening
+      description: Vision and eye screening per the age-specific battery.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2.5 years' row), PDF p.21; section 3.4.1, PDF
+        p.5
+      verification_status: verified
+      components:
+      - External eye exam
+      - Red Reflex
+      - Visual Acuity (Fix and Follow)
+      - Corneal light reflex test
+      - Cardiff Acuity Test
+      - Cover/uncover Test
+      open_question_ids: []
+    - code: oral_examination
+      description: >-
+        Oral examination by a dentist or hygienist in a dental clinic setting (intraoral examination;
+        hard tissue, soft tissue, caries risk assessment; oral health guidance to parents).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2.5 years' row), PDF p.21; section 3.7.5, PDF
+        p.6; Appendix 4, PDF pp.25-26
+      verification_status: verified
+      open_question_ids: []
+    developmental_assessments:
+    - code: parent_child_interaction_observation
+      description: General observation of parent-child interaction.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2.5 years' row), PDF p.21
+      verification_status: verified
+      open_question_ids: []
+    - code: developmental_milestones
+      description: >-
+        Developmental milestone surveillance across 4 domains (Social Language and Self-help; Verbal Language;
+        Gross Motor; Fine Motor), per Appendix 6.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2.5 years' row), PDF p.21; section 3.8.5, PDF
+        p.8; Appendix 6, PDF pp.28-32
+      verification_status: verified
+      open_question_ids: []
+    follow_up_requirements:
+    - code: positive_screening_follow_up
+      description: >-
+        Infants and children with positive screening results receive appropriate follow-up or referral;
+        initial follow-up referral initiated within 7 days of results; specialist evaluation or diagnostic
+        testing scheduled within 2-4 weeks depending on severity and urgency.
+      source_reference: DOH/WCV/SD/10/2025, section 3.9.1.2-3.9.1.4, PDF p.8
+      verification_status: verified
+      rule_refs:
+      - WCV-FU-REFERRAL-INITIATION-7D
+      - WCV-FU-SPECIALIST-EVALUATION-2-4W
+      open_question_ids: []
+    - code: vision_abnormality_referral
+      description: >-
+        Immediate referral to the ophthalmology clinic for any listed abnormality (structural anomaly;
+        absent, white, dull or asymmetric red reflex; infant risk factors; family history of retinoblastoma,
+        cataracts, glaucoma or retinal abnormalities).
+      source_reference: DOH/WCV/SD/10/2025, section 3.4.4, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    history_components:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2.5 years' row), PDF p.21
+      items:
+      - Maternal history
+      - Birth history
+      - Feeding /nutritional history
+      - Immunization
+      - Past medical history
+      - Allergy
+      - Drug history
+      - Family history
+      - Socio-economic history
+      notes: Appendix 1 numbers this list 1-6 then 8-10 (no item 7); preserved as printed.
+    counselling_elements:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('2.5 years' row), PDF p.21
+      items:
+      - Breastfeeding
+      - Sleeping pattern
+      - Oral hygiene
+      - General safety
+      - Nutrition
+      - Supplement (Vitamin D)
+      - Secondhand smoking prevention
+      - Physical activity
+      - Injury prevention
+- rule_id: WCV-VISIT-36M
+  pathway: well_child
+  rule_type: visit_schedule
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 3.2.3 (PDF p.4) and Appendix 1 (PDF p.22)
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    Well-Child visit at 3 years: age, required preventive and developmental assessments, and follow-up
+    requirements.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-DUE-WINDOW
+  - OQ-WCV-EFFECTIVE-DATE
+  - OQ-COMMON-AGE-CALC
+  history: []
+  notes: >-
+    Visit age is verified. The standard defines no due, grace or overdue window, so due_window is null.
+    Immunisation content is delegated by the standard to EPI circular No. 39/2024 and is not encoded.
+  spec:
+    visit_id: wcv_36m
+    visit_number: 11
+    visit_label: 3 years
+    timing:
+      recommended_age:
+        value: 36
+        unit: months
+        as_printed: 3 years
+      age_band: early_childhood
+      age_band_source: sections 3.2.5-3.2.7, PDF p.4
+      due_window: null
+      due_window_status: not_specified_by_standard
+      open_question_ids:
+      - OQ-WCV-DUE-WINDOW
+    preventive_assessments:
+    - code: physical_examination_vital_signs
+      description: Thorough physical examination including vital signs recording.
+      source_reference: DOH/WCV/SD/10/2025, section 3.2.1, PDF p.4; Appendix 1 ('3 years' row), PDF p.22
+      verification_status: verified
+      open_question_ids: []
+    - code: weight
+      description: Measure weight.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('3 years' row), PDF p.22
+      verification_status: verified
+      open_question_ids: []
+    - code: head_circumference
+      description: Measure head circumference (listed in Appendix 1 Measure column).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('3 years' row), PDF p.22; section 3.8.1.5, PDF
+        p.7
+      verification_status: unresolved
+      open_question_ids:
+      - OQ-WCV-HEAD-CIRC
+      notes: Section 3.8.1.5 says head circumference should be measured routinely for up to 2 years.
+    - code: standing_height_or_recumbent_length
+      description: Measure standing height (preferred) or recumbent length.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('3 years' row), PDF p.22
+      verification_status: verified
+      open_question_ids: []
+    - code: growth_zscore_plot
+      description: Plot Z-scores on WHO child growth standards.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('3 years' row), PDF p.22; section 3.8.4, PDF p.8
+      verification_status: verified
+      components:
+      - BMI-for age
+      open_question_ids: []
+    - code: vision_screening
+      description: Vision and eye screening per the age-specific battery.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('3 years' row), PDF p.22; section 3.4.1, PDF p.5
+      verification_status: verified
+      components:
+      - External eye exam
+      - Red Reflex
+      - Visual Acuity (Snellen Chart & Auto-refractometer)
+      - Corneal light reflex test
+      - Perform Fundus examination by Ophthalmologists
+      open_question_ids: []
+    - code: oral_examination
+      description: >-
+        Oral examination by a dentist or hygienist in a dental clinic setting (intraoral examination;
+        hard tissue, soft tissue, caries risk assessment; oral health guidance to parents).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('3 years' row), PDF p.22; section 3.7.5, PDF p.6;
+        Appendix 4, PDF pp.25-26
+      verification_status: verified
+      open_question_ids: []
+    - code: blood_pressure
+      description: Blood pressure screening of all children.
+      source_reference: DOH/WCV/SD/10/2025, section 3.8.3.1, PDF p.7
+      verification_status: verified
+      open_question_ids: []
+      notes: >-
+        Section 3.8.3.1 requires screening at 3, 4, 5 and 6 years; the Appendix 1 text for these rows
+        does not list it. Under 3 years only with specific risk conditions (3.8.3.2); not encoded.
+    developmental_assessments:
+    - code: parent_child_interaction_observation
+      description: General observation of parent-child interaction.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('3 years' row), PDF p.22
+      verification_status: verified
+      open_question_ids: []
+    - code: developmental_milestones
+      description: >-
+        Developmental milestone surveillance across 4 domains (Social Language and Self-help; Verbal Language;
+        Gross Motor; Fine Motor), per Appendix 6.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('3 years' row), PDF p.22; section 3.8.5, PDF p.8;
+        Appendix 6, PDF pp.28-32
+      verification_status: verified
+      open_question_ids: []
+    follow_up_requirements:
+    - code: positive_screening_follow_up
+      description: >-
+        Infants and children with positive screening results receive appropriate follow-up or referral;
+        initial follow-up referral initiated within 7 days of results; specialist evaluation or diagnostic
+        testing scheduled within 2-4 weeks depending on severity and urgency.
+      source_reference: DOH/WCV/SD/10/2025, section 3.9.1.2-3.9.1.4, PDF p.8
+      verification_status: verified
+      rule_refs:
+      - WCV-FU-REFERRAL-INITIATION-7D
+      - WCV-FU-SPECIALIST-EVALUATION-2-4W
+      open_question_ids: []
+    - code: vision_abnormality_referral
+      description: >-
+        Immediate referral to the ophthalmology clinic for any listed abnormality (structural anomaly;
+        absent, white, dull or asymmetric red reflex; infant risk factors; family history of retinoblastoma,
+        cataracts, glaucoma or retinal abnormalities).
+      source_reference: DOH/WCV/SD/10/2025, section 3.4.4, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    history_components:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('3 years' row), PDF p.22
+      items:
+      - Maternal history
+      - Birth history
+      - Feeding /nutritional history
+      - Immunization
+      - Past medical history
+      - Allergy
+      - Drug history
+      - Family history
+      - Socio-economic history
+      notes: Appendix 1 numbers this list 1-6 then 8-10 (no item 7); preserved as printed.
+    counselling_elements:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('3 years' row), PDF p.22
+      items:
+      - Breastfeeding
+      - Sleeping pattern
+      - Oral hygiene
+      - General safety
+      - Nutrition
+      - Supplement (Vitamin D)
+      - Secondhand smoking prevention
+      - Physical activity
+      - Injury prevention
+- rule_id: WCV-VISIT-48M
+  pathway: well_child
+  rule_type: visit_schedule
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 3.2.3 (PDF p.4) and Appendix 1 (PDF p.22)
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    Well-Child visit at 4 years: age, required preventive and developmental assessments, and follow-up
+    requirements.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-DUE-WINDOW
+  - OQ-WCV-EFFECTIVE-DATE
+  - OQ-COMMON-AGE-CALC
+  history: []
+  notes: >-
+    Visit age is verified. The standard defines no due, grace or overdue window, so due_window is null.
+    Immunisation content is delegated by the standard to EPI circular No. 39/2024 and is not encoded.
+  spec:
+    visit_id: wcv_48m
+    visit_number: 12
+    visit_label: 4 years
+    timing:
+      recommended_age:
+        value: 48
+        unit: months
+        as_printed: 4 years
+      age_band: early_childhood
+      age_band_source: sections 3.2.5-3.2.7, PDF p.4
+      due_window: null
+      due_window_status: not_specified_by_standard
+      open_question_ids:
+      - OQ-WCV-DUE-WINDOW
+    preventive_assessments:
+    - code: physical_examination_vital_signs
+      description: Thorough physical examination including vital signs recording.
+      source_reference: DOH/WCV/SD/10/2025, section 3.2.1, PDF p.4; Appendix 1 ('4 years' row), PDF p.22
+      verification_status: verified
+      open_question_ids: []
+    - code: weight
+      description: Measure weight.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('4 years' row), PDF p.22
+      verification_status: verified
+      open_question_ids: []
+    - code: head_circumference
+      description: Measure head circumference (listed in Appendix 1 Measure column).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('4 years' row), PDF p.22; section 3.8.1.5, PDF
+        p.7
+      verification_status: unresolved
+      open_question_ids:
+      - OQ-WCV-HEAD-CIRC
+      notes: Section 3.8.1.5 says head circumference should be measured routinely for up to 2 years.
+    - code: standing_height_or_recumbent_length
+      description: Measure standing height (preferred) or recumbent length.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('4 years' row), PDF p.22
+      verification_status: verified
+      open_question_ids: []
+    - code: growth_zscore_plot
+      description: Plot Z-scores on WHO child growth standards.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('4 years' row), PDF p.22; section 3.8.4, PDF p.8
+      verification_status: verified
+      components:
+      - BMI-for age
+      open_question_ids: []
+    - code: vision_screening
+      description: Vision and eye screening per the age-specific battery.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('4 years' row), PDF p.22; section 3.4.1, PDF p.5
+      verification_status: verified
+      components:
+      - External eye exam
+      - Red Reflex
+      - Visual Acuity (Snellen Chart & Auto-refractometer)
+      - Corneal light reflex test
+      - Perform Fundus examination by Ophthalmologists
+      open_question_ids: []
+    - code: hearing_screening
+      description: Hearing test (Pure Tone Audiometry Test).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('4 years' row), PDF p.22; section 3.3.4, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    - code: oral_examination
+      description: >-
+        Oral examination by a dentist or hygienist in a dental clinic setting (intraoral examination;
+        hard tissue, soft tissue, caries risk assessment; oral health guidance to parents).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('4 years' row), PDF p.22; section 3.7.5, PDF p.6;
+        Appendix 4, PDF pp.25-26
+      verification_status: verified
+      open_question_ids: []
+    - code: blood_pressure
+      description: Blood pressure screening of all children.
+      source_reference: DOH/WCV/SD/10/2025, section 3.8.3.1, PDF p.7
+      verification_status: verified
+      open_question_ids: []
+      notes: >-
+        Section 3.8.3.1 requires screening at 3, 4, 5 and 6 years; the Appendix 1 text for these rows
+        does not list it. Under 3 years only with specific risk conditions (3.8.3.2); not encoded.
+    developmental_assessments:
+    - code: parent_child_interaction_observation
+      description: General observation of parent-child interaction.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('4 years' row), PDF p.22
+      verification_status: verified
+      open_question_ids: []
+    - code: developmental_milestones
+      description: Developmental milestone surveillance across 4 domains, per Appendix 6.
+      source_reference: DOH/WCV/SD/10/2025, section 3.8.5, PDF p.8; Appendix 1 ('4 years' row), PDF p.22
+      verification_status: unresolved
+      open_question_ids:
+      - OQ-WCV-MILESTONES-4-6Y
+      notes: >-
+        Section 3.8.5 says surveillance is applied per age category; the Appendix 1 text for this row
+        does not list the item.
+    follow_up_requirements:
+    - code: positive_screening_follow_up
+      description: >-
+        Infants and children with positive screening results receive appropriate follow-up or referral;
+        initial follow-up referral initiated within 7 days of results; specialist evaluation or diagnostic
+        testing scheduled within 2-4 weeks depending on severity and urgency.
+      source_reference: DOH/WCV/SD/10/2025, section 3.9.1.2-3.9.1.4, PDF p.8
+      verification_status: verified
+      rule_refs:
+      - WCV-FU-REFERRAL-INITIATION-7D
+      - WCV-FU-SPECIALIST-EVALUATION-2-4W
+      open_question_ids: []
+    - code: vision_abnormality_referral
+      description: >-
+        Immediate referral to the ophthalmology clinic for any listed abnormality (structural anomaly;
+        absent, white, dull or asymmetric red reflex; infant risk factors; family history of retinoblastoma,
+        cataracts, glaucoma or retinal abnormalities).
+      source_reference: DOH/WCV/SD/10/2025, section 3.4.4, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    history_components:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('4 years' row), PDF p.22
+      items:
+      - Maternal history
+      - Birth history
+      - Feeding /nutritional history
+      - Immunization
+      - Past medical history
+      - Allergy
+      - Drug history
+      - Family history
+      - Socio-economic history
+      notes: Appendix 1 numbers this list 1-6 then 8-10 (no item 7); preserved as printed.
+    counselling_elements:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('4 years' row), PDF p.22
+      items:
+      - Breastfeeding
+      - Sleeping pattern
+      - Oral hygiene
+      - General safety
+      - Nutrition
+      - Supplement (Vitamin D)
+      - Secondhand smoking prevention
+      - Physical activity
+      - Injury prevention
+- rule_id: WCV-VISIT-60M
+  pathway: well_child
+  rule_type: visit_schedule
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 3.2.3 (PDF p.4) and Appendix 1 (PDF p.23)
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    Well-Child visit at 5 years: age, required preventive and developmental assessments, and follow-up
+    requirements.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-DUE-WINDOW
+  - OQ-WCV-EFFECTIVE-DATE
+  - OQ-COMMON-AGE-CALC
+  history: []
+  notes: >-
+    Visit age is verified. The standard defines no due, grace or overdue window, so due_window is null.
+    Immunisation content is delegated by the standard to EPI circular No. 39/2024 and is not encoded.
+  spec:
+    visit_id: wcv_60m
+    visit_number: 13
+    visit_label: 5 years
+    timing:
+      recommended_age:
+        value: 60
+        unit: months
+        as_printed: 5 years
+      age_band: middle_childhood
+      age_band_source: sections 3.2.5-3.2.7, PDF p.4
+      due_window: null
+      due_window_status: not_specified_by_standard
+      open_question_ids:
+      - OQ-WCV-DUE-WINDOW
+    preventive_assessments:
+    - code: physical_examination_vital_signs
+      description: Thorough physical examination including vital signs recording.
+      source_reference: DOH/WCV/SD/10/2025, section 3.2.1, PDF p.4; Appendix 1 ('5 years' row), PDF p.23
+      verification_status: verified
+      open_question_ids: []
+    - code: weight
+      description: Measure weight.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('5 years' row), PDF p.23
+      verification_status: verified
+      open_question_ids: []
+    - code: head_circumference
+      description: Measure head circumference (listed in Appendix 1 Measure column).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('5 years' row), PDF p.23; section 3.8.1.5, PDF
+        p.7
+      verification_status: unresolved
+      open_question_ids:
+      - OQ-WCV-HEAD-CIRC
+      notes: Section 3.8.1.5 says head circumference should be measured routinely for up to 2 years.
+    - code: standing_height_or_recumbent_length
+      description: Measure standing height (preferred) or recumbent length.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('5 years' row), PDF p.23
+      verification_status: verified
+      open_question_ids: []
+    - code: growth_zscore_plot
+      description: Plot Z-scores on WHO child growth standards.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('5 years' row), PDF p.23; section 3.8.4, PDF p.8
+      verification_status: verified
+      components:
+      - BMI-for age
+      open_question_ids: []
+    - code: vision_screening
+      description: Vision and eye screening per the age-specific battery.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('5 years' row), PDF p.23; section 3.4.1, PDF p.5
+      verification_status: verified
+      components:
+      - External eye exam
+      - Red Reflex
+      - Visual Acuity (Snellen Chart & Auto-refractometer)
+      - Corneal light reflex test
+      - Perform Fundus examination by Ophthalmologists
+      open_question_ids: []
+    - code: hearing_screening
+      description: Hearing test (Pure Tone Audiometry Test).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('5 years' row), PDF p.23; section 3.3.4, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    - code: oral_examination
+      description: >-
+        Oral examination by a dentist or hygienist in a dental clinic setting (intraoral examination;
+        hard tissue, soft tissue, caries risk assessment; oral health guidance to parents).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('5 years' row), PDF p.23; section 3.7.5, PDF p.6;
+        Appendix 4, PDF pp.25-26
+      verification_status: verified
+      open_question_ids: []
+    - code: blood_pressure
+      description: Blood pressure screening of all children.
+      source_reference: DOH/WCV/SD/10/2025, section 3.8.3.1, PDF p.7
+      verification_status: verified
+      open_question_ids: []
+      notes: >-
+        Section 3.8.3.1 requires screening at 3, 4, 5 and 6 years; the Appendix 1 text for these rows
+        does not list it. Under 3 years only with specific risk conditions (3.8.3.2); not encoded.
+    developmental_assessments:
+    - code: parent_child_interaction_observation
+      description: General observation of parent-child interaction.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('5 years' row), PDF p.23
+      verification_status: verified
+      open_question_ids: []
+    - code: developmental_milestones
+      description: Developmental milestone surveillance across 4 domains, per Appendix 6.
+      source_reference: DOH/WCV/SD/10/2025, section 3.8.5, PDF p.8; Appendix 1 ('5 years' row), PDF p.23
+      verification_status: unresolved
+      open_question_ids:
+      - OQ-WCV-MILESTONES-4-6Y
+      notes: >-
+        Section 3.8.5 says surveillance is applied per age category; the Appendix 1 text for this row
+        does not list the item.
+    follow_up_requirements:
+    - code: positive_screening_follow_up
+      description: >-
+        Infants and children with positive screening results receive appropriate follow-up or referral;
+        initial follow-up referral initiated within 7 days of results; specialist evaluation or diagnostic
+        testing scheduled within 2-4 weeks depending on severity and urgency.
+      source_reference: DOH/WCV/SD/10/2025, section 3.9.1.2-3.9.1.4, PDF p.8
+      verification_status: verified
+      rule_refs:
+      - WCV-FU-REFERRAL-INITIATION-7D
+      - WCV-FU-SPECIALIST-EVALUATION-2-4W
+      open_question_ids: []
+    - code: vision_abnormality_referral
+      description: >-
+        Immediate referral to the ophthalmology clinic for any listed abnormality (structural anomaly;
+        absent, white, dull or asymmetric red reflex; infant risk factors; family history of retinoblastoma,
+        cataracts, glaucoma or retinal abnormalities).
+      source_reference: DOH/WCV/SD/10/2025, section 3.4.4, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    history_components:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('5 years' row), PDF p.23
+      items:
+      - Maternal history
+      - Birth history
+      - Feeding /nutritional history
+      - Immunization
+      - Past medical history
+      - Allergy
+      - Drug history
+      - Family history
+      - Socio-economic history
+      notes: Appendix 1 numbers this list 1-6 then 8-10 (no item 7); preserved as printed.
+    counselling_elements:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('5 years' row), PDF p.23
+      items:
+      - Breastfeeding
+      - Sleeping pattern
+      - Oral hygiene
+      - General safety
+      - Nutrition
+      - Supplement (Vitamin D)
+      - Secondhand smoking prevention
+      - Physical activity
+      - Injury prevention
+- rule_id: WCV-VISIT-72M
+  pathway: well_child
+  rule_type: visit_schedule
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 3.2.3 (PDF p.4) and Appendix 1 (PDF p.23)
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    Well-Child visit at 6 years: age, required preventive and developmental assessments, and follow-up
+    requirements.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-DUE-WINDOW
+  - OQ-WCV-EFFECTIVE-DATE
+  - OQ-COMMON-AGE-CALC
+  history: []
+  notes: >-
+    Visit age is verified. The standard defines no due, grace or overdue window, so due_window is null.
+    Immunisation content is delegated by the standard to EPI circular No. 39/2024 and is not encoded.
+  spec:
+    visit_id: wcv_72m
+    visit_number: 14
+    visit_label: 6 years
+    timing:
+      recommended_age:
+        value: 72
+        unit: months
+        as_printed: 6 years
+      age_band: middle_childhood
+      age_band_source: sections 3.2.5-3.2.7, PDF p.4
+      due_window: null
+      due_window_status: not_specified_by_standard
+      open_question_ids:
+      - OQ-WCV-DUE-WINDOW
+    preventive_assessments:
+    - code: physical_examination_vital_signs
+      description: Thorough physical examination including vital signs recording.
+      source_reference: DOH/WCV/SD/10/2025, section 3.2.1, PDF p.4; Appendix 1 ('6 years' row), PDF p.23
+      verification_status: verified
+      open_question_ids: []
+    - code: weight
+      description: Measure weight.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('6 years' row), PDF p.23
+      verification_status: verified
+      open_question_ids: []
+    - code: head_circumference
+      description: Measure head circumference (listed in Appendix 1 Measure column).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('6 years' row), PDF p.23; section 3.8.1.5, PDF
+        p.7
+      verification_status: unresolved
+      open_question_ids:
+      - OQ-WCV-HEAD-CIRC
+      notes: Section 3.8.1.5 says head circumference should be measured routinely for up to 2 years.
+    - code: standing_height_or_recumbent_length
+      description: Measure standing height (preferred) or recumbent length.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('6 years' row), PDF p.23
+      verification_status: verified
+      open_question_ids: []
+    - code: growth_zscore_plot
+      description: Plot Z-scores on WHO child growth standards.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('6 years' row), PDF p.23; section 3.8.4, PDF p.8
+      verification_status: verified
+      components:
+      - BMI-for age
+      open_question_ids: []
+    - code: vision_screening
+      description: Vision and eye screening per the age-specific battery.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('6 years' row), PDF p.23; section 3.4.1, PDF p.5
+      verification_status: verified
+      components:
+      - External eye exam
+      - Red Reflex
+      - Visual Acuity (Snellen Chart & Auto-refractometer)
+      - Corneal light reflex test
+      - Perform Fundus examination by Ophthalmologists
+      open_question_ids: []
+    - code: hearing_screening
+      description: Hearing test (Pure Tone Audiometry Test).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('6 years' row), PDF p.23; section 3.3.4, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    - code: oral_examination
+      description: >-
+        Oral examination by a dentist or hygienist in a dental clinic setting (intraoral examination;
+        hard tissue, soft tissue, caries risk assessment; oral health guidance to parents).
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('6 years' row), PDF p.23; section 3.7.5, PDF p.6;
+        Appendix 4, PDF pp.25-26
+      verification_status: verified
+      open_question_ids: []
+    - code: blood_pressure
+      description: Blood pressure screening of all children.
+      source_reference: DOH/WCV/SD/10/2025, section 3.8.3.1, PDF p.7
+      verification_status: verified
+      open_question_ids: []
+      notes: >-
+        Section 3.8.3.1 requires screening at 3, 4, 5 and 6 years; the Appendix 1 text for these rows
+        does not list it. Under 3 years only with specific risk conditions (3.8.3.2); not encoded.
+    developmental_assessments:
+    - code: parent_child_interaction_observation
+      description: General observation of parent-child interaction.
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('6 years' row), PDF p.23
+      verification_status: verified
+      open_question_ids: []
+    - code: developmental_milestones
+      description: Developmental milestone surveillance across 4 domains, per Appendix 6.
+      source_reference: DOH/WCV/SD/10/2025, section 3.8.5, PDF p.8; Appendix 1 ('6 years' row), PDF p.23
+      verification_status: unresolved
+      open_question_ids:
+      - OQ-WCV-MILESTONES-4-6Y
+      notes: >-
+        Section 3.8.5 says surveillance is applied per age category; the Appendix 1 text for this row
+        does not list the item.
+    follow_up_requirements:
+    - code: positive_screening_follow_up
+      description: >-
+        Infants and children with positive screening results receive appropriate follow-up or referral;
+        initial follow-up referral initiated within 7 days of results; specialist evaluation or diagnostic
+        testing scheduled within 2-4 weeks depending on severity and urgency.
+      source_reference: DOH/WCV/SD/10/2025, section 3.9.1.2-3.9.1.4, PDF p.8
+      verification_status: verified
+      rule_refs:
+      - WCV-FU-REFERRAL-INITIATION-7D
+      - WCV-FU-SPECIALIST-EVALUATION-2-4W
+      open_question_ids: []
+    - code: vision_abnormality_referral
+      description: >-
+        Immediate referral to the ophthalmology clinic for any listed abnormality (structural anomaly;
+        absent, white, dull or asymmetric red reflex; infant risk factors; family history of retinoblastoma,
+        cataracts, glaucoma or retinal abnormalities).
+      source_reference: DOH/WCV/SD/10/2025, section 3.4.4, PDF p.5
+      verification_status: verified
+      open_question_ids: []
+    history_components:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('6 years' row), PDF p.23
+      items:
+      - Maternal history
+      - Birth history
+      - Feeding /nutritional history
+      - Immunization
+      - Past medical history
+      - Allergy
+      - Drug history
+      - Family history
+      - Socio-economic history
+      notes: Appendix 1 numbers this list 1-6 then 8-10 (no item 7); preserved as printed.
+    counselling_elements:
+      source_reference: DOH/WCV/SD/10/2025, Appendix 1 ('6 years' row), PDF p.23
+      items:
+      - Breastfeeding
+      - Sleeping pattern
+      - Oral hygiene
+      - General safety
+      - Nutrition
+      - Supplement (Vitamin D)
+      - Secondhand smoking prevention
+      - Physical activity
+      - Injury prevention
+- rule_id: WCV-MCHATR-LOW
+  pathway: well_child
+  rule_type: developmental_screening_tier
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, Appendix 5.1, PDF p.27
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    M-CHAT-R score 0-2 (low risk): follow-up actions as specified by the standard. A screening-result
+    tier, not a diagnosis.
+  requires_clinical_review: false
+  open_question_ids: []
+  history: []
+  notes: null
+  spec:
+    instrument: M-CHAT-R
+    administered_at_months:
+    - 18
+    - 24
+    score:
+      min: 0
+      max: 2
+      as_printed: 0-2
+    tier_label_as_printed: low risk
+    is_screening_result_only: true
+    is_diagnosis: false
+    actions:
+    - action: rescreen
+      condition: if the initial screening is done at 18 months on Well-Child visits
+      target_age:
+        value: 24
+        unit: months
+      as_printed: If the initial screening is done at 18 months on Well-Child visits, re-screen at 24
+        months of age
+    - action: no_further_screening
+      condition: if done at 24 months Well-Child visits
+      exception: unless indicated
+      as_printed: If done at 24 months Well-Child visits, no need for further screening unless indicated
+- rule_id: WCV-MCHATR-MODERATE
+  pathway: well_child
+  rule_type: developmental_screening_tier
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, Appendix 5.1, PDF p.27
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    M-CHAT-R score 3-7 (moderate risk): follow-up actions as specified by the standard. A screening-result
+    tier, not a diagnosis.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-MCHAT-FOLLOWUP-TIMING
+  - OQ-WCV-MCHAT-REFERRAL-TARGET
+  history: []
+  notes: null
+  spec:
+    instrument: M-CHAT-R
+    administered_at_months:
+    - 18
+    - 24
+    score:
+      min: 3
+      max: 7
+      as_printed: 3-7
+    tier_label_as_printed: moderate risk
+    is_screening_result_only: true
+    is_diagnosis: false
+    actions:
+    - action: refer
+      target: child neurodevelopment clinic
+      window:
+        value: 4
+        unit: weeks
+      as_printed: Refer Immediately to the child neurodevelopment clinic (within 4 weeks)
+    - action: refer
+      target: speech therapy clinic
+      window:
+        value: 4
+        unit: weeks
+      as_printed: Refer to speech therapy clinic (within 4 weeks)
+    - action: primary_health_care_follow_up
+      window:
+        value: 1
+        unit: months
+        reference: after referral
+      purpose: to assure successful referral
+      as_printed: Follow up appointment after 1 month at Primary Health Care (PHC) to assure successful
+        referral
+- rule_id: WCV-MCHATR-HIGH
+  pathway: well_child
+  rule_type: developmental_screening_tier
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, Appendix 5.1, PDF p.27
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    M-CHAT-R score 8 or above (high risk): follow-up actions as specified by the standard. A screening-result
+    tier, not a diagnosis.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-MCHAT-FOLLOWUP-TIMING
+  - OQ-WCV-MCHAT-REFERRAL-TARGET
+  history: []
+  notes: Appendix 5.1 prints '8 or above'; the KPI table (PDF pp.13-14) prints '8-20'. No upper bound
+    is encoded.
+  spec:
+    instrument: M-CHAT-R
+    administered_at_months:
+    - 18
+    - 24
+    score:
+      min: 8
+      max: null
+      as_printed: 8 or above
+    tier_label_as_printed: high risk
+    is_screening_result_only: true
+    is_diagnosis: false
+    actions:
+    - action: refer
+      target: child neurodevelopment clinic
+      window:
+        value: 2
+        unit: weeks
+      as_printed: Refer Immediately to the child neurodevelopment clinic (within 2 weeks)
+    - action: refer
+      target: speech therapy clinic
+      window:
+        value: 2
+        unit: weeks
+      as_printed: Refer to speech therapy clinic (within 2 weeks)
+    - action: primary_health_care_follow_up
+      window:
+        value: 1
+        unit: months
+        reference: after referral
+      purpose: to assure successful referral
+      as_printed: Follow up appointment after 1 month at Primary Health Care (PHC) to assure successful
+        referral
+- rule_id: WCV-IDAQ-REFERRAL
+  pathway: well_child
+  rule_type: developmental_screening_tier
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 3.8.4.2 (PDF p.8) and Appendix 5.2 (PDF p.27)
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    IDAQ at 18 months (6 questions): if question 1 is answered YES, or any of questions 2-6 is answered
+    NO, the child is directed to a pediatric neurologist or neurodevelopment clinic for a thorough developmental
+    assessment. A screening result, not a diagnosis.
+  requires_clinical_review: false
+  open_question_ids: []
+  history: []
+  notes: No referral window is stated for the IDAQ pathway.
+  spec:
+    instrument: IDAQ
+    administered_at_months:
+    - 18
+    is_screening_result_only: true
+    is_diagnosis: false
+    questions:
+    - number: 1
+      text: Do you have any concerns regarding the development of your child?
+      refer_if: 'YES'
+    - number: 2
+      text: Does your child walk alone without holding onto anything?
+      refer_if: 'NO'
+    - number: 3
+      text: Does your child pick up small objects (like a piece of cereal) using their thumb and index
+        finger?
+      refer_if: 'NO'
+    - number: 4
+      text: Does your child say at least 6 different words, other than names?
+      refer_if: 'NO'
+    - number: 5
+      text: Does your child copy you if you do something simple, like pretending to brush hair or using
+        a spoon?
+      refer_if: 'NO'
+    - number: 6
+      text: Does your child look at you when you call their name?
+      refer_if: 'NO'
+    referral_target: pediatric neurologist or neurodevelopment clinic
+    referral_window: null
+    note: ASQ-3/ASQ-4 to follow IDAQ upon a DoH-ADPHC circular; not encoded.
+- rule_id: WCV-FU-REFERRAL-INITIATION-7D
+  pathway: well_child
+  rule_type: follow_up_window
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 3.9.1.3, PDF p.8
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: Initial follow-up referral must be initiated within 7 days of the screening results.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-MCHAT-FOLLOWUP-TIMING
+  history: []
+  notes: The standard does not say whether 'days' are calendar or working days.
+  spec:
+    timing:
+      value: 7
+      unit: days
+      reference_event: screening results
+    as_printed: Initial follow-up referral must be initiated within 7 days of the screening results
+- rule_id: WCV-FU-SPECIALIST-EVALUATION-2-4W
+  pathway: well_child
+  rule_type: follow_up_window
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 3.9.1.4, PDF p.8
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    Specialist evaluation or diagnostic testing should be scheduled within 2-4 weeks depending on the
+    severity and urgency of the findings.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-MCHAT-FOLLOWUP-TIMING
+  history: []
+  notes: >-
+    The reference event is not stated in the clause; do not assume one. Severity/urgency categories that
+    select 2 vs 4 weeks are not defined.
+  spec:
+    timing:
+      min_value: 2
+      max_value: 4
+      unit: weeks
+      reference_event: null
+    as_printed: >-
+      Specialist evaluation or diagnostic testing should be scheduled within 2 -4 weeks depending on the
+      severity and urgency of the findings
+- rule_id: WCV-POLICY-CATCHUP-ELIGIBILITY
+  pathway: well_child
+  rule_type: policy
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 3.10.1.3, PDF p.9
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    A child attending as a defaulter (catch-up vaccine visit) within the Well-Child visit schedule is
+    eligible for the screening and testing under that specific age group.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-DUE-WINDOW
+  history: []
+  notes: Stated in the payment section. 'Defaulter' and the permitted lateness are not defined.
+  spec:
+    as_printed: >-
+      If the child is attending as a defaulter (catch up vaccine visit) within the Well-child visits schedule,
+      then the child is eligible to the screening and testing under that specific age group.
+- rule_id: WCV-POLICY-PARENTAL-REFUSAL
+  pathway: well_child
+  rule_type: policy
+  rule_version: 1.0.0
+  source_name: Standard for Well-Child Visits
+  source_version: V10
+  source_reference: DOH/WCV/SD/10/2025, section 4.2.1, PDF p.12
+  verification_status: verified
+  effective_date: null
+  effective_date_note: >-
+    Standard states 'Effective Date: TBD'. Current published standard (V10, Revised, December 2025), not
+    a confirmed in-force regulation.
+  last_reviewed: '2026-11-14'
+  description: >-
+    If a parent or guardian refuses the recommended screening, they are informed of the consequences and
+    the refusal is officially documented in the child's medical record with their signature. Refusal is
+    distinct from 'not yet done'.
+  requires_clinical_review: false
+  open_question_ids:
+  - OQ-WCV-REFUSAL-STATE
+  history: []
+  notes: null
+  spec:
+    as_printed: >-
+      If a parent or guardian refuses the recommended screening services, they shall be informed about
+      the potential consequences of their decision. Their refusal shall be officially documented in the
+      infant's or child's medical record, including their signature, as outlined in each facility refusal
+      form

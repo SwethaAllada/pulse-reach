@@ -1,0 +1,138 @@
+# Shared evaluation-status vocabulary for PulseReach rules.
+# These definitions are CONTRACTS for the future evaluation engine; this phase
+# does not implement the engine. The statuses are mutually distinct: a record
+# is never "mapped" from one to another by default.
+#
+# Cross-cutting guards (see `guards` below) take precedence over any
+# status-specific logic.
+
+config_version: "1.0.0"
+last_reviewed: "2026-11-14"
+
+verification_statuses:
+  - id: verified
+    definition: >-
+      Transcribed from the primary published standard and checked against its
+      text (document, section/appendix, PDF page recorded). This is NOT clinical
+      validation and does not mean the rule is clinically approved for use in
+      care decisions.
+    may_drive_decisions: true
+  - id: reported
+    definition: >-
+      Stated by an official body in secondary material (news release, programme
+      page) but not found in the numbered standard. May only be exposed as a
+      visibly unverified, configurable parameter.
+    may_drive_decisions: false
+  - id: unresolved
+    definition: >-
+      Not confirmed from an official source, official sources conflict, or the
+      standard is silent on a point needed to evaluate. Must never produce an
+      authoritative recommendation.
+    may_drive_decisions: false
+
+evaluation_statuses:
+  - id: eligible
+    definition: >-
+      All attributes required by a verified rule are present and satisfy that
+      rule's eligibility criteria.
+    never_inferred_from:
+      - "Absence of a record of exclusion"
+      - "Age alone, where the rule also depends on sex, risk factors or membership"
+  - id: not_eligible
+    definition: >-
+      All attributes required by a verified rule are present and positively
+      fail that rule's eligibility criteria.
+    never_inferred_from:
+      - "Missing date of birth, sex or other required attribute"
+      - "Missing screening history"
+  - id: due
+    definition: >-
+      Eligible, and the screening interval defined by a verified rule has been
+      reached with no qualifying completed screening documented.
+    requires: "A verified frequency or schedule rule."
+    never_inferred_from:
+      - "Missing screening history (use `unknown`)"
+  - id: upcoming
+    definition: >-
+      Eligible (or becoming eligible) and not yet due, within a look-ahead
+      period.
+    requires: "A look-ahead period. The standards do not define one: it must be a product configuration value with no clinical meaning, never presented as a clinical threshold."
+  - id: overdue
+    definition: >-
+      Due, and past an overdue boundary defined by a verified rule.
+    requires: "A verified overdue boundary."
+    note: >-
+      The Well-Child standard defines visit ages only, not due or overdue
+      windows (see OQ-WCV-DUE-WINDOW). Until that is resolved, `overdue` cannot
+      be produced for Well-Child visits; the engine must return
+      `requires_clinical_review` instead.
+  - id: completed
+    definition: >-
+      A qualifying screening or visit is documented as completed within the
+      interval defined by a verified rule.
+    never_inferred_from:
+      - "Absence of an overdue flag"
+  - id: unknown
+    definition: >-
+      The person may be eligible but their screening or visit history is not
+      available or cannot be read, so completion cannot be determined.
+    note: "Missing screening history is `unknown`, never 'not completed'."
+  - id: insufficient_information
+    definition: >-
+      A required patient attribute (for example date of birth, sex, smoking
+      history where the rule depends on it) is missing, so no eligibility
+      result can be produced.
+    note: "Missing date of birth must never yield an age-based eligibility result."
+  - id: requires_clinical_review
+    definition: >-
+      The evaluation touches an unresolved or ambiguous rule, a rule flagged
+      `requires_clinical_review`, or conflicting records. No authoritative
+      recommendation is produced; the case is routed to a healthcare
+      professional.
+
+reason_codes:
+  - missing_date_of_birth
+  - missing_sex
+  - missing_required_attribute
+  - missing_screening_history
+  - conflicting_records
+  - rule_unresolved
+  - rule_reported_not_verified
+  - rule_requires_clinical_review
+  - rule_item_unresolved
+
+guards:
+  - id: GUARD-MISSING-DOB
+    when: "Date of birth is missing."
+    result: insufficient_information
+    reason_code: missing_date_of_birth
+  - id: GUARD-MISSING-ATTRIBUTE
+    when: "A required eligibility attribute (for example sex) is missing."
+    result: insufficient_information
+    reason_code: missing_required_attribute
+  - id: GUARD-MISSING-HISTORY
+    when: "Eligibility is established but screening history is missing."
+    result: unknown
+    reason_code: missing_screening_history
+  - id: GUARD-CONFLICTING-RECORDS
+    when: "Two or more records disagree on a fact the rule depends on."
+    result: requires_clinical_review
+    reason_code: conflicting_records
+    note: "Flag for verification; do not pick one record silently."
+  - id: GUARD-RULE-NOT-VERIFIED
+    when: "The governing rule has verification_status other than `verified`."
+    result: requires_clinical_review
+    reason_code: rule_unresolved
+  - id: GUARD-RULE-REVIEW-FLAG
+    when: "The governing rule has requires_clinical_review = true."
+    result: requires_clinical_review
+    reason_code: rule_requires_clinical_review
+  - id: GUARD-ITEM-UNRESOLVED
+    when: "The governing assessment item has verification_status other than `verified`."
+    result: requires_clinical_review
+    reason_code: rule_item_unresolved
+
+deterministic_evaluation_policy: >-
+  Eligibility, due-date and overdue evaluation must be deterministic and
+  traceable to a rule_id and rule_version. No LLM or learned model may decide
+  eligibility or screening frequency.

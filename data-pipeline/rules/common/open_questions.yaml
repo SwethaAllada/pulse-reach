@@ -1,0 +1,323 @@
+# Register of unresolved clinical-interpretation, data and governance questions.
+# Rules reference these by id (`open_question_ids`). Every `unresolved` rule
+# must reference at least one. Nothing here may be silently resolved in code:
+# resolve a question by getting an answer from the named contact, recording it
+# here (status -> resolved, with `resolution` and `resolved_on`), and then
+# issuing new rule versions.
+config_version: "1.0.0"
+last_reviewed: "2026-11-14"
+
+questions:
+  # ---------------------------------------------------------------- common
+  - id: OQ-COMMON-AGE-CALC
+    category: interpretation
+    status: open
+    title: "Age calculation convention and band boundaries"
+    detail: >-
+      Neither standard states how age is computed (completed years/months),
+      against which reference date (today, invitation date, visit date), or
+      whether adjacent bands such as 18-39 / 40-64 are inclusive of the whole
+      of the upper year. Rules record bands exactly as printed.
+    affects: [ifhas, well_child]
+    resolve_via: "IFHAS.Support@adphc.gov.ae; WCV.Support@adphc.gov.ae"
+
+  - id: OQ-COMMON-SEX-ATTRIBUTE
+    category: interpretation
+    status: open
+    title: "Meaning of sex/gender for package eligibility"
+    detail: >-
+      IFHAS packages are labelled Female, Male or Male & Female. The standard
+      does not say whether this is sex recorded at birth, registered sex or
+      gender, or how other/unknown values are handled. Missing sex must yield
+      `insufficient_information` for sex-specific packages.
+    affects: [ifhas]
+    resolve_via: "IFHAS.Support@adphc.gov.ae"
+
+  # ----------------------------------------------------------------- IFHAS
+  - id: OQ-IFHAS-AGE-CEILING
+    category: interpretation
+    status: open
+    title: "IFHAS age ceiling: 18 and above vs 75"
+    detail: >-
+      Standard section 4.5.2 (PDF p.6) states '18 years old and above' with no
+      upper bound, yet every Appendix 7 package ends at 75 years or younger.
+      ADPHC news material (Feb 2024) is reported to say 'aged between 18 to
+      75', while the programme page says '18 and above'. No universal rule for
+      people above 75 is encoded. Package-specific bands are encoded exactly
+      as printed; people above 75 receive no package-based result and require
+      clinical/programme review.
+    affects: [ifhas]
+    resolve_via: "IFHAS.Support@adphc.gov.ae"
+    sources_in_conflict:
+      - "IFHAS V10 section 4.5.2 (verified)"
+      - "IFHAS V10 Appendix 7 package bands (verified)"
+      - "ADPHC news, Feb 2024 (reported; not re-checked in this phase)"
+      - "ADPHC programme page (reported)"
+
+  - id: OQ-IFHAS-FREQUENCY-ANCHOR
+    category: interpretation
+    status: open
+    title: "How screening intervals are anchored and carried across age bands"
+    detail: >-
+      Appendix 7 gives frequencies ('Every 3 years', 'Annually', 'Once in a
+      lifetime') but not the anchor (date of last completed screening, calendar
+      year, invitation date), whether a partially completed package counts, or
+      how an interval carries when a person moves into a new age band (for
+      example the Major Package at 39 -> 40, or Hearing & Dementia 'Every 3
+      years' at 50-64 -> 'Annually' at 65-75). Section 4.11.4.3 says claims
+      cannot be submitted for an incomplete package, but does not define
+      'completed' for interval purposes.
+    affects: [ifhas]
+    resolve_via: "IFHAS.Support@adphc.gov.ae"
+
+  - id: OQ-IFHAS-CRC-OVERLAP
+    category: interpretation
+    status: open
+    title: "Relationship between FIT, colonoscopy and liquid biopsy"
+    detail: >-
+      FIT (annual), colonoscopy (10-yearly) and liquid biopsy (3-yearly) all
+      cover 40-75. Appendix 7 does not say whether they are alternatives or
+      cumulative. Only liquid biopsy states inclusion ('Unwilling to have a
+      colonoscopy or FIT') and exclusion criteria. Do not infer
+      substitution rules.
+    affects: [IFHAS-PKG-FIT-40-75, IFHAS-PKG-COLONOSCOPY-40-75, IFHAS-PKG-LIQUID-BIOPSY-40-75]
+    resolve_via: "IFHAS.Support@adphc.gov.ae"
+
+  - id: OQ-IFHAS-LUNG-CRITERIA
+    category: interpretation
+    status: open
+    title: "Lung cancer 'high risk' criteria logic and external pack-year method"
+    detail: >-
+      The Appendix 7 footnote (PDF p.22) combines criteria with 'and/or' and
+      says to refer to the DoH Lung Cancer Screening Service Specifications,
+      Appendix 5, for pack-year calculation. That document was not reviewed in
+      this phase, so the logical structure (which combinations qualify) and the
+      pack-year method are not machine-evaluable. The wording is preserved
+      verbatim; evaluation must route to clinical review.
+    affects: [IFHAS-PKG-LUNG-LDCT-55-75]
+    resolve_via: "IFHAS.Support@adphc.gov.ae; read DoH Lung Cancer Screening Service Specifications (Nov 2018)"
+
+  - id: OQ-IFHAS-LIQUID-BIOPSY-CRITERIA
+    category: interpretation
+    status: open
+    title: "Liquid biopsy 'Review Criteria' evaluation"
+    detail: >-
+      The Appendix 7 row is headed 'Review Criteria*'. Inclusion depends on a
+      documented patient preference (unwilling to have colonoscopy or FIT);
+      exclusion depends on diagnoses. Whether, how and by whom these are
+      assessed is not specified. Evaluation must route to clinical review.
+    affects: [IFHAS-PKG-LIQUID-BIOPSY-40-75]
+    resolve_via: "IFHAS.Support@adphc.gov.ae"
+
+  - id: OQ-IFHAS-CERVICAL-CONFLICT
+    category: interpretation
+    status: open
+    title: "IFHAS Appendix 7 cervical rows differ from the Cervical Cancer Screening Standard"
+    detail: >-
+      IFHAS V10 Appendix 7 (PDF p.21) lists Pap smear every 3 years for ages
+      25-29 and HPV test ONLY every 5 years for ages 30-65 (female). The
+      separate Standard for Cervical Cancer Screening and Prevention Program
+      Requirements (DoH/SD/CHS/SCCSPPR/V1/2025, V2, published October 2025,
+      effective December 2025; PDF pp.5, 12-13, sections 3.1.2, 3.2.1, 3.2.2
+      and Appendix 3) states HPV DNA test every 5 years for women 25-65 who
+      are sexually active (past or present) and symptom free, with exclusions
+      (total hysterectomy for benign indications; over 65 if the last three
+      HPV tests were negative). The cervical standard is later than IFHAS V10
+      and adds eligibility qualifiers absent from Appendix 7. Which governs
+      for IFHAS participants is not stated. Both Appendix 7 cervical rows
+      are encoded as printed and flagged requires_clinical_review.
+    affects: [IFHAS-PKG-CERVICAL-PAP-25-29, IFHAS-PKG-CERVICAL-HPV-30-65]
+    resolve_via: "IFHAS.Support@adphc.gov.ae"
+
+  - id: OQ-IFHAS-AAA-SMOKING-DEFINITION
+    category: interpretation
+    status: open
+    title: "Definition of 'ever smoked' for AAA ultrasound"
+    detail: >-
+      Appendix 7 (PDF p.22) says 'who have ever smoked'. The standard does not
+      define whether this covers all smoked tobacco (cigarettes, shisha,
+      dokha, medwakh) or a minimum exposure. Missing smoking history yields
+      `insufficient_information`, not exclusion.
+    affects: [IFHAS-PKG-AAA-M-65-75]
+    resolve_via: "IFHAS.Support@adphc.gov.ae"
+
+  - id: OQ-IFHAS-EXPANSION-2025
+    category: interpretation
+    status: open
+    title: "Press-reported 2025 programme expansion not in V10"
+    detail: >-
+      Secondary sources report an expansion (reproductive health, mental
+      health, non-invasive colorectal tests). Bands present in V10 are
+      encoded as verified; press-reported bands that do not appear in the
+      standard are not adopted.
+    affects: [ifhas]
+    resolve_via: "IFHAS.Support@adphc.gov.ae"
+
+  - id: OQ-IFHAS-INVITATION-OWNERSHIP
+    category: governance
+    status: open
+    title: "Who issues IFHAS invitations"
+    detail: >-
+      Section 4.7.1 places the 'Invitation System' on the provider. Whether any
+      invitations are also issued centrally by ADPHC is not confirmed.
+    affects: [IFHAS-WF-INVITATION-SYSTEM]
+    resolve_via: "IFHAS.Support@adphc.gov.ae"
+
+  - id: OQ-IFHAS-KPI-TARGET
+    category: interpretation
+    status: open
+    title: "Appendix 9 referral KPI target printed as '>100%'"
+    detail: >-
+      Appendix 9 prints the referral KPI target as '>100%', which cannot be
+      correct as printed. KPI targets are not encoded as logic.
+    affects: [ifhas]
+    resolve_via: "IFHAS.Support@adphc.gov.ae"
+
+  # ------------------------------------------------------------ Well-Child
+  - id: OQ-WCV-EFFECTIVE-DATE
+    category: interpretation
+    status: open
+    title: "Well-Child Visit standard Effective Date is TBD"
+    detail: >-
+      The standard (PDF p.2) states 'Effective Date: TBD'. It is the current
+      published standard (V10, Revised, December 2025), not a confirmed
+      in-force regulation. Rules carry effective_date = null with an
+      explanatory note.
+    affects: [well_child]
+    resolve_via: "WCV.Support@adphc.gov.ae"
+
+  - id: OQ-WCV-DUE-WINDOW
+    category: interpretation
+    status: open
+    title: "No due, grace or overdue window defined for any visit"
+    detail: >-
+      Section 3.2.3 and Appendix 1 define the 14 visit ages only. The standard
+      gives no tolerance around each age, no point at which a visit is
+      overdue, and no rule for what happens to a visit's tests when a child
+      attends late. Section 3.10.1.3 only says a defaulter attending a
+      catch-up visit remains eligible for screening under that age group.
+      Every visit rule carries due_window = null. Due/overdue status cannot be
+      produced for Well-Child visits until this is resolved.
+    affects: [well_child]
+    resolve_via: "WCV.Support@adphc.gov.ae"
+
+  - id: OQ-WCV-HEAD-CIRC
+    category: interpretation
+    status: open
+    title: "Head circumference: 'up to 2 years' vs Appendix 1 through 6 years"
+    detail: >-
+      Section 3.8.1.5 (PDF p.7) says head circumference should be measured
+      routinely for up to 2 years. Appendix 1 (PDF pp.16-22) lists 'Weight &
+      head circumference' in the Measure column for the 2.5, 3, 4, 5 and 6
+      year visits as well. The item is encoded as unresolved for visits
+      after 24 months.
+    affects: [WCV-VISIT-30M, WCV-VISIT-36M, WCV-VISIT-48M, WCV-VISIT-60M, WCV-VISIT-72M]
+    resolve_via: "WCV.Support@adphc.gov.ae"
+
+  - id: OQ-WCV-ORAL-15M
+    category: interpretation
+    status: open
+    title: "Oral examination at 15 months"
+    detail: >-
+      Section 3.7.5 (PDF p.6) lists dentist/hygienist oral screening at 12, 18
+      and 24 months, 2.5, 3, 4, 5 and 6 years. Appendix 1 (PDF p.20) also lists
+      an Oral Examination at the 15-month visit. The 15-month item is encoded
+      as unresolved.
+    affects: [WCV-VISIT-15M]
+    resolve_via: "WCV.Support@adphc.gov.ae"
+
+  - id: OQ-WCV-MILESTONES-4-6Y
+    category: interpretation
+    status: open
+    title: "Developmental Milestones not listed for 4, 5 and 6 year visits in Appendix 1"
+    detail: >-
+      Section 3.8.5 (PDF p.8) says developmental surveillance is applied 'per
+      age category' and Appendix 1 lists 'Developmental Milestones [Appendix
+      6]' for the 1 month to 3 year visits. In the extracted text of the 4, 5
+      and 6 year rows (PDF pp.22-23) the item is absent, although Appendix 6
+      has milestone content for years. Could be a table-layout omission in
+      the PDF; not verified visually. The item is encoded as unresolved for
+      those three visits.
+    affects: [WCV-VISIT-48M, WCV-VISIT-60M, WCV-VISIT-72M]
+    resolve_via: "WCV.Support@adphc.gov.ae; visual check of the PDF"
+
+  - id: OQ-WCV-MCHAT-FOLLOWUP-TIMING
+    category: interpretation
+    status: open
+    title: "M-CHAT-R referral windows vs the 7-day referral-initiation requirement"
+    detail: >-
+      Appendix 5.1 sets referral 'within 4 weeks' (moderate) and 'within 2
+      weeks' (high), while Section 3.9.1.3 says the initial follow-up referral
+      must be initiated within 7 days of the screening results and 3.9.1.4
+      says specialist evaluation 'within 2-4 weeks'. The relationship
+      (initiation vs appointment vs attendance) is not defined. Windows are
+      encoded exactly as printed and not merged.
+    affects: [WCV-MCHATR-MODERATE, WCV-MCHATR-HIGH, WCV-FU-REFERRAL-INITIATION-7D, WCV-FU-SPECIALIST-EVALUATION-2-4W]
+    resolve_via: "WCV.Support@adphc.gov.ae"
+
+  - id: OQ-WCV-MCHAT-REFERRAL-TARGET
+    category: interpretation
+    status: open
+    title: "M-CHAT-R referral destination wording differs between sections"
+    detail: >-
+      Appendix 5.1 names the child neurodevelopment clinic and speech therapy;
+      Section 3.8.4.1 names a pediatric neurologist or neurodevelopmental
+      clinic; KPI rows 11 and 15 name pediatrician, pediatric neurologist or
+      neurodevelopment clinic. The M-CHAT-R high tier is printed as '8 or
+      above' (Appendix 5.1) and '8-20' (KPIs). Wording is preserved per source.
+    affects: [WCV-MCHATR-MODERATE, WCV-MCHATR-HIGH]
+    resolve_via: "WCV.Support@adphc.gov.ae"
+
+  - id: OQ-WCV-CCHD-VISIT
+    category: interpretation
+    status: open
+    title: "Which visit checks the newborn CCHD screening result"
+    detail: >-
+      Section 3.8.6.2 says 'in the visit' the physician should check the CCHD
+      screening result in the medical record but does not name the visit. Not
+      attached to any visit rule.
+    affects: [well_child]
+    resolve_via: "WCV.Support@adphc.gov.ae"
+
+  - id: OQ-WCV-REFUSAL-STATE
+    category: data-model
+    status: open
+    title: "Representing documented parental refusal"
+    detail: >-
+      Section 4.2.1 requires refusal to be documented with signature, which
+      must be distinct from 'not yet done'. The shared status vocabulary
+      requested for this phase does not include a refusal/declined state. A
+      status-model decision is needed before database design.
+    affects: [WCV-POLICY-PARENTAL-REFUSAL]
+    resolve_via: "Product/clinical decision; WCV.Support@adphc.gov.ae"
+
+  # ------------------------------------------------------------ governance
+  - id: OQ-GOV-DATA-RESIDENCY
+    category: architecture
+    status: open
+    title: "UAE data residency vs GCP Cloud Run deployment target"
+    detail: >-
+      The repository targets GCP Cloud Run (README.md, infrastructure/). The
+      research (docs/data-sources.md sections 1, 7) identifies UAE data
+      residency requirements: Responsible AI Standard 3.1.4.5.1 (compute and
+      storage, including disaster recovery, inside the UAE) and ADHICS v2
+      (PII/PHI and backups not stored, processed or transferred outside the
+      UAE absent a DoH exemption). Hosting region suitability is NOT
+      established. This needs an architectural review. No real patient data
+      may be processed in any environment until it is resolved. The
+      deployment configuration is intentionally unchanged in this phase.
+    affects: [architecture]
+    resolve_via: "Architecture review; ADHICS@doh.gov.ae"
+
+  - id: OQ-GOV-CLINICAL-VALIDATION
+    category: governance
+    status: open
+    title: "No clinical validation, licensing or AI risk classification"
+    detail: >-
+      PulseReach is not clinically validated or compliant with any DoH
+      standard. Both standards bind DoH-licensed providers; PulseReach is not
+      one. Responsible AI Standard 3.3.1.2.2 risk classification and
+      conformity assessment have not been performed. All rule outputs require
+      healthcare-professional review.
+    affects: [ifhas, well_child]
+    resolve_via: "Healthcare partner; DDG@doh.gov.ae"
