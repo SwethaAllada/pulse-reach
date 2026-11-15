@@ -3,8 +3,8 @@
 **Phase 3, Step 2.** Design only. No models, migrations, scripts, YAML, data or application code were created or changed. The only file written by this step is this document.
 
 **Date:** 2026-11-15
-**Status:** **DRAFT FOR REVIEW — not approved.** Nothing in this document is an approved decision unless §8 says so; at the time of writing, **no decision in §8 is approved.**
-**Revision:** 2.1 (2026-11-15) — final consistency corrections (refusal evidence, readiness classification, run provenance, relationship audit). Summarised in §12.
+**Status:** **DRAFT — partially approved.** Per the project owner's instruction recorded in revision 2.2: **D1, D8, D16 and D18 are APPROVED**; **D2 is PROVISIONAL — clinical approval required**; every other decision in §8 remains open. Nothing is clinically approved, and no external (clinical, legal, governance, SCAD, DoH) approval has been obtained.
+**Revision:** 2.2 (2026-11-15) — owner decisions D1, D8, D16, D18 recorded; D2 kept provisional; ERD readiness updated; consent default applied (§5.2, §5.5). Revision 2.1 (final consistency corrections) is summarised in §12.
 **Input verdict:** [`phase-3-database-design-review.md`](phase-3-database-design-review.md) — *APPROVED WITH CHANGES*.
 **Canonical status:** once approved, this document supersedes the 11-table contract in [`../data/metadata/synthetic_data_spec.md`](../data/metadata/synthetic_data_spec.md) §3–4 as the database design. The spec's safety rules (§1), scenarios (§5) and generator prohibitions (§6) remain the contract the design must satisfy.
 
@@ -63,9 +63,9 @@ Three PostgreSQL schemas, three independent concerns, **one-way dependencies**.
 |---|---|---|
 | `official` | `source`, `source_file`, `region`, `indicator`, `indicator_dimension`, `dimension_member`, `observation`, `facility`, `license_status_map` (+ **conditional** `working_calendar` — only if D12 is decided that way) | 9 (+1) |
 | `clinical` | `standard`, `rule_load`, `verification_status`, `evaluation_status`, `reason_code`, `guard`, `open_question`, `rule`, `rule_condition`, `rule_item`, `rule_open_question`, `rule_item_open_question` | 12 |
-| `synthetic` | `generation_run`, `evaluation_run` **[D16]**, `patient`, `guardian`, `consent`, `facility_service_profile`, `history_availability`, `eligibility_evaluation`, `evaluation_reason` **[D16]**, `ifhas_screening`, `well_child_visit`, `component_result`, `assessment`, `referral`, `care_gap`, `care_gap_review`, `appointment`, `outreach_event` | 18 |
+| `synthetic` | `generation_run`, `evaluation_run` (D16 — approved), `patient`, `guardian`, `consent`, `facility_service_profile`, `history_availability`, `eligibility_evaluation`, `evaluation_reason` (D16 — approved), `ifhas_screening`, `well_child_visit`, `component_result`, `assessment`, `referral`, `care_gap`, `care_gap_review`, `appointment`, `outreach_event` | 18 |
 
-Versus the review's §8 list (9 / 8 / 16): `clinical` gains `rule_load`, `verification_status`, `guard`, `rule_item_open_question` (all required by findings F-25/F-26 and the loader's own model — see §10); `synthetic` gains `evaluation_run` and `evaluation_reason` **[PROVISIONAL: D16]** (the review's F-03 references an `evaluation_run_id` that its own table list does not define).
+Versus the review's §8 list (9 / 8 / 16): `clinical` gains `rule_load`, `verification_status`, `guard`, `rule_item_open_question` (all required by findings F-25/F-26 and the loader's own model — see §10); `synthetic` gains `evaluation_run` and `evaluation_reason` **[APPROVED: D16]** (the review's F-03 references an `evaluation_run_id` that its own table list does not define).
 
 Derived read objects (views, not tables, not counted): `official.v_observation_leaf`, `official.v_observation_current`, `official.v_derived_total_additive`, `official.v_indicator_year_shape`, `official.v_facility_usable`; `clinical.v_rule_current`, `clinical.v_rule_authority`; `synthetic.v_eligibility_current`, `synthetic.v_consent_current`, `synthetic.v_care_gap_effective_priority`, `synthetic.v_item_outstanding`.
 
@@ -607,7 +607,7 @@ A rule's *content* is in the YAML; **which rules are evaluated for which patient
 
 ### 5.1 Provenance and runs
 
-#### `synthetic.generation_run`  — **[PROVISIONAL: D8]**
+#### `synthetic.generation_run`  — **[APPROVED: D8]**
 **Purpose.** One row per generator execution: the **single home of generator metadata and the seed**. Replaces the four per-row columns (`is_synthetic` stays per row; `generator_version`, `generation_seed`, `clinically_validated` move here) that spec §1.1 repeats on all 11 tables. **This amends spec §1.1 — see §12.2. Owner sign-off required.**
 **PK.** `run_id TEXT` — `CHECK (run_id ~ '^SYNTH-RUN-[0-9]{4,}$')`.
 
@@ -630,9 +630,9 @@ A rule's *content* is in the YAML; **which rules are evaluated for which patient
 
 **Immutability.** After `finished_at` is set, a trigger rejects **any** `UPDATE` (the row is frozen): seed, versions, parameters and inputs can never change under data that was generated from them. The reproducibility tuple is `(generator_version, generator_commit, spec_version, generation_seed, parameters, rule_bundle_load_id)`; that equal tuples yield equal data is a **generator test**, not a database guarantee.
 **Relationships.** 1 ─ N every other `synthetic` table (via `run_id`); N ─ 1 `clinical.rule_load`.
-If D8 is rejected, the four columns return to every table and this table shrinks to a data-card record; R-S2 then needs only `patient_id`.
+*D8 approved.* (Considered and not adopted: keeping the four columns on every table, which would let them disagree within a run.)
 
-#### `synthetic.evaluation_run`  — **[PROVISIONAL: D16]**
+#### `synthetic.evaluation_run`  — **[APPROVED: D16]**
 **Purpose.** One execution of the deterministic engine over a population. The review's F-03 uses `evaluation_run_id` but defines no table for it.
 **PK.** `evaluation_run_id TEXT` — `CHECK (~ '^SYNTH-EVR-[0-9]{6,}$')`; `UNIQUE (run_id, evaluation_run_id)` (parent key for same-run FKs).
 
@@ -651,7 +651,7 @@ Immutable once written (insert-only).
 
 ### 5.2 People, consent, facilities
 
-#### `synthetic.patient`  — **[PROVISIONAL: D1, D2]** (via facility FK and refusal)
+#### `synthetic.patient`  — **[APPROVED: D1; PROVISIONAL: D2]** (facility FK / refusal)
 **Purpose.** A fabricated person; adults and children alike (a child is a patient whose age is in `WCV-PROG-SCOPE`, linked to a guardian — not a separate table).
 **Source.** Generator. **PK.** `patient_id` (`^SYNTH-PAT-[0-9]{6}$`); `UNIQUE (run_id, patient_id)`.
 
@@ -695,7 +695,7 @@ Immutable once written (insert-only).
 
 #### `synthetic.consent`  — **[PROVISIONAL: D2]**
 **Purpose.** First-class, **append-only** consent and refusal facts, and the **only** place a refusal is recorded when *no screening or visit event occurred* (whole-screening, rule- or pathway-level refusal). **AI opt-out is separate from contact opt-out** (scenario 20).
-**PK.** `consent_id` — `CHECK (~ '^SYNTH-CNS-[0-9]{6,}$')`. **Parent keys:** `UNIQUE (run_id, patient_id, consent_id)`; `UNIQUE (run_id, patient_id, consent_id, refusal_evidence_valid)`; `UNIQUE (run_id, patient_id, consent_id, grants_contact)`.
+**PK.** `consent_id` — `CHECK (~ '^SYNTH-CNS-[0-9]{6,}$')`. **Parent keys:** `UNIQUE (run_id, patient_id, consent_id)`; `UNIQUE (run_id, patient_id, consent_id, refusal_evidence_valid)`; `UNIQUE (run_id, patient_id, consent_id, grants_contact)`; `UNIQUE (run_id, patient_id, consent_id, grants_ai_scoring)`.
 
 | Column | Type | Null | Notes |
 |---|---|---|---|
@@ -712,13 +712,14 @@ Immutable once written (insert-only).
 | `refusal_reason` | TEXT | yes | `CHECK (state = 'refused' OR refusal_reason IS NULL)` |
 | `refusal_evidence_valid` | BOOLEAN | no | **Generated.** `consent_type = 'screening_participation' AND state = 'refused' AND scope_pathway IS NOT NULL AND documented_in_record IS TRUE AND signature_on_file IS TRUE AND (scope_pathway <> 'well_child' OR (applies_to = 'child_by_guardian'))`. **[PROVISIONAL: D2]** — a patient-wide refusal (`scope_pathway IS NULL`) is *not* valid closing evidence for any gap; it must name a pathway or rule |
 | `grants_contact` | BOOLEAN | no | **Generated.** `consent_type = 'contact' AND state = 'granted'` |
+| `grants_ai_scoring` | BOOLEAN | no | **Generated.** `consent_type = 'ai_assisted_prioritisation' AND state = 'granted'` |
 
 **Append-only** (no `UPDATE`/`DELETE`); current state = latest per `(patient, consent_type, scope_pathway, scope_rule_id)` via `v_consent_current`. A later `granted` or `withdrawn` row supersedes an earlier refusal; the earlier row is never edited.
 **Provisional evidence standard (D2).** The only refusal rule encoded in the YAML is `WCV-POLICY-PARENTAL-REFUSAL` ("officially documented … including their signature"). **No IFHAS refusal rule is encoded** — the 29 IFHAS rules contain none — so applying the same documented+signature test to the IFHAS pathway is a provisional engineering choice, not a clinical fact; it lives in the one generated expression above and its twin on `component_result`.
 **Indexes.** `(patient_id, consent_type, recorded_at DESC)`.
-**Enforcement of consent against outreach and scoring** is in §5.5 (`outreach_event.contact_consent_id`, `care_gap` scoring) and §6.3. Whether *absence* of a contact or AI consent row permits contact/scoring is **not specified by any source** — D18.
+**Consent default (D18, approved — safest default).** *Unless an explicit, valid and applicable permission exists: contact is **not** permitted and person-level AI scoring is **not** run.* Three states are kept **distinct and never collapsed**: **no row** (never requested / not recorded), **`withdrawn`**, **`refused`** — all three block, but they carry different suppression reasons (§5.5) so absence is never reported as a refusal. *Valid* = a `granted` row not superseded by a later `withdrawn`/`refused` row; *applicable* = its `scope_pathway`/`scope_rule` covers the gap's pathway/rule (patient-wide `NULL` scope covers all), and for a child it is given by the child's guardian (`applies_to = 'child_by_guardian'`). Validity and applicability are time- and scope-dependent, so they are constraint triggers (§6.3); *existence and kind* of the cited row are foreign keys (§5.5). **This is a data-model default, not a statement that consent is legally required or sufficient** in any context — governance and legal review remain outstanding. The deterministic rule evaluation (`eligibility_evaluation`) is **not** gated on consent by this design; whether `data_processing` consent should gate it is a governance question not decided here.
 
-#### `synthetic.facility_service_profile`  — **[PROVISIONAL: D1]**
+#### `synthetic.facility_service_profile`  — **[APPROVED: D1]**
 **Purpose.** A **simulated capability overlay on a real official facility** (F-20). Real facility, real coordinates; *simulated* `offers_*` flags — because no official source gives IFHAS/WCV capability (the `THIQA/BASIC/ENHANCED` columns are `N/A` in all 4,905 populated rows). **Not** a facility register.
 **PK.** `profile_id` — `CHECK (~ '^SYNTH-FSP-[0-9]{6,}$')`; `UNIQUE (run_id, profile_id)`; `UNIQUE (run_id, facility_id)`.
 
@@ -770,7 +771,7 @@ Immutable once written (insert-only).
 **Stores `not_eligible` rows too** (evaluated, failed) so "not eligible" ≠ "never evaluated".
 **Never produced:** `overdue` for any Well-Child rule while `OQ-WCV-DUE-WINDOW` is open (engine rule + test, not a `CHECK` — R-C6).
 
-#### `synthetic.evaluation_reason`  — **[PROVISIONAL: D16, D17]**
+#### `synthetic.evaluation_reason`  — **[APPROVED: D16; OPEN: D17]**
 **Purpose.** *All* guards that fired for an evaluation, plus item-level blocks. The status YAML defines 7 guards and **no precedence among them**; collapsing them to one `reason_code` would invent one. This table records every fired guard and lets the engine report one.
 **PK.** `reason_id` — `CHECK (~ '^SYNTH-ERS-[0-9]{6,}$')` (a surrogate, so the key follows the `SYNTH-` convention); `UNIQUE (evaluation_id, reason_ordinal)`. **Append-only.**
 
@@ -785,7 +786,7 @@ Immutable once written (insert-only).
 | `item_category`, `item_code` | TEXT | yes | Composite FK `(rule_id, rule_version, item_category, item_code)` → `clinical.rule_item`; both or neither. Item-level `rule_item_unresolved` (scenario 25) |
 
 `UNIQUE NULLS NOT DISTINCT (evaluation_id, guard_id, reason_code, item_category, item_code)` — the same reason is not recorded twice.
-If D16 is rejected, `reason_code` on the evaluation is the only reason and guard precedence must be decided (D17) first.
+*D16 approved.* `evaluation_reason` records every fired guard; **guard precedence is still undefined (D17)**, so the engine's reported `reason_code` must not rely on one.
 
 ### 5.4 Care events
 
@@ -939,13 +940,15 @@ If D16 is rejected, `reason_code` on the evaluation is the only reason and guard
 | `priority_explanation` | TEXT | yes | `CHECK (priority_score IS NULL OR priority_explanation IS NOT NULL)` (RAI §3.1.6.3) |
 | `scored_by_model_version` | TEXT | yes | `CHECK ((priority_score IS NULL) = (scored_by_model_version IS NULL))` |
 | `scored_at` | TIMESTAMPTZ | yes | `CHECK ((priority_score IS NULL) = (scored_at IS NULL))` |
-| `scoring_suppressed_reason` | TEXT | yes | AI opt-out: `scored_at IS NULL` **plus** this reason. `CHECK (scoring_suppressed_reason IS NULL OR priority_score IS NULL)` |
+| `scoring_consent_id` | TEXT | yes | **The permission relied on (D18).** Composite FK `(run_id, patient_id, scoring_consent_id, scoring_consent_marker)` → `consent(run_id, patient_id, consent_id, grants_ai_scoring)` — can only be an `ai_assisted_prioritisation` / `granted` row of this patient. **`CHECK (priority_score IS NULL OR scoring_consent_id IS NOT NULL)` — no score exists without explicit permission** |
+| `scoring_consent_marker` | BOOLEAN | no | **Generated** `CASE WHEN scoring_consent_id IS NOT NULL THEN TRUE END` |
+| `scoring_suppressed_reason` | TEXT | yes | Why a gap was **not** scored. Reserved values, each trigger-checked against the actual consent history: `'no_ai_permission_recorded'` (**no row** — the default), `'ai_consent_withdrawn'`, `'ai_consent_refused'`; other documented reasons allowed. `NULL` = simply not yet scored. `CHECK (scoring_suppressed_reason IS NULL OR priority_score IS NULL)`. Rule evaluation and gap identity are unaffected |
 
 **AI/human separation (structural).** Group 3 columns are writable **only** by the scoring role (column-level `GRANT UPDATE`); clinicians have `INSERT` on `care_gap_review` and **no** `UPDATE` on `care_gap`; the engine role writes groups 1–2. A human override never edits the score, and a re-score never edits a review. Groups 1–2 never read Group 3.
 **Dropped:** `pathway` (derivable from the rule); `clinician_reviewed`, `clinician_override`, `override_reason` (→ `care_gap_review`).
 **Indexes.** `(status) WHERE status = 'open'`; `(patient_id)`; `(evaluation_id)`.
 **View.** `v_care_gap_effective_priority`: latest human override if any, else the AI score — both visible, neither overwritten.
-**Cross-table rules (constraint trigger or engine test):** the evaluation is in a gap-yielding status; scoring is forbidden while the current `ai_assisted_prioritisation` consent is `withdrawn`/`refused` (what *absence* means is **D18**).
+**Cross-table rules (constraint trigger or engine test):** the evaluation is in a gap-yielding status; the cited AI permission is still current and applicable (not superseded by a later `withdrawn`/`refused`; scope covers this gap) as of `scored_at`;
 **Not modelled (unresolved issue U1):** the model's *previous* scores — a re-score overwrites Group 3.
 
 #### `synthetic.care_gap_review`  — **[FINAL]**
@@ -980,7 +983,7 @@ If D16 is rejected, `reason_code` on the evaluation is the only reason and guard
 
 **Dropped:** `reminder_count` (a count of `outreach_event` rows). **Test:** `status = 'attended'` with no linked event row is a data-quality error. **Indexes.** `(patient_id, scheduled_datetime)`; `(care_gap_id)`; `(profile_id, scheduled_datetime)`.
 
-#### `synthetic.outreach_event`  — **[PROVISIONAL: D18 (consent default)]**
+#### `synthetic.outreach_event`  — **[APPROVED: D18]**
 **Purpose.** Invitations, reminders, recalls (IFHAS §4.7.1: first screening, rescreening, **and recall for positive and insufficient results**). Outreach is attributable to the gap that justified it and, if it worked, to the booking it produced (the impact measure).
 **PK.** `outreach_id` — `CHECK (~ '^SYNTH-OUT-[0-9]{6,}$')`.
 
@@ -994,8 +997,8 @@ If D16 is rejected, `reason_code` on the evaluation is the only reason and guard
 | `channel` | TEXT | no | `CHECK IN ('sms','phone','email','app')` |
 | `sent_datetime` | TIMESTAMPTZ | yes | `NULL` for suppressed events: `CHECK ((delivery_status = 'suppressed') = (sent_datetime IS NULL))` |
 | `delivery_status` | TEXT | no | `CHECK IN ('queued','delivered','failed','suppressed')`. **No separate `suppressed` boolean** |
-| `suppression_reason` | TEXT | yes | `CHECK ((delivery_status = 'suppressed') = (suppression_reason IS NOT NULL))` (deceased, contact withdrawn …) |
-| `contact_consent_id` | TEXT | yes | **The exact consent row relied on.** Composite FK `(run_id, patient_id, contact_consent_id, contact_consent_marker)` → `consent(run_id, patient_id, consent_id, grants_contact)` — it can only be a **`contact` / `granted`** row of this patient. `NULL` = no consent row was relied on (never a *claim* of consent) |
+| `suppression_reason` | TEXT | yes | `CHECK ((delivery_status = 'suppressed') = (suppression_reason IS NOT NULL))`. Reserved consent values, trigger-checked against the actual history: **`'no_contact_permission_recorded'`** (no row — the default), `'contact_consent_withdrawn'`, `'contact_consent_refused'`; also `'patient_deceased'` and other documented reasons |
+| `contact_consent_id` | TEXT | yes | **The permission relied on (D18).** Composite FK `(run_id, patient_id, contact_consent_id, contact_consent_marker)` → `consent(run_id, patient_id, consent_id, grants_contact)` — can only be a **`contact` / `granted`** row of this patient. **`CHECK (delivery_status = 'suppressed' OR contact_consent_id IS NOT NULL)` — an outreach event that is not suppressed must cite explicit permission.** `NULL` only on suppressed events |
 | `contact_consent_marker` | BOOLEAN | no | **Generated** `CASE WHEN contact_consent_id IS NOT NULL THEN TRUE END` |
 | `response` | TEXT | yes | `CHECK IN ('no_response','booked','declined','opted_out','wrong_contact')`. A `declined` **response** is *not* a documented refusal (D2); `wrong_contact` is delivery failure, **not** declined (scenario 23) |
 | `appointment_id` | TEXT | yes | Composite FK `(run_id, patient_id, appointment_id)` → `appointment`. `CHECK (appointment_id IS NULL OR response = 'booked')` |
@@ -1005,8 +1008,8 @@ If D16 is rejected, `reason_code` on the evaluation is the only reason and guard
 
 **Consent-to-outreach enforcement — what is structural and what is not.**
 - *Structural:* the consent row cited is a real, same-patient, `contact`/`granted` row; a guardian recipient is the child's own guardian; the contact traces to the patient's own gap.
-- *Constraint trigger (time-dependent, so not an FK):* a non-suppressed event is rejected if, as of `sent_datetime`, the patient's (or, for a guardian recipient, that guardian's) **current** `contact` consent is `withdrawn` or `refused`; and if the cited consent row has been superseded by a later `withdrawn`/`refused` row before `sent_datetime`. A deceased patient's events must be `suppressed`.
-- *Not decided:* whether an event is allowed when **no** contact-consent row exists (opt-in vs opt-out) — **D18**. The schema is neutral: `contact_consent_id` is nullable, and the trigger's "no row" branch is the one thing D18 sets.
+- *Constraint trigger (time-dependent, so not an FK):* the cited consent is **current and applicable** as of `sent_datetime` — not superseded by a later `withdrawn`/`refused` row, scope covering the gap's pathway/rule, and, for a guardian recipient, `consent.guardian_id = outreach_event.guardian_id` with `applies_to = 'child_by_guardian'`; a suppression reason that names a consent state must match the real history; a deceased patient's events must be `suppressed`.
+- *Default (D18, approved):* with **no** applicable permission the event is `suppressed` (`no_contact_permission_recorded`) — it is never sent and never silently dropped, and it is never reported as a refusal or withdrawal.
 
 **Indexes.** `(care_gap_id)`; `(patient_id, sent_datetime)`; `(appointment_id)`; `(contact_consent_id)`.
 Insert-only; `response`/`appointment_id` may be updated once by the response handler (the only mutable columns).
@@ -1041,7 +1044,8 @@ All 18 also carry `run_id` (for `generation_run`, the PK) and `is_synthetic CHEC
 | `appointment`, `ifhas_screening`, `well_child_visit`, `referral.target_profile_id` — `(run_id, profile_id)` | `facility_service_profile` | `(run_id, profile_id)` |
 | `component_result`, `assessment`, `referral`, `care_gap` subject — event id with `(run_id, patient_id)` [+ `rule_id, rule_version` for `component_result`] | `ifhas_screening` / `well_child_visit` | `(run_id, patient_id, id[, rule_id, rule_version])` |
 | `referral.assessment_id` | `assessment` | `(run_id, patient_id, assessment_id)` |
-| `care_gap` closing evidence (5 columns, §5.5) | `ifhas_screening`, `well_child_visit`, `referral`, `component_result`, `consent` | marker keys (§2.5) |
+| `care_gap.scoring_consent_id` `(run_id, patient_id, scoring_consent_id, marker)` | `consent` | marker key (D18) |
+| `care_gap` closing evidence (5 columns, §5.5)
 | `appointment`, `outreach_event` — `(run_id, patient_id, care_gap_id)` | `care_gap` | `(run_id, patient_id, care_gap_id)` |
 | `care_gap_review (run_id, care_gap_id)` | `care_gap` | `(run_id, care_gap_id)` |
 | `outreach_event (run_id, patient_id, appointment_id)` / `(…, contact_consent_id, marker)` | `appointment` / `consent` | `(run_id, patient_id, appointment_id)` / marker key |
@@ -1090,7 +1094,7 @@ These need a loader validation, constraint trigger or engine test — stated so 
 | 4 | `ifhas_screening.rule` is a `screening_package`; `well_child_visit.rule` is a `visit_schedule`; the appointment's `appointment_type` matches the event | Constraint trigger |
 | 5 | Facility-profile eligibility (identified, usable coordinates, **operating licence — unavailable until D13**, plausible kind) | Constraint trigger against `official.v_facility_usable` |
 | 6 | Consent scope covers a refusal-closed gap's rule (`scope_rule` = gap rule, else `scope_pathway` = rule's pathway); a consent's `scope_pathway` equals its rule's pathway | Constraint trigger |
-| 7 | Outreach not sent while current contact consent is `withdrawn`/`refused`; deceased ⇒ suppressed; scoring not run while AI consent is `withdrawn`/`refused` | Constraint trigger (time-dependent) |
+| 7 | **D18 default:** outreach sent and AI score produced only under a **current, applicable, explicit** permission (cited by FK); suppression/suppressed-scoring reasons match the real consent history (`no row` ≠ `withdrawn` ≠ `refused`); deceased ⇒ suppressed | Constraint trigger (time- and scope-dependent) |
 | 8 | No refusal recorded twice (consent **and** component for one scope); no completion after a current valid refusal without a superseding consent row | Constraint trigger / engine test |
 | 9 | `partial` completion equals the derived value; an appointment marked `attended` has an event row; a gap-yielding evaluation status backs every gap | Engine test |
 | 10 | A referral's `trigger_rule` defines an action or window; an assessment's rule `instrument` matches | Loader/engine test |
@@ -1113,8 +1117,8 @@ AI is used in **exactly one step (8)**. Everything else is deterministic code, a
 | 5 | **History availability and patient attributes** | Generator decides, per patient and pathway, whether history is `available`, `partial`, `not_available`; generates prior events consistent with it; leaves unknown attributes `NULL` on purpose | `history_availability`, prior `ifhas_screening` / `well_child_visit` / `component_result` / `assessment` | Seeded generator. Must produce every scenario in spec §5 |
 | 6 | **Deterministic clinical rule evaluation** | Engine applies the applicability policy (§4.4), then each applicable rule version to each patient with guards first; records status, reason(s), next due date | `evaluation_run`, `eligibility_evaluation`, `evaluation_reason` | **Deterministic only.** No model may decide eligibility or frequency (status YAML) |
 | 7 | **Care-gap identification** | A gap is created from an evaluation in a gap-yielding status, with a gap type and subject; unknown/insufficient/review statuses do **not** create "not screened" gaps | `care_gap` (rule-fact and lifecycle columns) | **Deterministic.** A model never creates a gap |
-| 8 | **AI-assisted prioritisation and explanation** | A model **orders** the already-identified gaps and writes an explanation; skipped for patients who opted out of AI (`scored_at IS NULL` + reason). A clinician may confirm or override | `care_gap` (scoring group), `care_gap_review` | **AI (ordering + explanation only)** with **human** review. Never changes gap identity, eligibility or status. Labelled a technical scaffold where NHANES shaped any input (RAI §3.1.5.1.1) |
-| 9 | **Consent-aware outreach** | Check current consent and contact validity and death; send or suppress with a reason; child outreach goes to the guardian; record approval and whether an AI score triggered it | `outreach_event` | Deterministic checks; approval is **human** |
+| 8 | **AI-assisted prioritisation and explanation** | A model **orders** the already-identified gaps and writes an explanation — **only for patients with an explicit, current, applicable `ai_assisted_prioritisation` permission (D18)**; otherwise the gap is left unscored (`no_ai_permission_recorded` / `ai_consent_withdrawn` / `ai_consent_refused`). A clinician may confirm or override | `care_gap` (scoring group), `care_gap_review` | **AI (ordering + explanation only)** with **human** review. Never changes gap identity, eligibility or status. Labelled a technical scaffold where NHANES shaped any input (RAI §3.1.5.1.1). Aggregate dashboard counts are not person-level scoring |
+| 9 | **Consent-aware outreach** | Outreach proceeds **only** under an explicit, current, applicable `contact` permission (D18); with none, the event is recorded as `suppressed` with the reason that matches the history (no row / withdrawn / refused); child outreach goes to the child's guardian; record approval and whether an AI score triggered it | `outreach_event` | Deterministic checks; approval is **human** |
 | 10 | **Appointment booking** | Patient/guardian responds; a slot at a profile facility is booked (capability and geography routing); outreach linked to the booking | `appointment`, `outreach_event.appointment_id` | Deterministic. **Booking is not care** |
 | 11 | **Screening or visit completion** | Event row created and linked to the appointment; per-item results; assessments scored; refusal recorded as a documented fact; `partial` derived; gap closed with its evidence | `ifhas_screening`, `well_child_visit`, `component_result`, `assessment`, `care_gap` status | Deterministic from generator output; refusal via `consent` (no event) or `component_result` (item in an event) per D2, and a gap closes as refused only on valid evidence (§5.5) |
 | 12 | **Referral and follow-up tracking** | Rule triggers (M-CHAT-R tier, IDAQ, abnormal result) create `referral` rows; deadlines are **computed** from the rule and the working-day calendar; `referral_not_initiated` gaps arise from overdue obligations | `referral`, `care_gap` | Deterministic |
@@ -1126,32 +1130,66 @@ The same boundary, as a dependency: AI output (step 8) exists only as columns on
 
 ## 8. Decision register
 
-**Every decision below is OPEN.** None is approved. "Recommended" is a recommendation, not a decision. Where this document's design assumes the recommendation, it says so with **[PROVISIONAL: Dn]**.
+**Status key.** **APPROVED** = approved by the project owner (instruction recorded in revision 2.2); **PROVISIONAL** = design assumes the recommendation, approval incomplete; **OPEN** = not approved. *Approved by the project owner does not imply clinical, legal or governance approval — those are listed per decision as "external approvals still required".* "Recommended" in an OPEN decision is a recommendation, not a decision.
 
 Blocking classification: **Blocks ERD** means the entity-relationship diagram cannot be completed (for the layer named) without it. Items marked ◆ are classified by this document and **differ from, or add to, the review**; the review's own classification is quoted.
 
-### D1 — Real facilities with synthetic capability overlays
-| | |
-|---|---|
-| **Question** | May synthetic patients be attached to the real SDI facilities, with simulated `offers_ifhas/offers_wcv/evening_hours/weekend_hours` stored in a separate overlay table — and are real facility names shown beside synthetic patients? |
-| **Why it matters** | It determines the facility entity: `official.facility` + `synthetic.facility_service_profile` (this design) vs. a fully fictional `synthetic.facility`. It also decides whether a real, named clinic can appear next to a fabricated patient and a fabricated capability — a governance and reputational question as much as a modelling one |
-| **Recommended** | Real facilities, real coordinates, simulated overlay, **real names with a persistent "capabilities and patients are simulated" banner**. The patient rows carry the synthetic marker, so a single exported row still cannot be mistaken for a real patient |
-| **Alternatives** | (a) Real coordinates, **pseudonymised names** in synthetic views. (b) Fully fictional facilities with invented coordinates (the spec's original §3.3 — now obsolete because 5,339 real points exist) |
-| **Consequences** | Recommended: `patient → facility_service_profile → official.facility` (a `synthetic → official` FK); needs D13 for "operating". (a): add a `display_alias` column to the profile. (b): discards the validated register and re-introduces invented coordinates |
-| **Blocks ERD?** | **Yes** (review: blocks) — for the synthetic layer only |
-| **Approval** | **Owner: yes** (also governance). Clinical: no |
+### Decision status summary (revision 2.2)
 
-### D2 — Refusal representation  *(still PROVISIONAL — revised in 2.1)*
+| ID | Decision | Status | Owner approval | External approvals still required | Blocks ERD? | Blocks implementation? |
+|---|---|---|---|---|---|---|
+| **D1** | Real facilities + simulated overlay | **APPROVED** | Yes | Governance review of naming real facilities beside synthetic patients: **not obtained** | No (settled) | Facility-profile *creation* needs D13 |
+| **D2** | Refusal representation | **PROVISIONAL** | Partial (design retained) | **Clinical: S2, S3, S4, S5; product: S1, S4; governance/legal: S5; ADPHC clarification of `OQ-WCV-REFUSAL-STATE`** | **Yes (synthetic)** | Refusal-related triggers and generator |
+| D3 | Meaning of `-` / `:` | OPEN | — | SCAD | No | Workbook loading only |
+| D4 | Age-label correction | OPEN | — | SCAD | No | Age-band use of 4 indicators |
+| D5 | Duplicate 3422 | OPEN | — | SCAD | No | No (rows quarantined) |
+| D6 | PostGIS vs plain coordinates | OPEN | — | — | No | **Yes — before the first migration** |
+| D7 | Migration tool | OPEN | — | — | No | **Yes — before the first migration** |
+| **D8** | Generation-run provenance | **APPROVED** | Yes | None required by the decision; **spec refresh is a follow-up** | No (settled) | No |
+| D9 | Workbook loading / re-fetch | OPEN | — | — | No | Loader only |
+| D10 | IFHAS component codes | OPEN | — | Rules owner (if YAML codes) | No | Rule loader |
+| D11 | Evaluation history | Treated as decided; **not formally approved** | Confirm | — | No (reshapes one table if reversed) | `eligibility_evaluation` |
+| D12 | Working-day calendar | OPEN | — | ADPHC/programme owner | No | Decides whether `working_calendar` exists |
+| D13 | Licence-status mapping | OPEN | — | DoH licensing (advisable) | No | **Facility-profile creation and `v_facility_usable`** |
+| D14 | Rule applicability policy | OPEN | — | **Clinical** | No | Engine |
+| D15 | Facility vintage / as-published coordinates | OPEN | — | — | No | Facility loader |
+| **D16** | Six additional entities | **APPROVED** | Yes | None | No (settled) | No |
+| D17 | Evaluation-contract gaps | OPEN | — | **Clinical** (guard precedence, `partial` history, age convention) | No | Engine |
+| **D18** | Consent defaults | **APPROVED (safest default)** | Yes | **Governance and legal review of consent requirements: not obtained** | No (settled) | No |
+
+### D1 — Real facilities with synthetic capability overlays — **APPROVED**
 | | |
 |---|---|
-| **Question** | How is refusal recorded? (`OQ-WCV-REFUSAL-STATE` says a status-model decision is needed "before database design".) Today `refused` is a `completion_status`, an `attendance_status` *and* a consent `state` |
-| **Why it matters** | Refusal ≠ not-yet-done (scenario 19): a documented, signed refusal is not a care gap to chase (`WCV-POLICY-PARENTAL-REFUSAL`). Several representations can disagree, and adding `refused` to the 9-value evaluation vocabulary would invent a status the standard does not define |
-| **Recommended** | Keep the 9 evaluation statuses **unchanged**. A refusal is a documented *fact recorded once, at the narrowest place it happened* (R-S11): **(1)** an item refused inside a screening/visit that occurred → `component_result` (`refused`, with `documented_in_record`, `signature_on_file`, `refusal_reason`, and, for a child's visit, `refused_by_guardian_id`); **(2)** a refusal with **no event** — whole screening, one rule, or a pathway, including a guardian's refusal for a child → `consent` (`screening_participation`, `refused`, scoped by `scope_pathway`/`scope_rule`, `guardian_id`). A gap closes as `closed_refused` citing **exactly one** of `closed_by_component_result_id` / `closed_by_consent_id`, enforced by composite FKs to rows whose `refusal_evidence_valid` is true for the same run, patient and rule (§5.5). `refused` is removed from `completion_status` and `attendance_status` |
-| **Alternatives** | (a) Add `refused` to `evaluation_status`. (b) Keep `refused` in the event tables as well. (c) A dedicated `refusal` table that both `consent` and `component_result` feed. (d) Consent-only (no component-level refusal) |
-| **Consequences** | Recommended: no event row is needed for a whole-screening refusal; one refusal cannot be stored twice; closing as refused is impossible without valid evidence. (a) changes a YAML-owned vocabulary; (b) reintroduces contradiction; (c) adds a table and a second hop to prove evidence, without removing any ambiguity; (d) cannot say *which item* was refused |
-| **Decisions inside D2 that the design does not make** | **S1** Is a pathway/rule-scoped `consent` the right home for a whole-screening refusal? (product/clinical). **S2** What counts as *valid evidence* — the design provisionally uses "documented **and** signed" (the only encoded rule is the Well-Child policy; **no IFHAS refusal rule exists in the YAML**), and requires a guardian for a Well-Child refusal. **S3** Does a patient-wide refusal (no scope) count? Design: no. **S4** Is a *declined referral* a refusal needing evidence? Design: unresolved; `closed_refused` is forbidden for referral gaps meanwhile. **S5** Which guardian may refuse? Design: any of the child's own guardians |
-| **Blocks ERD?** | **Yes** (synthetic) — review: blocks. The entities are now fixed under the recommendation; approval is still needed because S1–S5 can change columns or constraints |
-| **Approval** | **Owner/product: yes. Clinical: required for S2–S5 and before `OQ-WCV-REFUSAL-STATE` is marked resolved.** The evidence standard lives in two generated expressions (`consent.refusal_evidence_valid`, `component_result.refusal_evidence_valid`), so a clinical change to it changes no relationship |
+| **Question** | May synthetic patients be attached to the real SDI facilities, with simulated `offers_ifhas/offers_wcv/evening_hours/weekend_hours` in a separate overlay, and are real facility names shown beside synthetic patients? |
+| **Decision** | **APPROVED (project owner, revision 2.2).** Use official Abu Dhabi facility names and locations from the acquired SDI register. Simulated service capabilities live in a **separate synthetic `facility_service_profile` overlay**. Simulated capabilities are **clearly labelled in the application** and are never presented as verified real-world services |
+| **Rationale** | 5,339 geocoded official facilities are held and validated; inventing facilities would discard them. The patient rows carry the synthetic marker, so a single exported row still cannot be mistaken for a real patient. No official source supplies IFHAS/WCV capability (`THIQA/BASIC/ENHANCED` are `N/A` in all 4,905 populated rows), so capability must be simulated — and therefore labelled |
+| **Alternatives not adopted** | (a) Real coordinates with pseudonymised names. (b) Fully fictional facilities (the spec's original §3.3) |
+| **Consequences** | `patient → facility_service_profile → official.facility` (a `synthetic → official` FK). `capability_basis = 'simulated'` is a `CHECK`-enforced constant on every profile; `official.facility` holds no synthetic columns. **Application obligation (outside the database):** every screen showing a profile's capability must label it "simulated", and a persistent banner states that capabilities and patients are simulated — a UI requirement for the API/UI contract, not a schema feature. A profile may only be created for an identified, usable-coordinate, operating, plausible-kind facility — **"operating" is unavailable until D13**, so profile creation is blocked on D13, not on the ERD |
+| **Approval status** | Owner: **approved**. Clinical: not required. **Not yet obtained:** governance review of showing real facility names beside synthetic patients (recommended before any external demo) |
+| **Blocks ERD?** | **No — settled** |
+
+### D2 — Refusal representation — **PROVISIONAL — clinical approval required (not approved)**
+| | |
+|---|---|
+| **Question** | How is refusal recorded? (`OQ-WCV-REFUSAL-STATE` says a status-model decision is needed "before database design".) Before revision 2.1, `refused` was a `completion_status`, an `attendance_status` *and* a consent `state` |
+| **Decision** | **PROVISIONAL.** The project owner retains the revision 2.1 design as the working design, **pending clinical/product approval**. It is **not** marked approved |
+| **Design retained** | Keep the 9 evaluation statuses unchanged. A refusal is a documented fact **recorded once, at the narrowest place it happened** (R-S11): **(1)** an item refused inside a screening/visit that occurred → `component_result`; **(2)** a refusal with **no** event — whole screening, one rule, or a pathway, including a guardian's refusal for a child → `consent` (`screening_participation`, `refused`, scoped). Evidence must be traceable and linked to the correct **patient, run and applicable rule**. A care gap closes as `closed_refused` only by citing **exactly one** of `closed_by_component_result_id` / `closed_by_consent_id`, enforced by composite FKs to rows whose `refusal_evidence_valid` is true for the same run, patient and rule (§5.5). `refused` is removed from `completion_status` and `attendance_status`. **Declined-referral handling is unresolved** (S4); meanwhile `closed_refused` is forbidden for referral gaps |
+| **Why it matters** | Refusal ≠ not-yet-done (scenario 19): a documented, signed refusal is not a care gap to chase (`WCV-POLICY-PARENTAL-REFUSAL`). Adding `refused` to the evaluation vocabulary would invent a status the standard does not define |
+| **Alternatives not adopted** | (a) `refused` as an evaluation status. (b) `refused` kept in event tables as well. (c) A dedicated `refusal` table. (d) Consent-only |
+| **Consequences** | No event row is needed for a whole-screening refusal; one refusal cannot be stored twice; a gap cannot be closed as refused without valid evidence. The entity set is fixed under this design; the sub-questions below can change **constraint content and generated expressions**, and S1/S4 could add or move an entity |
+| **Blocks ERD?** | **Yes (synthetic)** — until clinical approval, or until the owner chooses to draw a clearly **provisional** synthetic ERD (§9) |
+
+**The five sub-questions the design does not decide** (all five are open; this table is the register of them):
+
+| # | Sub-question | Provisional design position | Approval required to settle |
+|---|---|---|---|
+| **S1** | Is a pathway/rule-scoped `consent` the right home for a refusal when no screening/visit event occurred? | Yes — consent, scoped by `scope_pathway`/`scope_rule` | **Product approval.** Clinical *consultation* to confirm no conflict with the standard (not formal clinical approval) |
+| **S2** | What counts as **valid evidence** of a refusal? | Provisionally "documented in record **and** signature on file" (the only encoded rule is the Well-Child policy; **no IFHAS refusal rule is in the YAML**), plus a guardian for a child's Well-Child refusal. One generated expression per table | **Clinical approval required** (including whether the signature requirement applies to IFHAS) |
+| **S3** | Does a **patient-wide** refusal (no pathway/rule scope) count as evidence for closing a gap? | No — scope must name a pathway or rule | **Clinical approval required** (product consulted) |
+| **S4** | Is a **declined referral** a refusal needing documented evidence, or a different outcome? | **Unresolved.** `referral.status = 'declined'` is an outcome; `closed_refused` is forbidden for referral gaps | **Clinical approval required, and product approval required** |
+| **S5** | **Which guardian** may refuse for a child (any of the child's own guardians, one designated guardian, both)? | Any of the child's own guardians (FK-enforced to *this child's* guardians only) | **Clinical approval required, plus governance/legal** (guardianship/consent authority) |
+
+**Clinical approval required for: S2, S3, S4, S5** (S4 and S1 also need product approval; S5 also governance/legal). **S1 is the only sub-question that does not need formal clinical approval.** **External approvals still required:** clinical reviewer sign-off before `OQ-WCV-REFUSAL-STATE` is marked resolved; ADPHC clarification (`WCV.Support@adphc.gov.ae`, the question's `resolve_via`) where the standard is silent; governance/legal for S5. **D2 must not be recorded as approved until S2–S5 are answered.**
 
 ### D3 — Meaning of SCAD `-` and `:`
 | | |
@@ -1208,16 +1246,16 @@ Blocking classification: **Blocks ERD** means the entity-relationship diagram ca
 | **Blocks ERD?** | No |
 | **Approval** | Owner: yes (technical) |
 
-### D8 — Generation-run provenance ◆ (review: non-blocking; this document: ERD-shaping)
+### D8 — Generation-run provenance — **APPROVED**
 | | |
 |---|---|
-| **Question** | Replace the per-row `generator_version`, `generation_seed`, `clinically_validated` (spec §1.1, repeated on 11 tables) with one `generation_run` table and a `run_id` FK per row? |
-| **Why it matters** | The columns are constant within a run, so repeating them is redundancy that can disagree. **But spec §1.1 is a safety rule**, and this amends it |
-| **Recommended** | Yes: `generation_run` + `run_id` on every row + composite same-run FKs (R-S2). Per-row `is_synthetic` and the `SYNTH-` prefix are kept |
-| **Alternatives** | Keep the four columns on every table as specified |
-| **Consequences** | Recommended: one place to audit a run; every synthetic FK becomes composite. Alternative: no new table, but 4 × 18 repeated columns |
-| **Blocks ERD?** | **Yes for the synthetic ERD** ◆ — it adds a table and a `run_id` to every synthetic entity, and turns every synthetic reference into a composite FK. (Review lists it as "before implementation"; an ERD drawn without it must be redrawn.) |
-| **Approval** | **Owner: yes** (amends a safety rule). Clinical: no |
+| **Question** | Replace the per-row `generator_version`, `generation_seed`, `clinically_validated` (spec §1.1, repeated on 11 tables) with one `generation_run` table and a `run_id` per row? |
+| **Decision** | **APPROVED (project owner, revision 2.2).** `generation_run` is the central provenance record for synthetic data. It retains **generator version, seed, commit, specification version, generation parameters and calibration inputs**, and is **immutable once the run is completed** |
+| **Rationale** | These values are constant within a run; repeating them on every row lets them disagree. One immutable record is auditable. Per-row `is_synthetic` and the `SYNTH-` key remain, so a single exported row is still unmistakably synthetic |
+| **Alternatives not adopted** | Keeping the four columns on every table as specified |
+| **Consequences** | `run_id` and `is_synthetic CHECK` on all 18 tables; every synthetic reference is a same-run composite FK (R-S2, §5.6). **Exports must join `generation_run` or carry the data card** to keep the seed and generator version with the data. **Change from the existing specification** is documented in §12.2; **`synthetic_data_spec.md` is not modified** — refreshing it (§1.1 row markers, §3 tables, §2/§3.3/§8 stale items) is a follow-up |
+| **Approval status** | Owner: **approved**. Clinical: not required. No external approval required; the spec owner should be told §1.1 is superseded |
+| **Blocks ERD?** | **No — settled** |
 
 ### D9 — Workbook loading strategy (and re-acquisition)
 | | |
@@ -1296,16 +1334,16 @@ Blocking classification: **Blocks ERD** means the entity-relationship diagram ca
 | **Blocks ERD?** | No |
 | **Approval** | Owner: yes |
 
-### D16 — Tables added beyond the review's list ◆
+### D16 — Additional database entities — **APPROVED**
 | | |
 |---|---|
 | **Question** | Approve six entities the review's own table lists omit: **clinical** — `rule_load`, `verification_status`, `guard`, `rule_item_open_question`; **synthetic** — `evaluation_run`, `evaluation_reason`. |
-| **Why it matters** | The review's F-03 uses `evaluation_run_id` without a table; its F-26 names a `guard` lookup its table list omits; the loader's own model has `verification_status` and item-level open-question ids |
-| **Recommended** | Yes — all six. The four `clinical` additions follow from findings already in the review; the two `synthetic` additions are needed by F-03 and D17 |
-| **Alternatives** | Drop `rule_load` (hash and loader version on each rule); make `verification_status` a `CHECK`; drop `guard` (guards stay YAML-only) and `rule_item_open_question` (item questions in JSONB); drop `evaluation_run` (store `reference_date` per row); drop `evaluation_reason` (one `reason_code`) |
-| **Consequences** | Each alternative removes an entity **and** its foreign keys: e.g. without `guard`, `evaluation_reason.guard_id` loses its FK; without `rule_load`, `generation_run`/`evaluation_run.rule_bundle_load_id` have nothing to reference. Alternatives also re-introduce repeated columns and force a guard-precedence rule that does not exist |
-| **Blocks ERD?** | **Yes ◆ — for both the `clinical` ERD (four entities) and the `synthetic` ERD (two entities, plus the `rule_bundle_load_id` references)** |
-| **Approval** | Owner: yes. Clinical: no |
+| **Decision** | **APPROVED (project owner, revision 2.2) — all six.** Their proposed relationships and constraints are retained as written in §4.2 and §5.1/§5.3 |
+| **Rationale** | The review's F-03 uses `evaluation_run_id` without a table; its F-26 names a `guard` lookup its table list omits; the loader's own model has `verification_status` and item-level open-question ids. The two `synthetic` additions are needed by F-03 and by the undefined guard precedence (D17) |
+| **Alternatives not adopted** | Drop `rule_load` (hash on each rule); `verification_status` as a `CHECK`; drop `guard` / `rule_item_open_question` (item questions in JSONB); drop `evaluation_run` (reference date per row); drop `evaluation_reason` (one `reason_code`) |
+| **Consequences** | Table inventory **39 (+1 conditional)** stands: `official` 9, `clinical` 12, `synthetic` 18. `guard` stays a pure lookup with **no precedence column** (D17 open). `rule_bundle_load_id` on `generation_run`/`evaluation_run` references `clinical.rule_load` |
+| **Approval status** | Owner: **approved**. Clinical: not required. No external approval required |
+| **Blocks ERD?** | **No — settled.** The `clinical` ERD and the entity set of the `synthetic` ERD are no longer waiting on D16 |
 
 ### D17 — Evaluation-contract gaps ◆
 | | |
@@ -1320,16 +1358,17 @@ Blocking classification: **Blocks ERD** means the entity-relationship diagram ca
 
 ---
 
-### D18 — Consent default for contact and AI scoring ◆ (found in 2.1)
+### D18 — Consent defaults — **APPROVED (safest default)**
 | | |
 |---|---|
-| **Question** | When **no** `contact` consent row exists for a patient, may outreach be sent (opt-out model), or is it forbidden (opt-in model)? The same question for `ai_assisted_prioritisation` |
-| **Why it matters** | `consent` records only `granted`/`withdrawn`/`refused`; *absence of a row means never requested*. No source reviewed says what that permits. Responsible-AI wording is an *opt-out* right for AI services; contact policy is not stated. Choosing silently would invent governance |
-| **Recommended** | Do not decide in the schema. `outreach_event.contact_consent_id` is nullable and the consent trigger has one "no row" branch to set; scoring uses the same switch |
-| **Alternatives** | Opt-in for both; opt-out for both; opt-out for AI, opt-in for contact |
-| **Consequences** | Changes trigger content and generator behaviour (scenario 20/21 populations), **not** any table or relationship |
-| **Blocks ERD?** | No |
-| **Approval** | **Owner/governance: yes. Clinical: no.** |
+| **Question** | When **no** `contact` consent row exists, may outreach be sent (opt-out) or is it forbidden (opt-in)? The same question for person-level AI scoring (`ai_assisted_prioritisation`) |
+| **Decision** | **APPROVED — the safest default (project owner, revision 2.2).** **Unless an explicit, valid and applicable permission exists: (1) contact consent is *not granted* and outreach must not proceed; (2) AI scoring permission is *not granted* and person-level AI scoring must not run.** Consent **absence** stays distinct from an explicit **refusal** or **withdrawal** |
+| **Rationale** | No source reviewed says what absence permits; the lowest-risk reading is that it permits nothing. Keeping three states distinct prevents "never asked" from being reported as "refused" and prevents a refusal from being read as mere absence |
+| **Limits of the decision** | It is a **data-model default**. It does **not** assume consent is legally required or sufficient in any context; applicable governance and legal requirements **must still be reviewed**. It does not gate deterministic rule evaluation or aggregate dashboards |
+| **Alternatives not adopted** | Opt-out for both; opt-out for AI and opt-in for contact |
+| **Consequences (direct, applied in revision 2.2)** | (1) `outreach_event`: `CHECK (delivery_status = 'suppressed' OR contact_consent_id IS NOT NULL)` — a non-suppressed event must cite an explicit `contact`/`granted` row; with none it is `suppressed`/`no_contact_permission_recorded`. (2) `care_gap`: new `scoring_consent_id` (+ generated marker, FK to a `grants_ai_scoring` row) and `CHECK (priority_score IS NULL OR scoring_consent_id IS NOT NULL)`; unscored with `no_ai_permission_recorded`. (3) `consent`: new generated `grants_ai_scoring` and its parent key. (4) Reserved, trigger-checked reason values keep **no row / withdrawn / refused** distinct. (5) **No new table**; table inventory unchanged. (6) The generator must produce patients with **no** consent rows (a population the previous spec lacked) and must give every scored gap a granted AI permission. (7) Currency and scope of a permission remain constraint triggers (§6.3 #7) |
+| **Approval status** | Owner: **approved**. Clinical: not required. **External approvals still required:** governance and legal review of consent requirements for outreach and AI processing — **not obtained** |
+| **Blocks ERD?** | **No — settled** |
 
 ---
 
@@ -1338,41 +1377,44 @@ Blocking classification: **Blocks ERD** means the entity-relationship diagram ca
 The ERD is **not drawn** here. Two different things are reported and must not be confused:
 
 - **Entity-design readiness** — are the entities, keys and relationships in this document settled enough to draw?
-- **Owner approval** — has a person approved the decisions the entity design depends on? **At the time of writing, no decision in §8 is approved**, so nothing below is owner-approved. "Ready" means *drawable once the stated confirmations are given*, not approved.
+- **Approval** — has the decision they depend on been approved, and by whom? **Project-owner approvals recorded in revision 2.2: D1, D8, D16, D18. No clinical, legal or governance approval has been obtained for anything.**
 
 ### 9.1 Readiness by schema
 
-| Schema | Tables | Entity-design readiness | ERD status | Confirmations the ERD depends on |
+| Schema | Tables | Entity-design readiness | ERD status | What it still depends on |
 |---|---|---|---|---|
-| **`official`** | 9 | **Complete.** No open decision changes an entity or relationship | **Ready for ERD** | None. (Open items D3–D6, D9, D13, D15 change loader behaviour, column types or content. The optional `working_calendar` (D12) is outside the 9 and can be added to the ERD later without changing any relationship) |
-| **`clinical`** | 12 | **Complete as designed** | **Pending D16** | **D16** — four of its entities (`rule_load`, `verification_status`, `guard`, `rule_item_open_question`) exist only if D16 is confirmed. If D16 is rejected, 4 of 12 tables and the FKs into them (`rule.load_id`, `rule.verification_status`, `rule_item.verification_status`, `evaluation_reason.guard_id`, `*.rule_bundle_load_id`) change |
-| **`synthetic`** | 18 | **Complete as designed, under the recommended options** | **Pending D1, D2, D8, D16** | **D1** facility overlay (`facility_service_profile`, `patient` FK); **D2** refusal (`consent`, `component_result`, both event tables, `care_gap` evidence FKs); **D8** `generation_run` and same-run composite FKs on all 18 tables; **D16** (`evaluation_run`, `evaluation_reason`, and the four clinical entities the synthetic layer references) |
+| **`official`** | 9 | **Complete** | **Ready for ERD** | Nothing. (D3–D6, D9, D13, D15 change loader behaviour, column types or content, not relationships; `working_calendar` (D12) is outside the 9 and would be additive) |
+| **`clinical`** | 12 | **Complete** | **Ready for ERD** — D16 approved, so all 12 tables (incl. `rule_load`, `verification_status`, `guard`, `rule_item_open_question`) are in | Nothing for the entity set. D10 and D17 affect loader/engine content only |
+| **`synthetic`** | 18 | **Complete as designed** — D1, D8, D16, D18 are settled and applied | **Pending D2 (provisional)** | **D2 — clinical approval required.** Formally the synthetic ERD waits for it. The entity set is fixed under the retained design; S1–S5 can change constraint content and generated expressions, and S1/S4 could in principle add or move an entity. If the owner wants to proceed sooner, a **clearly marked provisional synthetic ERD** can be drawn with `consent`, `component_result`, `care_gap` and `referral` flagged as D2-dependent — that is an owner choice this document does not make. D11 should also be confirmed (reversing it reshapes `eligibility_evaluation`) |
 
-### 9.2 What is blocking and what is not
+### 9.2 What is blocking what
 
-| Decision | Blocks | Classified by |
-|---|---|---|
-| D1 | `synthetic` ERD | Review |
-| D2 | `synthetic` ERD | Review |
-| D8 | `synthetic` ERD | ◆ This document |
-| D16 | `clinical` **and** `synthetic` ERDs | ◆ This document |
-| D3, D4, D5, D6, D7, D9, D10, D12, D13, D14, D15, D17, D18 | Nothing in the ERD — loader behaviour, column types, content, configuration or trigger content | — |
-| D11 (evaluation history) | Treated as decided in the design; reversing it reshapes one table (`eligibility_evaluation`). Confirm alongside D1/D2/D8/D16 | — |
+| Decision | Status | Blocks the ERD? | Blocks database implementation? |
+|---|---|---|---|
+| D1, D8, D16, D18 | **Approved** | **No (settled)** | No |
+| **D2** | **Provisional — clinical approval required** | **Yes — synthetic ERD** | Refusal triggers and the generator; not the schema skeleton |
+| D11 | Not formally approved (treated as decided) | Only if reversed | `eligibility_evaluation` |
+| **D6** (PostGIS vs plain coordinates), **D7** (migration tool) | Open | No | **Yes — both must be settled before the first migration** |
+| **D12** (working-day calendar) | Open | No | Decides whether `official.working_calendar` exists; needed before referral deadlines |
+| **D13** (licence-status mapping) | Open | No | **Yes for loading/using facilities as "operating"** — blocks creating any `facility_service_profile` |
+| D15 (facility vintage, as-published coordinates) | Open | No | Facility loader prerequisite |
+| D3, D4, D5, D9, D10 | Open | No | Loaders only (rows can load with flags/raw values) |
+| D14, D17 | Open | No | **Engine** (needs clinical review) |
 
-### 9.3 Approvals still required (nothing has been approved)
+### 9.3 Approvals still required
 
-**Owner (product/technical):** D1, D2, D8, D16 (ERD-blocking); D11 (confirm); D6, D7, D9, D10, D12, D13, D14, D15, D17, D18 (before implementation).
-**Clinical review:** D2 (S2–S5 and before `OQ-WCV-REFUSAL-STATE` is closed); D14 (candidate-set policy); D17 (guard precedence, `partial` history, age convention).
-**External confirmation:** SCAD for D3, D4, D5; DoH licensing for D13 (advisable); programme owner/ADPHC for the working week (D12).
-**Governance:** D1 (names beside synthetic patients), D18 (consent default).
+**Project owner:** D2 (final approval, after clinical), D6, D7, D9, D10, D11 (confirm), D12, D13, D14, D15, D17.
+**Clinical:** **D2 — S2, S3, S4, S5** (S4 also product; S1 product with clinical consultation); D14; D17 (guard precedence, `partial` history, age convention).
+**Governance / legal:** D18 — review of consent requirements for outreach and AI processing; D1 — review of naming real facilities beside synthetic patients; D2-S5 — guardianship/consent authority.
+**External confirmation:** SCAD (D3, D4, D5); DoH licensing (D13, advisable); ADPHC (`OQ-WCV-REFUSAL-STATE`, working week D12).
 
 ### 9.4 Verdict
 
 - **`official`: ready for ERD.**
-- **`clinical`: ERD pending D16 confirmation.**
-- **`synthetic`: ERD pending D1, D2, D8 and D16 confirmation.**
+- **`clinical`: ready for ERD** (D16 approved).
+- **`synthetic`: ERD pending D2.** All other decisions that shaped its entities are approved and applied.
 
-The consolidated design is internally consistent and ready for formal approval of those four decisions; the ERD can then be drawn for all three schemas without further design work, apart from whatever D2's sub-questions S1–S5 change.
+Before **database implementation** (not the ERD): D7 and D6 must be settled before the first migration, D13 before any facility profile is created, and D2 before refusal enforcement is built.
 
 ---
 
@@ -1382,8 +1424,8 @@ These were found while consolidating. None has been silently resolved; each poin
 
 | # | Inconsistency | Handling |
 |---|---|---|
-| 1 | The review's F-03 uses `evaluation_run_id`, but its §8 `synthetic` list (16 tables) has no `evaluation_run` | Proposed as a table — **D16** |
-| 2 | The review's F-26 names a `guard` lookup (7 rows), but its §8 `clinical` list (8 tables) omits it, and omits `verification_status`, `rule_load`, and item-level open-question links the loader's model requires | Added — **D16** |
+| 1 | The review's F-03 uses `evaluation_run_id`, but its §8 `synthetic` list (16 tables) has no `evaluation_run` | Added — **D16 approved** |
+| 2 | The review's F-26 names a `guard` lookup (7 rows), but its §8 `clinical` list (8 tables) omits it, and omits `verification_status`, `rule_load`, and item-level open-question links the loader's model requires | Added — **D16 approved** |
 | 3 | The review says `reason_code` = "single primary reason by guard precedence"; **`status_definitions.yaml` defines no precedence among guards** | `evaluation_reason` records all fired guards — **D17** |
 | 4 | Reason code `rule_reported_not_verified` exists but **no guard produces it**; `GUARD-RULE-NOT-VERIFIED` maps *every* non-`verified` status (including `reported`) to `rule_unresolved` | Noted; `evaluation_reason.guard_id` is nullable. Needs the rules owner |
 | 5 | `history_availability.partial` has no defined evaluation behaviour | **D17** |
@@ -1419,7 +1461,7 @@ These were found while consolidating. None has been silently resolved; each poin
 
 ## 11. Strict-scope confirmation
 
-Revision 2.1 edited **only** `docs/phase-3-database-design.md`. No SQLAlchemy model, migration, ERD, dependency, YAML rule, ingestion script, application code, synthetic data or other document (including the review and `synthetic_data_spec.md`) was created or changed, and no clinical or governance question was resolved by assumption. Every decision in §8 remains open.
+Revisions 2.1 and 2.2 edited **only** `docs/phase-3-database-design.md`. No SQLAlchemy model, migration, ERD, dependency, YAML rule, ingestion script, application code, synthetic data or other document (including the review and `synthetic_data_spec.md`) was created or changed, and no clinical or governance question was resolved by assumption: D2 stays provisional and every other undecided item stays open.
 
 ---
 
@@ -1437,7 +1479,7 @@ Revision 2.1 edited **only** `docs/phase-3-database-design.md`. No SQLAlchemy mo
 | C6 | Provenance verified across all 18 tables: `generation_run` now has `is_synthetic`, `generator_commit`, `spec_version`, immutability; **`evaluation_reason` lacked `run_id` and a `SYNTH-` PK — fixed**; PK prefix registry and `is_synthetic` on every table | §5.1, §5.3, §5.6 |
 | C7 | **Same-run *and* same-patient** composite FKs everywhere a synthetic row references another (a screening's appointment, a guardian, a care gap, a consent must belong to the same patient); parent unique keys added to every referenced table; `history_availability` unique key added | §5.0 (R-S2), §5.2–5.5, §5.6 |
 | C8 | `care_gap` carries the evaluation's rule via a composite FK, so every evidence FK can prove same-rule; duplicate-gap unique key added | §5.5 |
-| C9 | Consent-to-outreach: `outreach_event.contact_consent_id` records the consent row relied on, proven `contact`/`granted` by FK; time-dependent checks are triggers; the "no row" default is **not** invented — new **D18** | §5.5, §8 |
+| C9 | Consent-to-outreach: `outreach_event.contact_consent_id` records the consent row relied on, proven `contact`/`granted` by FK; time-dependent checks are triggers. The "no row" default, left open in 2.1, is **settled by D18 in revision 2.2** (no permission ⇒ no outreach, no scoring) | §5.5, §8 |
 | C10 | AI/human separation made structural: column-level grants for scoring vs `care_gap_review`; reviews append-only | §5.5 |
 | C11 | `indicator.detail_source_file_id` removed (several vintages coexist, D9) | §3.3 |
 | C12 | `official.working_calendar` kept out of the 9 + clarified; D16 corrected to list the clinical entities it adds; D2 revised; D8, D16 text updated | §8, §9 |
@@ -1448,17 +1490,27 @@ Revision 2.1 edited **only** `docs/phase-3-database-design.md`. No SQLAlchemy mo
 
 | Spec says | This design | Status |
 |---|---|---|
-| Every table carries `is_synthetic`, `generator_version`, `generation_seed`, `clinically_validated` **per row** | `is_synthetic` **per row** on all 18 tables (CHECK-enforced); `run_id` per row; `generator_version`, `generator_commit`, `spec_version`, `generation_seed`, `clinically_validated`, `parameters` once per run on `generation_run`, which is immutable once finished | **D8 — owner approval required** |
+| Every table carries `is_synthetic`, `generator_version`, `generation_seed`, `clinically_validated` **per row** | `is_synthetic` **per row** on all 18 tables (CHECK-enforced); `run_id` per row; `generator_version`, `generator_commit`, `spec_version`, `generation_seed`, `clinically_validated`, `parameters` once per run on `generation_run`, which is immutable once finished | **D8 — approved (revision 2.2)** |
 | "If a single row were exported without context it must still be obvious it is not a real patient" | Still satisfied by `SYNTH-` keys, `is_synthetic`, `(synthetic)` names, `@example.invalid`, invalid Emirates ID — none depends on the removed columns. **Exports must join `generation_run`** (or carry the data card) to keep the seed and generator version with the data | Mitigation required in the export spec |
 | PKs begin `SYNTH-` | Unchanged, now `CHECK`-enforced per table (§5.6A) | — |
 | 11 tables; `facilities`; `screening_eligibility` regenerated; `consent_and_preferences` with `never_requested`; arrays of components; polymorphic `encounter_id`; `refused` in three places | See §10 "Changes from the original proposal" | Spec to be refreshed after approval |
 
-### 12.3 Unresolved design issues
+### 12.3 Revision 2.2 — owner decisions applied
+
+| Decision | Applied as |
+|---|---|
+| **D1 approved** | Status recorded; UI "simulated capability" labelling stated as an application obligation; profile creation blocked on D13 |
+| **D2 provisional** | Revision 2.1 design retained; five sub-questions tabulated with the approver each needs (clinical: S2–S5); not marked approved |
+| **D8 approved** | Status recorded; spec difference in §12.2 (spec untouched) |
+| **D16 approved** | Six entities confirmed; **clinical ERD readiness changed to "ready"** |
+| **D18 approved (safest default)** | Direct consequences applied: `outreach_event` must cite `contact`/`granted` consent unless suppressed; `care_gap.scoring_consent_id` required for any AI score; `consent.grants_ai_scoring`; reserved suppression reasons distinguish *no row* / *withdrawn* / *refused*. **No table added or removed; inventory unchanged (39 + 1 conditional)** |
+
+### 12.4 Unresolved design issues
 
 | # | Issue | Why unresolved | Route |
 |---|---|---|---|
 | U1 | **Model re-scores overwrite** `care_gap` Group 3: only human changes are kept (`care_gap_review`); earlier AI scores are lost | Preserving them needs a scoring-event table the review never required; adding it is a scope decision | Owner; non-blocking (additive later) |
-| U2 | Consent default for absent rows (contact, AI) | No source states it | **D18** |
+| U2 | ~~Consent default for absent rows~~ | **Resolved by D18 (approved, revision 2.2)**: absence ⇒ not granted. Governance/legal review of consent requirements still outstanding | D18 |
 | U3 | Evidence standard for refusal (documented **and** signed) applies provisionally to IFHAS although no IFHAS refusal rule is encoded | Clinical | **D2-S2** |
 | U4 | Whole-screening refusal is modelled as pathway/rule-scoped consent; patient-wide refusal is not valid evidence; declined referral is not a refusal | Product/clinical | **D2-S1, S3, S4** |
 | U5 | A consent that closed gaps and is **later superseded** by `granted`: historical gaps stay closed; whether the engine reopens or re-identifies is engine behaviour not defined anywhere | Clinical/engine | **D17**-adjacent; new gap rows arise from a fresh evaluation |
@@ -1469,4 +1521,4 @@ Revision 2.1 edited **only** `docs/phase-3-database-design.md`. No SQLAlchemy mo
 ---
 
 
-*Suggested next step: approve or amend D1, D2, D8 and D16 (§9), then start the ERD from a fresh conversation.*
+*Suggested next step: obtain clinical approval for D2 (S2–S5), settle D6 and D7, then draw the `official` and `clinical` ERDs (ready now) and the `synthetic` ERD once D2 is decided; start from a fresh conversation.*
