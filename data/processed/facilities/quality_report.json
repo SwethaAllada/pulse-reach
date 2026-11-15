@@ -1,0 +1,134 @@
+{
+ "generated_from": [
+  "data/raw/abudhabi_sdi/clinics.geojson",
+  "data/raw/abudhabi_sdi/diagnostic_centers.geojson",
+  "data/raw/abudhabi_sdi/dialysis_centre.geojson",
+  "data/raw/abudhabi_sdi/health_centres.geojson",
+  "data/raw/abudhabi_sdi/hospitals.geojson",
+  "data/raw/abudhabi_sdi/mobile_health_unit.geojson",
+  "data/raw/abudhabi_sdi/pharmacy.geojson",
+  "data/raw/abudhabi_sdi/provision_health_service.geojson",
+  "data/raw/abudhabi_sdi/rehabilitation_center.geojson"
+ ],
+ "output": "data/processed/facilities/abu_dhabi_health_facilities.csv",
+ "output_sha256": "62330d959b9dd79f1303d70b72a19aad381a85e4242cd2f8ddbdaf77fdf1ace4",
+ "total_rows": 5339,
+ "per_layer": {
+  "clinics": {
+   "input_features": 1250,
+   "ok": 1245,
+   "swapped_repaired": 2,
+   "missing_placeholder": 3,
+   "out_of_bounds": 0,
+   "null_geometry": 0
+  },
+  "diagnostic_centers": {
+   "input_features": 87,
+   "ok": 85,
+   "swapped_repaired": 2,
+   "missing_placeholder": 0,
+   "out_of_bounds": 0,
+   "null_geometry": 0
+  },
+  "dialysis_centre": {
+   "input_features": 13,
+   "ok": 13,
+   "swapped_repaired": 0,
+   "missing_placeholder": 0,
+   "out_of_bounds": 0,
+   "null_geometry": 0
+  },
+  "health_centres": {
+   "input_features": 1290,
+   "ok": 1289,
+   "swapped_repaired": 1,
+   "missing_placeholder": 0,
+   "out_of_bounds": 0,
+   "null_geometry": 0
+  },
+  "hospitals": {
+   "input_features": 114,
+   "ok": 112,
+   "swapped_repaired": 1,
+   "missing_placeholder": 0,
+   "out_of_bounds": 1,
+   "null_geometry": 0
+  },
+  "mobile_health_unit": {
+   "input_features": 49,
+   "ok": 48,
+   "swapped_repaired": 0,
+   "missing_placeholder": 0,
+   "out_of_bounds": 1,
+   "null_geometry": 0
+  },
+  "pharmacy": {
+   "input_features": 1715,
+   "ok": 1696,
+   "swapped_repaired": 17,
+   "missing_placeholder": 2,
+   "out_of_bounds": 0,
+   "null_geometry": 0
+  },
+  "provision_health_service": {
+   "input_features": 387,
+   "ok": 382,
+   "swapped_repaired": 3,
+   "missing_placeholder": 1,
+   "out_of_bounds": 1,
+   "null_geometry": 0
+  },
+  "rehabilitation_center": {
+   "input_features": 434,
+   "ok": 429,
+   "swapped_repaired": 5,
+   "missing_placeholder": 0,
+   "out_of_bounds": 0,
+   "null_geometry": 0
+  }
+ },
+ "bounding_box": {
+  "lon": [
+   51.0,
+   56.5
+  ],
+  "lat": [
+   22.0,
+   25.5
+  ]
+ },
+ "field_cautions": {
+  "beds / specialities / professionals": "semicolon-delimited composite strings copied verbatim, NOT numeric; populated mainly for hospitals. Parse deliberately; do not cast.",
+  "inpatient_bed_capacity": "plain integer; this is the field to use for bed counts.",
+  "thiqa / basic / enhanced": "'N/A' in every source row - carries no information, do not use.",
+  "license_status": "only a subset are 'Active'; filter before treating a row as an operating facility."
+ },
+ "license_status_counts": {
+  "Active": 3005,
+  "(blank)": 434,
+  "Preliminary - Cancelled by Law": 368,
+  "Preliminary - Active": 327,
+  "About to Expire": 287,
+  "Cancelled": 231,
+  "Preliminary - Cancelled": 151,
+  "Cancelled by Law": 147,
+  "Preliminary - About to Expire": 106,
+  "Preliminary - In Progress": 85,
+  "Temporary Closed": 73,
+  "Expired": 50,
+  "Pending Cancellation": 48,
+  "Preliminary -Cancelled by Law": 24,
+  "Revoked": 3
+ },
+ "region_counts": {
+  "Abu Dhabi": 3178,
+  "Al Ain": 1236,
+  "Al Dhafra": 491,
+  "(blank)": 434
+ },
+ "notes": [
+  "Aggregate facility register. Contains NO patient data.",
+  "geo_quality must be carried through any downstream use; rows that are not 'ok' or 'swapped_repaired' have no usable coordinates.",
+  "Licence: Abu Dhabi Government Open Data License (attribution required)."
+ ]
+}

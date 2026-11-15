@@ -1,0 +1,1520 @@
+{
+ "2583": {
+  "indicator_id": 2583,
+  "slug": "deaths_by_cause_and_gender",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2583_deaths_by_cause_and_gender.json",
+   "bytes": 346709,
+   "sha256": "044b1e14d1a87ecdea2f744ff446c11b85710cb5f9ac71c6028251b6f952e06b",
+   "rows": 825,
+   "title": "Deaths by Cause of Death and Gender - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-10-02T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2583_deaths_by_cause_and_gender_metadata.xlsx",
+   "bytes": 7262,
+   "sha256": "06babc32d061360b077ae0b7aeec914e4a17fd2711fb46ee0d51c6de7e580b1c"
+  }
+ },
+ "2584": {
+  "indicator_id": 2584,
+  "slug": "deaths_by_cause_and_age_group",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2584_deaths_by_cause_and_age_group.json",
+   "bytes": 581501,
+   "sha256": "975209a5fb4371f9e0aa812cfb821e2fd7cf160f9b20e0a8b1ecb30946106e67",
+   "rows": 1388,
+   "title": "Deaths by Cause of Death and Age Group - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-05T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2584_deaths_by_cause_and_age_group_metadata.xlsx",
+   "bytes": 7265,
+   "sha256": "8f38a4c53cb8db8e63b6f7b4647a3193ce5e7756132d5889d565bd4fe59d5b73"
+  }
+ },
+ "2585": {
+  "indicator_id": 2585,
+  "slug": "deaths_by_cause_and_citizenship",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2585_deaths_by_cause_and_citizenship.json",
+   "bytes": 335442,
+   "sha256": "a2aaa2d0e9055a6e909e2a52a4faa60bd0e35e5201f90d60ee2d6b9ef3d9ef9b",
+   "rows": 758,
+   "title": "Deaths by Cause of Death and Citizenship - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-05T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2585_deaths_by_cause_and_citizenship_metadata.xlsx",
+   "bytes": 7265,
+   "sha256": "3052ff5acccb9ee3cbe9ab95f834006fb7fc16f220943522c0ca9499548aab83"
+  }
+ },
+ "2586": {
+  "indicator_id": 2586,
+  "slug": "deaths_by_cause_and_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2586_deaths_by_cause_and_region.json",
+   "bytes": 104198,
+   "sha256": "f4c5226607ab251d5018b2f44ccc6a4e032e0ef55cfe26a34d70b4aeaedc40ae",
+   "rows": 223,
+   "title": "Deaths by Cause of Death and Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2025-12-19T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2586_deaths_by_cause_and_region_metadata.xlsx",
+   "bytes": 7270,
+   "sha256": "baaf9d05601aa37cfdc0b412daaa903d615baa172f474b6e35a878413de51859"
+  }
+ },
+ "2589": {
+  "indicator_id": 2589,
+  "slug": "inpatients_by_citizenship",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2589_inpatients_by_citizenship.json",
+   "bytes": 18034,
+   "sha256": "0a645354b544848777049e32f85b919b46b35f511d39c899c8ee933806df97ab",
+   "rows": 46,
+   "title": "Inpatients by Citizenship - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-05T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2589_inpatients_by_citizenship_metadata.xlsx",
+   "bytes": 7267,
+   "sha256": "fa5f49ee7ad29d6ebd25507afea38a02f813be7f6eb46d00997c9bd9e4cb3a01"
+  }
+ },
+ "2590": {
+  "indicator_id": 2590,
+  "slug": "inpatients_by_type_of_illness",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2590_inpatients_by_type_of_illness.json",
+   "bytes": 29496,
+   "sha256": "77d6a15263f3c667b47521a07b6b91ff9fffdf4accd44c14c234e7f49132c691",
+   "rows": 61,
+   "title": "Inpatients by Type of Illness - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-05T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2590_inpatients_by_type_of_illness_metadata.xlsx",
+   "bytes": 7271,
+   "sha256": "5e39f8682aef44363b206df589a078efcb1df995ed2b982cadfe5b76e484302e"
+  }
+ },
+ "2592": {
+  "indicator_id": 2592,
+  "slug": "inpatients_by_facility_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2592_inpatients_by_facility_region.json",
+   "bytes": 17155,
+   "sha256": "9f3b1ab8ffe1e57633c2321f8d7e0b790b815abafdb496d6b827c9141e223973",
+   "rows": 43,
+   "title": "Inpatients by Facility Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2592_inpatients_by_facility_region_metadata.xlsx",
+   "bytes": 7280,
+   "sha256": "525c9628fb3a2bab6a3738e3d80545ced6fe6d83c44a78937e7774096e9d4393"
+  }
+ },
+ "2614": {
+  "indicator_id": 2614,
+  "slug": "cancer_deaths",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2614_cancer_deaths.json",
+   "bytes": 6715,
+   "sha256": "2eb6c62714179bc4295af5b25e7b60553fe4055bde34fef4f1e5037f0e4068ec",
+   "rows": 17,
+   "title": "Cancer Deaths - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-07-31T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2614_cancer_deaths_metadata.xlsx",
+   "bytes": 7224,
+   "sha256": "03d53ebd942e4a8efc8385e28c43d7a94f0f33961112b1b2fb33e847514dbda8"
+  }
+ },
+ "2615": {
+  "indicator_id": 2615,
+  "slug": "cancer_deaths_by_gender",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2615_cancer_deaths_by_gender.json",
+   "bytes": 13430,
+   "sha256": "2a27bb5126c1b8714377636429a6e505dc8417c82766a69ad10720bf306ee3b0",
+   "rows": 36,
+   "title": "Cancer Deaths by Gender - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-05T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2615_cancer_deaths_by_gender_metadata.xlsx",
+   "bytes": 7257,
+   "sha256": "96a626b66e0bb5d85b1768fe45588ca13184affa979ef168ba13391cbb09d0e7"
+  }
+ },
+ "2616": {
+  "indicator_id": 2616,
+  "slug": "cancer_deaths_by_citizenship",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2616_cancer_deaths_by_citizenship.json",
+   "bytes": 13879,
+   "sha256": "6d3f94a81220c57a07fe6b7d18c1815d770641770ad94483bc39fce442edb6bc",
+   "rows": 35,
+   "title": "Cancer Deaths by Citizenship - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2616_cancer_deaths_by_citizenship_metadata.xlsx",
+   "bytes": 7261,
+   "sha256": "f1563f8942b834f1bbcfff1c95dd32233f8b378bc1c5d69dc86ca7f3d73d9a4b"
+  }
+ },
+ "2617": {
+  "indicator_id": 2617,
+  "slug": "outpatients",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2617_outpatients.json",
+   "bytes": 6869,
+   "sha256": "9109931e508f9ca709dbf62d7c380151082984b26a8b984488ea46aad869f841",
+   "rows": 16,
+   "title": "Outpatients - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-10-03T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2617_outpatients_metadata.xlsx",
+   "bytes": 7217,
+   "sha256": "94521591fe11f929a62a2a769e12dba982a4f0b0da1034b2dab137bb14da253d"
+  }
+ },
+ "2619": {
+  "indicator_id": 2619,
+  "slug": "outpatients_by_citizenship",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2619_outpatients_by_citizenship.json",
+   "bytes": 18247,
+   "sha256": "30a7415ef63a30d81d2587bd03f01e78b2b56d4874cc04d56817ff825c3e1bce",
+   "rows": 47,
+   "title": "Outpatients by Citizenship - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-10-03T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2619_outpatients_by_citizenship_metadata.xlsx",
+   "bytes": 7258,
+   "sha256": "7cdfa31411247d39bcc3993b2a2207a6e1a2d5ee15696453a7da0aea2a34bebb"
+  }
+ },
+ "2622": {
+  "indicator_id": 2622,
+  "slug": "outpatients_by_facility_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2622_outpatients_by_facility_region.json",
+   "bytes": 16360,
+   "sha256": "907dd0288512b57acca86a70ebffa96ee4ac46142c14a41aeae188b9c9990dbd",
+   "rows": 40,
+   "title": "Outpatients by Facility Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-10-03T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2622_outpatients_by_facility_region_metadata.xlsx",
+   "bytes": 7264,
+   "sha256": "a65aab9d120fc1a20b84771777e443003b057cc8fdfd003e19e7b1f221f5ad2a"
+  }
+ },
+ "2649": {
+  "indicator_id": 2649,
+  "slug": "communicable_disease_notifications",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2649_communicable_disease_notifications.json",
+   "bytes": 6427,
+   "sha256": "0e85b1b8dbb71220ee2570c1dea6ae7229b46c8a2d1ef8212b7a08d5c5cb25d3",
+   "rows": 15,
+   "title": "Number of Communicable Diseases Notifications - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-04T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2649_communicable_disease_notifications_metadata.xlsx",
+   "bytes": 7233,
+   "sha256": "34d8cd32fbfa2fabb322c697eba217c837df00172e8557d3d4dc9e681f3bb5de"
+  }
+ },
+ "2650": {
+  "indicator_id": 2650,
+  "slug": "communicable_disease_notifications_by_age_group",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2650_communicable_disease_notifications_by_age_group.json",
+   "bytes": 55114,
+   "sha256": "2e72db450afb0c72a81fdfcb48218b0de1c6ee57215070000b98794ad5f05baa",
+   "rows": 142,
+   "title": "Number of Communicable Diseases Notifications by Age Group - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2025-12-05T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2650_communicable_disease_notifications_by_age_group_metadata.xlsx",
+   "bytes": 7272,
+   "sha256": "acc4e77a436fc1fc4166419fcd4be2c7a2aaec04bee9c1d602833ebadcaa29b6"
+  }
+ },
+ "2651": {
+  "indicator_id": 2651,
+  "slug": "communicable_disease_notifications_by_type",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2651_communicable_disease_notifications_by_type.json",
+   "bytes": 143598,
+   "sha256": "4f1dfee89ab71a3805eaf1f1d8ed16f2aca3ba3ea0ff83871602dc7044265234",
+   "rows": 452,
+   "title": "Number of Communicable Diseases Notifications by Type of Disease - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-05T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2651_communicable_disease_notifications_by_type_metadata.xlsx",
+   "bytes": 7274,
+   "sha256": "749421fa45381170818d874844ef41640eef814ece3cf7c5f5f1b660812c7cd6"
+  }
+ },
+ "2677": {
+  "indicator_id": 2677,
+  "slug": "health_insurance_members_by_type",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2677_health_insurance_members_by_type.json",
+   "bytes": 9125,
+   "sha256": "b2954d5c5ce5f7be0a2c6673f5fa2a4c48ce1b1772fe6972d7697eb190279ec4",
+   "rows": 12,
+   "title": "Health Insurance Members by Type of Health Insurance - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-05T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2677_health_insurance_members_by_type_metadata.xlsx",
+   "bytes": 7446,
+   "sha256": "c6bcd5755b587c651f2b6f54708f5c614394ad7da58a6dc3755d480f5def77e6"
+  }
+ },
+ "2679": {
+  "indicator_id": 2679,
+  "slug": "proportion_with_health_insurance_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2679_proportion_with_health_insurance_by_region.json",
+   "bytes": 7050,
+   "sha256": "ae58b052f9bb665e0cc518ce3a7a30715027552ae5dbb489d6f5e33a0f146aeb",
+   "rows": 4,
+   "title": "Proportion of Individuals With Health Insurance by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2025-12-31T00:00:00"
+  },
+  "metadata_xlsx": {
+   "error": "<HTTPError 500: '500'>"
+  }
+ },
+ "2681": {
+  "indicator_id": 2681,
+  "slug": "clinicians_by_type_and_facility_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2681_clinicians_by_type_and_facility_region.json",
+   "bytes": 82056,
+   "sha256": "2a07a49746f41c44911ae7e0061b74bb4a9f1fadb0ee7d754338fe7c93da8105",
+   "rows": 216,
+   "title": "Clinicians by Clinician Type and Facility Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2681_clinicians_by_type_and_facility_region_metadata.xlsx",
+   "bytes": 7339,
+   "sha256": "046465c048e0da5ddea6362b6dbdef2f9614959342411c9577ed60a74e52a11a"
+  }
+ },
+ "2701": {
+  "indicator_id": 2701,
+  "slug": "physicians",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2701_physicians.json",
+   "bytes": 6498,
+   "sha256": "b5c8ccbee91d2152f17cb04d5bd2cbb1318eb8dcd5a4632ff136970e228a8bd4",
+   "rows": 16,
+   "title": "Physicians - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-07-31T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2701_physicians_metadata.xlsx",
+   "bytes": 7230,
+   "sha256": "7419200c10e26b287ef0b2164271bf7494187b61b3ce43e4b651eb2c5f355c55"
+  }
+ },
+ "2702": {
+  "indicator_id": 2702,
+  "slug": "nurses",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2702_nurses.json",
+   "bytes": 6532,
+   "sha256": "86e461bd8eb24363e51053c492f67993ef2ba5697a23081db424f7c5a6a8a959",
+   "rows": 16,
+   "title": "Nurses - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-07-31T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2702_nurses_metadata.xlsx",
+   "bytes": 7212,
+   "sha256": "954215c6e243dcc59b3bb5bf1558d14f3b0c6442202a5b8c74b77234b1c5d06b"
+  }
+ },
+ "2703": {
+  "indicator_id": 2703,
+  "slug": "nurses_by_facility_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2703_nurses_by_facility_region.json",
+   "bytes": 19789,
+   "sha256": "a8a10e0f261451b4d475afe7f4828403d4c9f106eb4b4174bf672cb02c4c6075",
+   "rows": 54,
+   "title": "Nurses by Facility Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-09-25T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2703_nurses_by_facility_region_metadata.xlsx",
+   "bytes": 7250,
+   "sha256": "ea092a88b400e1c2c28ab39a00ab04ca15ceb3d5e3cca8d36ad102e6fa662ee0"
+  }
+ },
+ "2704": {
+  "indicator_id": 2704,
+  "slug": "nurses_by_sector",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2704_nurses_by_sector.json",
+   "bytes": 17149,
+   "sha256": "09d5b74973bf14a015b77a71e9237d11eefce69475bfdfd2deabb36ffca54520",
+   "rows": 49,
+   "title": "Nurses by Sector - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-10-05T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2704_nurses_by_sector_metadata.xlsx",
+   "bytes": 7242,
+   "sha256": "c222124b1881a67fe3de260f6f394077fb82a6d30abfc842a1bfa18fa04b907c"
+  }
+ },
+ "2705": {
+  "indicator_id": 2705,
+  "slug": "nurses_per_1000_population",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2705_nurses_per_1000_population.json",
+   "bytes": 8043,
+   "sha256": "900d07d630ffd1b02e685826c42f85b5698d26801aa8a6fa7a16025f527eed58",
+   "rows": 15,
+   "title": "Nurses (Per 1,000 Population) - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2025-09-24T00:00:00"
+  },
+  "metadata_xlsx": {
+   "error": "<HTTPError 500: '500'>"
+  }
+ },
+ "2728": {
+  "indicator_id": 2728,
+  "slug": "dentists_per_1000_population",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2728_dentists_per_1000_population.json",
+   "bytes": 8388,
+   "sha256": "7aa0cdd7e12efd52746fcf6a356a80f84688caa87f5d12f69bee2957c0191f20",
+   "rows": 15,
+   "title": "Dentists (Per 1,000 Population) - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2025-09-24T00:00:00"
+  },
+  "metadata_xlsx": {
+   "error": "<HTTPError 500: '500'>"
+  }
+ },
+ "2729": {
+  "indicator_id": 2729,
+  "slug": "pharmacists",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2729_pharmacists.json",
+   "bytes": 6066,
+   "sha256": "1da364915db505659d4693360f98b1c058c992b02b7ac3e0954bab9108682c0e",
+   "rows": 11,
+   "title": "Pharmacists - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2729_pharmacists_metadata.xlsx",
+   "bytes": 7321,
+   "sha256": "f7e225201b645469a4cf90cff60dc39bd2b04f01f9fa93250dc29966214778b0"
+  }
+ },
+ "2731": {
+  "indicator_id": 2731,
+  "slug": "pharmacists_by_facility_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2731_pharmacists_by_facility_region.json",
+   "bytes": 19907,
+   "sha256": "1b8d0095a138c7aae3c2f05756bde7489c56a03d89386c67aef73645ea0278ed",
+   "rows": 52,
+   "title": "Pharmacists by Facility Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-09-25T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2731_pharmacists_by_facility_region_metadata.xlsx",
+   "bytes": 7354,
+   "sha256": "7dae9902990926fb53551cf89f038cf7e23578187c98a12589a211670421b788"
+  }
+ },
+ "2732": {
+  "indicator_id": 2732,
+  "slug": "pharmacists_per_1000_population",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2732_pharmacists_per_1000_population.json",
+   "bytes": 7567,
+   "sha256": "d17e672b67dcd917fb26e9099e25216933f2b737a343a450d493d7828d008958",
+   "rows": 10,
+   "title": "Pharmacists (Per 1,000 Population) - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2025-09-24T00:00:00"
+  },
+  "metadata_xlsx": {
+   "error": "<HTTPError 500: '500'>"
+  }
+ },
+ "2753": {
+  "indicator_id": 2753,
+  "slug": "hospital_beds_by_type",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2753_hospital_beds_by_type.json",
+   "bytes": 9230,
+   "sha256": "11755c58755cb1438f98cf612aa0dfb6d7a67950675103dc0eede35b383a5c05",
+   "rows": 16,
+   "title": "Hospital Beds by Type - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2753_hospital_beds_by_type_metadata.xlsx",
+   "bytes": 7295,
+   "sha256": "bb64c2a07ee86aae719bd32d98890a1b4d69eae7a24a30368c03309383e125cc"
+  }
+ },
+ "2798": {
+  "indicator_id": 2798,
+  "slug": "licensed_healthcare_facilities_by_type_and_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2798_licensed_healthcare_facilities_by_type_and_region.json",
+   "bytes": 99720,
+   "sha256": "5c27736251fbf94e6a4a29999d6f9b16dfd077aa33218b26de816d700364da4d",
+   "rows": 268,
+   "title": "Number of Licensed Healthcare Facilities by Type and Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-05T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2798_licensed_healthcare_facilities_by_type_and_region_metadata.xlsx",
+   "bytes": 7297,
+   "sha256": "17e7b296bb042a12ae5492e9e002983793da8947f1b7fd4d65e5a4ce2099ac22"
+  }
+ },
+ "2800": {
+  "indicator_id": 2800,
+  "slug": "hospitals",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2800_hospitals.json",
+   "bytes": 7002,
+   "sha256": "78a22535ae156a4a909d5beb292d00355928240a48abc713cba9a58b2146e0c5",
+   "rows": 17,
+   "title": "Hospitals - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-07-31T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2800_hospitals_metadata.xlsx",
+   "bytes": 7223,
+   "sha256": "fad21ae06466a22f4dd6d162ab3bcc7800e27b40110533468a1f67a2be4e476d"
+  }
+ },
+ "2801": {
+  "indicator_id": 2801,
+  "slug": "hospitals_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2801_hospitals_by_region.json",
+   "bytes": 23707,
+   "sha256": "57ea90bc768fb78d3ef7bae72e7255f0ef634ec75fa7083b2b26f2df7db9e5b1",
+   "rows": 68,
+   "title": "Hospitals by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-19T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2801_hospitals_by_region_metadata.xlsx",
+   "bytes": 7254,
+   "sha256": "dfd43eb564d3e7c660140e136cdaf55321727423e3afb06b09afa7ae0d710ca1"
+  }
+ },
+ "2822": {
+  "indicator_id": 2822,
+  "slug": "health_centers",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2822_health_centers.json",
+   "bytes": 7190,
+   "sha256": "2b9a93fb75f0596f5d90efb4eaa2b92b388ef17b4bcb6fe87b97314a20e4f6fc",
+   "rows": 17,
+   "title": "Health Centers - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2822_health_centers_metadata.xlsx",
+   "bytes": 7245,
+   "sha256": "d241ecef97048b24ab85170605a97de70c1832b31c7d7a1ce13b53dfbaea88cc"
+  }
+ },
+ "2823": {
+  "indicator_id": 2823,
+  "slug": "health_centers_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2823_health_centers_by_region.json",
+   "bytes": 23755,
+   "sha256": "5ee5cf08218818b6e980adfe9997ecf518df4de60b8030a698d5a58b6004d56b",
+   "rows": 67,
+   "title": "Health Centers by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-05T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2823_health_centers_by_region_metadata.xlsx",
+   "bytes": 7277,
+   "sha256": "898e9672a92d255330080a521acb6e9532455b31d7f4ee66bcace13b166296ca"
+  }
+ },
+ "2825": {
+  "indicator_id": 2825,
+  "slug": "clinics",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2825_clinics.json",
+   "bytes": 6585,
+   "sha256": "f9ba966a856348a220b903a3b61e8bef86edc44548009a8bab15dc374cdd5390",
+   "rows": 17,
+   "title": "Clinics - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-05T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2825_clinics_metadata.xlsx",
+   "bytes": 7205,
+   "sha256": "6a5d8f89776c052b1eef4341fff538bef63ab20c21fea2b8375ea2dc2ec85a34"
+  }
+ },
+ "2845": {
+  "indicator_id": 2845,
+  "slug": "clinics_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2845_clinics_by_region.json",
+   "bytes": 23397,
+   "sha256": "1b6a88fd8b7da78d430c412ab9f47d167c6a5722da4176ea238de807316ce3d1",
+   "rows": 68,
+   "title": "Clinics by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-04T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2845_clinics_by_region_metadata.xlsx",
+   "bytes": 7240,
+   "sha256": "be1186b3a2caa8f8559a71da94c540ef1ec63dd981f23d443a15706eb0b4b143"
+  }
+ },
+ "2847": {
+  "indicator_id": 2847,
+  "slug": "pharmacies",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2847_pharmacies.json",
+   "bytes": 6709,
+   "sha256": "91e9ee312166a77f6f9684591f185255dcd2a537288de07dbf8575b61c4c31fd",
+   "rows": 17,
+   "title": "Pharmacies - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-07-31T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2847_pharmacies_metadata.xlsx",
+   "bytes": 7212,
+   "sha256": "b6288faede499aedfc45983c5440dd73cf2f20e18c8ec2c1ab768576093d1def"
+  }
+ },
+ "2848": {
+  "indicator_id": 2848,
+  "slug": "pharmacies_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2848_pharmacies_by_region.json",
+   "bytes": 23640,
+   "sha256": "e84aa46bfcd37ae5c8eae4634f27555c18307256bf13daea14fefc9793f1d1b2",
+   "rows": 68,
+   "title": "Pharmacies by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-19T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2848_pharmacies_by_region_metadata.xlsx",
+   "bytes": 7244,
+   "sha256": "3a9f66b01f505d96e01249344838e02dbf65c80da66a8e008722def8857cf5ee"
+  }
+ },
+ "2872": {
+  "indicator_id": 2872,
+  "slug": "inpatients",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2872_inpatients.json",
+   "bytes": 8488,
+   "sha256": "74914a7d516e276f9a6cce5e08570c414f0036bb3f0276a12ab974fc14461a9e",
+   "rows": 16,
+   "title": "Inpatients - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-07-31T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2872_inpatients_metadata.xlsx",
+   "bytes": 7225,
+   "sha256": "baf3d61ba17fd4fb48c7a5536c44d2bb44b5c5e6240c8ee9b161c1da4651b3b4"
+  }
+ },
+ "2985": {
+  "indicator_id": 2985,
+  "slug": "deaths_by_cause_of_death",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/2985_deaths_by_cause_of_death.json",
+   "bytes": 157712,
+   "sha256": "46a4f576b4852ee1d443ab45c6d05e276557d0c4fa8f55ed638fec96112cca28",
+   "rows": 409,
+   "title": "Deaths by Cause of Death - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-05T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/2985_deaths_by_cause_of_death_metadata.xlsx",
+   "bytes": 7246,
+   "sha256": "19da8942c201218c87ef0cc587042cb5f47d0174d83280ccd5c95a562a194979"
+  }
+ },
+ "3002": {
+  "indicator_id": 3002,
+  "slug": "population_growth_rate_by_gender",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3002_population_growth_rate_by_gender.json",
+   "bytes": 23107,
+   "sha256": "6b2b9bc506635b9e58c87db5b6b08558db975583a2c824d8e1138f7e1e608ce3",
+   "rows": 60,
+   "title": "Population Growth Rate by Gender - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-06-29T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3002_population_growth_rate_by_gender_metadata.xlsx",
+   "bytes": 7420,
+   "sha256": "65c89371d2c98f2978bd734f782275d6b0987e552b6c92e89439c0a209cd17ff"
+  }
+ },
+ "3175": {
+  "indicator_id": 3175,
+  "slug": "population_estimates_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3175_population_estimates_by_region.json",
+   "bytes": 29824,
+   "sha256": "c4b2fe0a59575e851ef99a3fb9df89c18b767a2b58b79b80e0e6574754fa3196",
+   "rows": 80,
+   "title": "Population Estimates by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-07-15T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3175_population_estimates_by_region_metadata.xlsx",
+   "bytes": 7362,
+   "sha256": "d20545417b7703aae8d7105c038ba6e23beadbfb8060c9ef0f859ad35fc26ac9"
+  }
+ },
+ "3178": {
+  "indicator_id": 3178,
+  "slug": "population_density_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3178_population_density_by_region.json",
+   "bytes": 27620,
+   "sha256": "12f20a0a5a24b3165d3f8cc7577813a3045406ed3f9fae072824200f1f1f7820",
+   "rows": 80,
+   "title": "Population Density Estimates by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-07-29T00:00:00"
+  },
+  "metadata_xlsx": {
+   "error": "<HTTPError 500: '500'>"
+  }
+ },
+ "3267": {
+  "indicator_id": 3267,
+  "slug": "crude_birth_rate_by_region_and_citizenship",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3267_crude_birth_rate_by_region_and_citizenship.json",
+   "bytes": 62192,
+   "sha256": "95281092274ec88dbf130fb8e950ac42f64208cab173598a7eb4cd9c9062358b",
+   "rows": 156,
+   "title": "Crude Birth Rate by Region and Citizenship - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-11-05T00:00:00"
+  },
+  "metadata_xlsx": {
+   "error": "<HTTPError 500: '500'>"
+  }
+ },
+ "3269": {
+  "indicator_id": 3269,
+  "slug": "crude_birth_rate_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3269_crude_birth_rate_by_region.json",
+   "bytes": 19980,
+   "sha256": "6674822b6ca18c7aa14869e3c42afa5b854a9d7a2582e389078c741d2bf6a2f1",
+   "rows": 52,
+   "title": "Crude Birth Rate by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-11-05T00:00:00"
+  },
+  "metadata_xlsx": {
+   "error": "<HTTPError 500: '500'>"
+  }
+ },
+ "3271": {
+  "indicator_id": 3271,
+  "slug": "crude_death_rate_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3271_crude_death_rate_by_region.json",
+   "bytes": 17976,
+   "sha256": "456bf23041dc14c117662d30b79372f76eb6a6f8e8d582381d9e8f0b58a76d7d",
+   "rows": 44,
+   "title": "Crude Death Rate by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-10-31T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3271_crude_death_rate_by_region_metadata.xlsx",
+   "bytes": 7246,
+   "sha256": "c7e8b29380de93b6f92a56bd168f1f89d640b85c7321539dff98e12c3e9925a1"
+  }
+ },
+ "3274": {
+  "indicator_id": 3274,
+  "slug": "infant_mortality_rate_by_citizenship",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3274_infant_mortality_rate_by_citizenship.json",
+   "bytes": 14309,
+   "sha256": "d2624805c35acb10fb572a21b5e21955393f380ba81decab9ad00674801e544e",
+   "rows": 33,
+   "title": "Infant Mortality Rate by Citizenship - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "error": "<HTTPError 500: '500'>"
+  }
+ },
+ "3276": {
+  "indicator_id": 3276,
+  "slug": "age_specific_mortality_rate_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3276_age_specific_mortality_rate_by_region.json",
+   "bytes": 303826,
+   "sha256": "9450556b1f03195f4cde297cc09b87147dc42e995fcfb63f6db97a2c3049481e",
+   "rows": 836,
+   "title": "Age Specific Mortality Rate by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-11-02T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3276_age_specific_mortality_rate_by_region_metadata.xlsx",
+   "bytes": 7269,
+   "sha256": "3057a34173c83be2dff203171d24dc009d20211185ef11a2c429a55ebdecedb4"
+  }
+ },
+ "3280": {
+  "indicator_id": 3280,
+  "slug": "under_five_mortality_rate_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3280_under_five_mortality_rate_by_region.json",
+   "bytes": 17212,
+   "sha256": "c39bf82e48384dceae65a4c58a7518273d1ed51bbb7695e039b0e61eb404c10e",
+   "rows": 43,
+   "title": "Under-Five Mortality Rate by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "error": "<HTTPError 500: '500'>"
+  }
+ },
+ "3281": {
+  "indicator_id": 3281,
+  "slug": "under_five_mortality_rate_by_citizenship",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3281_under_five_mortality_rate_by_citizenship.json",
+   "bytes": 14269,
+   "sha256": "43ab5670dcbb58cdcdb9e6cf782602eb365a71ac1784ba884d2cc1df003e3a3f",
+   "rows": 32,
+   "title": "Under-Five Mortality Rate by Citizenship - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "error": "<HTTPError 500: '500'>"
+  }
+ },
+ "3319": {
+  "indicator_id": 3319,
+  "slug": "infant_mortality_rate_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3319_infant_mortality_rate_by_region.json",
+   "bytes": 17341,
+   "sha256": "92aa17b9a17726729c067ab347ac2b0c07237fd2776ee1be383268212b9231f7",
+   "rows": 44,
+   "title": "Infant Mortality Rate by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-10-02T00:00:00"
+  },
+  "metadata_xlsx": {
+   "error": "<HTTPError 500: '500'>"
+  }
+ },
+ "3321": {
+  "indicator_id": 3321,
+  "slug": "infant_mortality_rate_by_gender",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3321_infant_mortality_rate_by_gender.json",
+   "bytes": 13679,
+   "sha256": "849159fa88b80c8f542ed945599db2fc02f2d2ab7f64ded397db89bc0aad218e",
+   "rows": 33,
+   "title": "Infant Mortality Rate by Gender - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-10-02T00:00:00"
+  },
+  "metadata_xlsx": {
+   "error": "<HTTPError 500: '500'>"
+  }
+ },
+ "3421": {
+  "indicator_id": 3421,
+  "slug": "stillbirth_rate_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3421_stillbirth_rate_by_region.json",
+   "bytes": 10149,
+   "sha256": "2530d2765110ea239dde725e31cc559f5ab6f5aaeabff61b5ae626fbdfc908ec",
+   "rows": 19,
+   "title": "Stillbirth Rate by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3421_stillbirth_rate_by_region_metadata.xlsx",
+   "bytes": 7247,
+   "sha256": "156720cab93b5d7df7e3eb6c1fa050a3a3b37eae3a48a55a216943b51ea6b052"
+  }
+ },
+ "3422": {
+  "indicator_id": 3422,
+  "slug": "deaths_by_region_citizenship_gender",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3422_deaths_by_region_citizenship_gender.json",
+   "bytes": 358099,
+   "sha256": "79a07327709d0e57b0676535b774c2577db626cf19bd3ae4ff9dc9529320853d",
+   "rows": 863,
+   "title": "Deaths by Region, Citizenship and Gender - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-10-07T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3422_deaths_by_region_citizenship_gender_metadata.xlsx",
+   "bytes": 7272,
+   "sha256": "0ebb307518257a5b6260edea7cbb486fd649ef29089942ac8870826149b24f88"
+  }
+ },
+ "3423": {
+  "indicator_id": 3423,
+  "slug": "under_five_deaths_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3423_under_five_deaths_by_region.json",
+   "bytes": 21583,
+   "sha256": "caf5c6b80da3eac8dabd5a55950743837dd4fa55700cde5bec95258e37664161",
+   "rows": 60,
+   "title": "Under-Five Deaths by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3423_under_five_deaths_by_region_metadata.xlsx",
+   "bytes": 7200,
+   "sha256": "11bda5790a00a398788500f163ff370cf4dc9dc05aba4dc44aa0ff2708d9bc47"
+  }
+ },
+ "3424": {
+  "indicator_id": 3424,
+  "slug": "under_five_deaths_by_region_citizenship_gender",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3424_under_five_deaths_by_region_citizenship_gender.json",
+   "bytes": 384255,
+   "sha256": "1ed5fb4adfcec215b40eab88ffda89656b782dd1163f0fa09b793f982b1cb00c",
+   "rows": 928,
+   "title": "Under-Five Deaths by Region, Citizenship and Gender - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3424_under_five_deaths_by_region_citizenship_gender_metadata.xlsx",
+   "bytes": 7231,
+   "sha256": "dca454a3a669053461013a14c393145aadc7e41be914f2446fbf6d6ec485b996"
+  }
+ },
+ "3459": {
+  "indicator_id": 3459,
+  "slug": "stillbirths_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3459_stillbirths_by_region.json",
+   "bytes": 10942,
+   "sha256": "2078dfa451fc3c5489a312c7283b6412d646d721cf95445c439e5ac3b2846bc5",
+   "rows": 23,
+   "title": "Stillbirths by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3459_stillbirths_by_region_metadata.xlsx",
+   "bytes": 7194,
+   "sha256": "2b639c5c7acc71cac5dd3bf403ad641dd064b916a1dc471c4412d5c71e2b7099"
+  }
+ },
+ "3463": {
+  "indicator_id": 3463,
+  "slug": "births_by_citizenship",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3463_births_by_citizenship.json",
+   "bytes": 52008,
+   "sha256": "87a725ef544d7a013d2828500a2da25a5d93a71dda912b6fb924b2a70ff12c61",
+   "rows": 165,
+   "title": "Births by Citizenship - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3463_births_by_citizenship_metadata.xlsx",
+   "bytes": 7207,
+   "sha256": "132d3c5bdd46290ff804f8d5212ef98421e027822003ed074aa7dbd76fb6f55c"
+  }
+ },
+ "3465": {
+  "indicator_id": 3465,
+  "slug": "births_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3465_births_by_region.json",
+   "bytes": 67803,
+   "sha256": "bf187c982cc0b7dbd097b75544653b72747cc17710dc202b1b8794e82bd0dcbe",
+   "rows": 219,
+   "title": "Births by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3465_births_by_region_metadata.xlsx",
+   "bytes": 7199,
+   "sha256": "f8dd35bdd12e5f67ae7a1251e50b63d7a4c66466c2645c8ddbcda5c81f255b2f"
+  }
+ },
+ "3466": {
+  "indicator_id": 3466,
+  "slug": "births_by_gender",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3466_births_by_gender.json",
+   "bytes": 47071,
+   "sha256": "0c5225fad00a7ed22632d1a5b525ff33a52b18105c9f200f82f1d32cd7560c53",
+   "rows": 159,
+   "title": "Births by Gender - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-09-29T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3466_births_by_gender_metadata.xlsx",
+   "bytes": 7201,
+   "sha256": "b62ff9cae251de9e31557a40a5a11470c19720984d6eaf6c1a25fa0f926ada0e"
+  }
+ },
+ "3495": {
+  "indicator_id": 3495,
+  "slug": "neonatal_deaths_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3495_neonatal_deaths_by_region.json",
+   "bytes": 21624,
+   "sha256": "8d0e2bd18011a3280b9dcccc9eaad3e76b78bed079d0c2274937f91208ccb45e",
+   "rows": 60,
+   "title": "Neonatal Deaths by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3495_neonatal_deaths_by_region_metadata.xlsx",
+   "bytes": 7187,
+   "sha256": "d05d75c4bf9ef6c941e8f663bb4f85c248b9b06146757e1273a96465c04f616b"
+  }
+ },
+ "3496": {
+  "indicator_id": 3496,
+  "slug": "neonatal_deaths_by_citizenship",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3496_neonatal_deaths_by_citizenship.json",
+   "bytes": 16711,
+   "sha256": "cde3e38d1c086039f9ada4a2fcf3a828c3f722831bb44c4a7d6acd535ebc5d05",
+   "rows": 43,
+   "title": "Neonatal Deaths by Citizenship - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3496_neonatal_deaths_by_citizenship_metadata.xlsx",
+   "bytes": 7194,
+   "sha256": "1ca167c50b15093b09c9b5ea9b52f59e066d889a3db63396738baec7c9902e36"
+  }
+ },
+ "3498": {
+  "indicator_id": 3498,
+  "slug": "post_neonatal_mortality_rate_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3498_post_neonatal_mortality_rate_by_region.json",
+   "bytes": 17857,
+   "sha256": "820be637b1025608a81a04d87f4270c0b8d96a6a9a92ab6f678f9233ea3bf7ab",
+   "rows": 43,
+   "title": "Post-Neonatal Mortality Rate by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "error": "<HTTPError 500: '500'>"
+  }
+ },
+ "3502": {
+  "indicator_id": 3502,
+  "slug": "post_neonatal_deaths_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3502_post_neonatal_deaths_by_region.json",
+   "bytes": 19615,
+   "sha256": "5bbd846d6c31055d5d39a495e0a2607a34b799429effa6c15b52e8881ded3fe4",
+   "rows": 53,
+   "title": "Post-Neonatal Deaths by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-10-03T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3502_post_neonatal_deaths_by_region_metadata.xlsx",
+   "bytes": 7207,
+   "sha256": "45bd6ffda493661f380701edb7bc1ff25ed543e4dda6845469eda9fed442d129"
+  }
+ },
+ "3505": {
+  "indicator_id": 3505,
+  "slug": "infant_deaths_by_region_citizenship_gender",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3505_infant_deaths_by_region_citizenship_gender.json",
+   "bytes": 350392,
+   "sha256": "93a4999a577838bbf562f5a41e679d937eddfddcb40649f0f3469fb15548bd82",
+   "rows": 847,
+   "title": "Infant Deaths by Region, Citizenship and Gender - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3505_infant_deaths_by_region_citizenship_gender_metadata.xlsx",
+   "bytes": 7212,
+   "sha256": "b09e14280b01ff73853581c86ffa1d693165cfea5bc779e167e13ef3c7ca6f77"
+  }
+ },
+ "3506": {
+  "indicator_id": 3506,
+  "slug": "infant_deaths_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3506_infant_deaths_by_region.json",
+   "bytes": 20057,
+   "sha256": "084569fa71e657f7eacd7fa087e9d09b1038725b357bd799196fa01a6b61aada",
+   "rows": 56,
+   "title": "Infant Deaths by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3506_infant_deaths_by_region_metadata.xlsx",
+   "bytes": 7185,
+   "sha256": "7e79d953c4c1414519ecd47b9db9a5b6acfb4201b48f2d785d72a3d54dba032f"
+  }
+ },
+ "3507": {
+  "indicator_id": 3507,
+  "slug": "infant_deaths_by_gender",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3507_infant_deaths_by_gender.json",
+   "bytes": 15561,
+   "sha256": "27bfb74c9d354d9394a8c4f8367d391479307f70fcf50395020dae487b14457f",
+   "rows": 43,
+   "title": "Infant Deaths by Gender - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3507_infant_deaths_by_gender_metadata.xlsx",
+   "bytes": 7192,
+   "sha256": "0e84a88c15419def0b8a1183b00f7f27c623c53606707d6c01ad5469e14a60cc"
+  }
+ },
+ "3508": {
+  "indicator_id": 3508,
+  "slug": "under_five_deaths_by_citizenship",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3508_under_five_deaths_by_citizenship.json",
+   "bytes": 16757,
+   "sha256": "72d3ea188d2c3d7138f241fba7e45222a66ce8c9e6f854640b67d3cd25fb4fc5",
+   "rows": 43,
+   "title": "Under-Five Deaths by Citizenship - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3508_under_five_deaths_by_citizenship_metadata.xlsx",
+   "bytes": 7207,
+   "sha256": "12931e9856391f82804abce17b18f0de9cc609fc5368cb64570786bd7de4bf20"
+  }
+ },
+ "3509": {
+  "indicator_id": 3509,
+  "slug": "under_five_deaths_by_gender",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3509_under_five_deaths_by_gender.json",
+   "bytes": 15966,
+   "sha256": "eaaf43fdfbd0a07fd686ef5a9f98ee761fb15bcfb21d02ba797184a747329d56",
+   "rows": 43,
+   "title": "Under-Five Deaths by Gender - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3509_under_five_deaths_by_gender_metadata.xlsx",
+   "bytes": 7203,
+   "sha256": "84d3c99bab1f844618cf44c2fbf6cbf9613bdf2d03e45b64cc93c9fbd8df8362"
+  }
+ },
+ "3510": {
+  "indicator_id": 3510,
+  "slug": "deaths_by_citizenship",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3510_deaths_by_citizenship.json",
+   "bytes": 61046,
+   "sha256": "f4e2bf1a19a1f766055d2a8a30f95979718b961a2f63a42da1e0c103bb22af9a",
+   "rows": 195,
+   "title": "Deaths by Citizenship - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3510_deaths_by_citizenship_metadata.xlsx",
+   "bytes": 7247,
+   "sha256": "07e598253cf4268f883836d7856c0b9ea8cc8fb6c5f67c2f77d02f35537908a0"
+  }
+ },
+ "3535": {
+  "indicator_id": 3535,
+  "slug": "deaths_by_citizenship_and_age_group",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3535_deaths_by_citizenship_and_age_group.json",
+   "bytes": 294454,
+   "sha256": "0c32a943e271c872a5d06bcace931d7a0635a47a3f57fc022713027f26f49d83",
+   "rows": 852,
+   "title": "Deaths by Citizenship and Age Group - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-10-02T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3535_deaths_by_citizenship_and_age_group_metadata.xlsx",
+   "bytes": 7262,
+   "sha256": "30ea1babc1784f86dbf80614512cdfc3e08692a79dd0f4b770a79590531e0cfe"
+  }
+ },
+ "3536": {
+  "indicator_id": 3536,
+  "slug": "deaths_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3536_deaths_by_region.json",
+   "bytes": 28401,
+   "sha256": "ec3f5506db16b1a84c043508c820a683f1fb51a2a9e211058c9b480e95960fe4",
+   "rows": 83,
+   "title": "Deaths by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3536_deaths_by_region_metadata.xlsx",
+   "bytes": 7240,
+   "sha256": "950f70451081762ba9dae750f56cb0a66ee8f4ff50bf8d3cd6391746670d6c25"
+  }
+ },
+ "3549": {
+  "indicator_id": 3549,
+  "slug": "births_by_region_citizenship_gender",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3549_births_by_region_citizenship_gender.json",
+   "bytes": 966799,
+   "sha256": "a8a4ac93a449679ac449dbf57de634a24e1d1b9ad6916bf8778566ce02850411",
+   "rows": 2379,
+   "title": "Births by Region, Citizenship and Gender - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3549_births_by_region_citizenship_gender_metadata.xlsx",
+   "bytes": 7226,
+   "sha256": "4ece526afdfa4ecc7556dd9c8478c459d44e27747210f947d8ee84141add5d41"
+  }
+ },
+ "3583": {
+  "indicator_id": 3583,
+  "slug": "infant_deaths_by_citizenship",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3583_infant_deaths_by_citizenship.json",
+   "bytes": 16361,
+   "sha256": "811b305a7859e7a93c9fb5a531ebd7daafff8ac9c448997b01732f89534c8c7c",
+   "rows": 43,
+   "title": "Infant Deaths by Citizenship - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3583_infant_deaths_by_citizenship_metadata.xlsx",
+   "bytes": 7194,
+   "sha256": "55cf583b991dc72a06856bef4c11142d2d01c1181a8dc683cf896c07b786703f"
+  }
+ },
+ "3813": {
+  "indicator_id": 3813,
+  "slug": "neonatal_mortality_rate_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3813_neonatal_mortality_rate_by_region.json",
+   "bytes": 17550,
+   "sha256": "5158e541f319ae928f83918b1f46a5d6ff1d49e5db6db1f60703a22cc5f95c79",
+   "rows": 43,
+   "title": "Neonatal Mortality Rate by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-01T00:00:00"
+  },
+  "metadata_xlsx": {
+   "error": "<HTTPError 500: '500'>"
+  }
+ },
+ "3916": {
+  "indicator_id": 3916,
+  "slug": "population_estimates",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3916_population_estimates.json",
+   "bytes": 19843,
+   "sha256": "1836d61d372a2a501c9167d29a8d2424c6e5742cd59c7c0d78f8d889730d4b2a",
+   "rows": 66,
+   "title": "Population Estimates - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-07-15T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3916_population_estimates_metadata.xlsx",
+   "bytes": 7324,
+   "sha256": "9b7023ad6cced69e9e9ccd2ad18647eea09e0b96c4e07279e32376f602d5fb1b"
+  }
+ },
+ "3919": {
+  "indicator_id": 3919,
+  "slug": "population_estimates_by_gender",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3919_population_estimates_by_gender.json",
+   "bytes": 41251,
+   "sha256": "cf9e278d1051dc11d9975bed47959db07d9dd0205cbdd24d3359082d466fb30f",
+   "rows": 132,
+   "title": "Population Estimates by Gender - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-07-15T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3919_population_estimates_by_gender_metadata.xlsx",
+   "bytes": 7363,
+   "sha256": "d21e49ac4f11f958555f258078c05f027de2c2d36228787d546f247a0187a5e3"
+  }
+ },
+ "3920": {
+  "indicator_id": 3920,
+  "slug": "population_growth_rate_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3920_population_growth_rate_by_region.json",
+   "bytes": 30469,
+   "sha256": "9be7326a84f0a16a58d8d04b1cb63119f7481e79bb152b094077bc7d6b85f518",
+   "rows": 80,
+   "title": "Population Growth Rate by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-06-29T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3920_population_growth_rate_by_region_metadata.xlsx",
+   "bytes": 7407,
+   "sha256": "c6d328ab55ebea7d905d1e8471dad718196a7cc9e5ce84021c67c0219bf2d119"
+  }
+ },
+ "3997": {
+  "indicator_id": 3997,
+  "slug": "physicians_per_1000_population",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3997_physicians_per_1000_population.json",
+   "bytes": 7987,
+   "sha256": "e26d7bc4195a71a265518b16e80c3b6a9fd807e1f63890ad38362bef5c2e0c17",
+   "rows": 15,
+   "title": "Physicians (Per 1,000 Population) - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-06-28T00:00:00"
+  },
+  "metadata_xlsx": {
+   "error": "<HTTPError 500: '500'>"
+  }
+ },
+ "3998": {
+  "indicator_id": 3998,
+  "slug": "physicians_by_facility_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/3998_physicians_by_facility_region.json",
+   "bytes": 23648,
+   "sha256": "8595b81ef2b14a29e0116af8b9c391f61d56eb1cdb634b2ad77b117a54f64627",
+   "rows": 67,
+   "title": "Physicians by Facility Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-05T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/3998_physicians_by_facility_region_metadata.xlsx",
+   "bytes": 7268,
+   "sha256": "a9adc6c11ac13b18ccdc384de46479989a21e4eddefa8386631ba120fa322243"
+  }
+ },
+ "4052": {
+  "indicator_id": 4052,
+  "slug": "hospital_beds_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/4052_hospital_beds_by_region.json",
+   "bytes": 9191,
+   "sha256": "b8984dab051120db04b1d7ad58b52f2cb192c9f1d0f0a168156133d5f1a3310b",
+   "rows": 16,
+   "title": "Hospital Beds by Region - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-08-05T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/4052_hospital_beds_by_region_metadata.xlsx",
+   "bytes": 7286,
+   "sha256": "88d76e629771054bad13a6b9252b1414d6ccb2928fadcf5642b6e3ce4afebac8"
+  }
+ },
+ "4111": {
+  "indicator_id": 4111,
+  "slug": "hospital_beds",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/4111_hospital_beds.json",
+   "bytes": 7149,
+   "sha256": "b17440da7cdf40181c34a2a56c5754c8a625956557413ff6d2aef9a48c28bfb6",
+   "rows": 16,
+   "title": "Hospital Beds - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2026-07-31T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/4111_hospital_beds_metadata.xlsx",
+   "bytes": 7253,
+   "sha256": "e7a0a7f0aa458074123a4cb16366440203bd2f58e18ad0c6d5359b247b68e3b6"
+  }
+ },
+ "4866": {
+  "indicator_id": 4866,
+  "slug": "projection_of_population",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/4866_projection_of_population.json",
+   "bytes": 4980,
+   "sha256": "462d4b5ee62f170a77eb3b3d1c35ba0348dddceac891c31766ea893bcddc00b2",
+   "rows": 4,
+   "title": "Projection of Population - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2025-12-16T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/4866_projection_of_population_metadata.xlsx",
+   "bytes": 7374,
+   "sha256": "2391f64896fc1a87f431a2cef07ee9b77773a50765e42647a539c10be8c46a4f"
+  }
+ },
+ "4868": {
+  "indicator_id": 4868,
+  "slug": "projection_of_population_by_age_group",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/4868_projection_of_population_by_age_group.json",
+   "bytes": 25367,
+   "sha256": "805da5cb094459efdbf963cd5134da2a527a47ccbd16d2d03691619ea661e0c3",
+   "rows": 72,
+   "title": "Projection of Population by Age Group - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2025-12-19T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/4868_projection_of_population_by_age_group_metadata.xlsx",
+   "bytes": 7420,
+   "sha256": "9e581d538e9432bfb928d02974486647cf18215d17b2f131bd2240f0bba9c90e"
+  }
+ },
+ "4869": {
+  "indicator_id": 4869,
+  "slug": "projection_of_population_by_gender",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/4869_projection_of_population_by_gender.json",
+   "bytes": 8187,
+   "sha256": "ffcd37dc0e82f1ca6ee6a59fcc63648ace33e0791181e508fa9f83032003d3a7",
+   "rows": 12,
+   "title": "Projection of Population by Gender - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2025-12-17T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/4869_projection_of_population_by_gender_metadata.xlsx",
+   "bytes": 7414,
+   "sha256": "6cf58dde90ec202a255a23213ca140dba29286a1c6453a3d0bef519618dcede9"
+  }
+ },
+ "4870": {
+  "indicator_id": 4870,
+  "slug": "projection_of_population_by_region",
+  "detail": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_detail/4870_projection_of_population_by_region.json",
+   "bytes": 10752,
+   "sha256": "35f09651c5e45056d3c1a0ce02e1cea691cedecb8d0532df4673c607a8f7bcd6",
+   "rows": 16,
+   "title": "Projection of Population by Region of Residence - Annually",
+   "data_source": "SCAD Official",
+   "updated": "2025-12-16T00:00:00"
+  },
+  "metadata_xlsx": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_statad/indicator_metadata/4870_projection_of_population_by_region_metadata.xlsx",
+   "bytes": 7421,
+   "sha256": "a0b86993c76332a01ffdab570754565a6df93e4724ce25ecb33408974d297877"
+  }
+ }
+}

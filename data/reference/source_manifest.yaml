@@ -18,14 +18,22 @@
 #
 # `verification` follows docs/data-sources.md: verified | reported | unresolved.
 
-manifest_version: 1.0.0
-generated: 2026-11-14
-generated_by: Phase 2.5 data acquisition and readiness audit
+manifest_version: 2.0.0
+generated: 2026-11-15
+generated_by: Phase 2.5 comprehensive official data acquisition and validation
 network_context: >-
-  All checks were run from a non-UAE network on 2026-11-14. Several UAE government hosts
-  (doh.gov.ae, mohap.gov.ae, addata.gov.ae) terminated the TLS handshake. That is an
-  environment limitation, NOT evidence that the sources are unavailable or that the files
-  do not exist. Re-verify from a UAE network before concluding anything about them.
+  All checks were run from a non-UAE network (Cloudflare edge MAA) on 2026-11-14/15.
+  doh.gov.ae and mohap.gov.ae terminate the TLS handshake at Client Hello; the *.fcsc.gov.ae
+  API hosts return Cloudflare HTTP 403. Those are environment limitations, NOT evidence that
+  the sources are unavailable or that the files do not exist. Re-verify from a UAE network.
+  IMPORTANT EXCEPTION: tableau.doh.gov.ae has NO DNS A record at all, so the 18 DoH datasets
+  pointing at it are dead links in the publisher's own catalogue, not a network block.
+changes_in_v2: >-
+  Two machine-readable official endpoints were located and harvested, superseding earlier
+  "not downloadable" conclusions: (1) the SCAD statistics API on statad.gov.ae (86 indicators,
+  SRC-17), and (2) the Abu Dhabi SDI ArcGIS OpenData service (5,339 geocoded health
+  facilities, SRC-18). SRC-12 (census population) and SRC-01B (addata.gov.ae) are superseded.
+  See docs/data-acquisition-report.md.
 
 sources:
 
@@ -359,7 +367,7 @@ sources:
       The workbook carries no publication date field. The HTTP Last-Modified header
       (2023-11-06) is the only date evidence held, and it is a server timestamp, not a
       stated publication date.
-    data_source_within_file: "Source: Health Department - Abu Dhabi" (stated on each table)
+    data_source_within_file: 'Source: Health Department - Abu Dhabi (stated on each table)'
     coverage: Emirate of Abu Dhabi, by region. Aggregate only — no individual records.
     permitted_reuse: >-
       SCAD site terms of use, read 2026-11-14: "The content of this website, including
@@ -445,6 +453,12 @@ sources:
         (2) check SCAD's Bayaan platform (https://scad.gov.ae/en/bayaan) from a UAE network.
         Do NOT scrape the chart's JavaScript literals into data/raw/ and present them as a dataset
         — they are page assets with no accompanying metadata, methodology note or licence scope.
+    superseded_by: >-
+      SRC-17-SCAD-STATISTICS-API. The population figures this entry could only read off a web
+      page are now held as machine-readable series with longer history and a 2025 reference
+      period (indicators 3916, 3175, 3919, 3002, 3920, 4866-4870). This entry is retained as
+      the record of what was attempted; do NOT cite the page figures below when the API series
+      cover the same quantity.
     coverage: Emirate of Abu Dhabi, as of September 2024. 2024 figures derived from integrated administrative registers.
     figures_read_from_page:   # context only — recorded here, deliberately NOT written to data/raw/
       total_population_2024: 4135985
@@ -469,9 +483,23 @@ sources:
     validation: none
 
   - id: SRC-13-MOHAP-OPEN-DATA
-    name: MOHAP Open Data (incl. Geocoded Location of Health Facilities 2022)
+    name: MOHAP Open Data (incl. Geocoded Location of Health Facilities)
     publisher: UAE Ministry of Health and Prevention (MOHAP)
     url: https://mohap.gov.ae/en/open-data/mohap-open-data
+    datasets_sought:   # the five named in the Phase 2.5 brief; NONE was reached
+      - Geocoded Location of Health Facilities - GIS 2026
+      - Licensed Medical Facilities Data 2024
+      - Child Vaccination 2024
+      - Mortality Data 2024
+      - Historical Data Matrix and Frequency 2022-2025
+    recheck_2026_11_15: >-
+      Re-attempted 2026-11-15 on mohap.gov.ae, www.mohap.gov.ae and plain HTTP. All failed
+      identically: curl (35) LibreSSL SSL_connect: SSL_ERROR_SYSCALL, terminating at the TLS
+      Client Hello. DNS resolves to 185.54.16.190 and TCP connects on :443, so the host exists
+      and is reachable at the network layer — the handshake is refused. NOTHING is claimed
+      about these five datasets' existence, format, columns, coordinate system or licence.
+      Note that the child-vaccination dataset would be the only official UAE immunisation
+      source identified, and is the highest-value item still unobtained.
     provides: >-
       Reported to include "Geocoded Location of Health Facilities 2022" published separately for
       MOHAP, DOH and DHA, plus "Healthcare facilities in the UAE 2023" and an annual licensed-
@@ -577,4 +605,400 @@ sources:
       - Excluded from the MVP entirely.
     belongs_in: nowhere
     verification: verified
+    validation: none
+
+  # ---------------------------------------------------------------------------
+  # F. Phase 2.5 acquisitions — machine-readable official endpoints
+  # ---------------------------------------------------------------------------
+
+  - id: SRC-17-SCAD-STATISTICS-API
+    name: SCAD Statistics API (Key Statistics Indicators) — Abu Dhabi
+    publisher: Statistics Centre – Abu Dhabi (SCAD)
+    landing_page: https://statad.gov.ae/health?ThemeID=221&tab=KSI
+    api:
+      proxy_base: https://statad.gov.ae/o/communication?url=
+      overview: Statistics/GetClickhouseKeyStatisticsIndicatorsOverview?themeId=221&lang=EN
+      detail: Statistics/GetClickhouseIndicatorDetail?indicatorId=<ID>&lang=EN
+      metadata_xlsx: Statistics/GetMetadataAndMethodology?indicatorId=<ID>&lang=EN
+      discovery_method: >-
+        The Liferay indicator page is a server-rendered shell. The three API paths above are
+        declared as literal consts inside an inline <script type="module"> on the page, together
+        with the PROXY_BASE. The data is fetched client-side through that Liferay proxy. No
+        authentication, no API key, no registration.
+      authentication: none
+      note: >-
+        The overview call returns 1,700 indicators across ALL themes (not only health). The
+        `themeId` parameter does not filter the response; selection must be done client-side.
+    provides: >-
+      Abu Dhabi indicator time series with full dimensional breakdowns: population estimates and
+      projections, health-system capacity (hospitals, beds, clinics, health centres, pharmacies),
+      workforce (physicians, nurses, pharmacists, clinicians), utilisation (inpatients,
+      outpatients), vital statistics (births, deaths, stillbirths), the complete
+      infant/neonatal/post-neonatal/under-five mortality set, cancer deaths, communicable
+      disease notifications, and health insurance membership.
+    downloadable_data: true
+    file_format: JSON (indicator detail) + XLSX (official metadata & methodology, per indicator)
+    acquisition:
+      state: dataset_obtained
+      local_path: data/raw/statad_api/
+      downloaded: 2026-11-15
+      http_status: 200
+      indicators_acquired: 86
+      metadata_workbooks_acquired: 71
+      file_count: 158
+      bytes_total: 6484000   # approx; per-file SHA-256 in data/reference/raw_checksums.sha256
+      acquisition_log: data/raw/statad_api/acquisition_log.json
+      script: data-pipeline/ingestion/fetch_statad_indicators.py
+      modified_after_download: false
+      note: >-
+        15 of 86 indicators returned no metadata XLSX (the endpoint returned JSON rather than a
+        workbook). The indicator detail JSON was obtained for all 86.
+    reference_period: Latest observation 2025 for most indicators; series from 1960 (population) and 1977 (births)
+    data_source_within_file: '"data_source": "SCAD Official" / "Source: SCAD Official Data"'
+    coverage: >-
+      Emirate of Abu Dhabi. Region dimension is consistently Abu Dhabi Region / Al Ain Region /
+      Al Dhafra Region, plus an "Emirate of Abu Dhabi" aggregate member and, in vital statistics,
+      "Abroad" and "Missing/Unknown". Aggregate only — no individual records.
+    permitted_reuse: >-
+      SCAD terms of use, re-read verbatim 2026-11-15 at https://statad.gov.ae/terms-of-use
+      (unchanged from the scad.gov.ae wording): "The content of this website, including
+      publications, tables, etc., may be reproduced, in whole or in part, and by any means,
+      without further permission from SCAD, provided that SCAD is fully acknowledged with the
+      following statements: Source: Statistics Centre – Abu Dhabi; year of publication, name of
+      the statistical product, catalogue and archive numbers, reference period and page(s)."
+      Reproduction permitted WITH attribution. Commercial use not addressed explicitly —
+      Legal review still required per RAI §3.2.1.5.
+    relevance: >-
+      The single most valuable source acquired. Closes the population-structure gap (P1/P2) with
+      real series, gives 2025 regional capacity and workforce denominators, and supplies the
+      1977-2025 birth series the Well-Child cohort needs (closes gap B6).
+    limitations:
+      - >-
+        CRITICAL: 65 of 86 indicators embed an aggregate member ("Total", or "Emirate of Abu
+        Dhabi" in REGION_EN) INSIDE the dimension. Naive SUM double-counts — e.g.
+        births_by_gender sums to 82,470 against a true 41,235. Filter aggregates explicitly.
+      - >-
+        35 of 86 indicators carry a "Missing/Unknown" dimension member. It is a real category
+        and must be preserved, never coerced to zero or dropped.
+      - >-
+        Indicator 4868 returns the age bands 5-9 and 10-14 as the strings "2026-05-09" and
+        "2026-10-14" — upstream date coercion, affecting the Arabic labels identically. Values
+        are intact; labels must be remapped explicitly.
+      - 2024 age bands sum to 4,146,925 vs a stated 4,135,985 (+10,940) — disclosure rounding.
+      - Aggregate only. Never individual data, never a prevalence source.
+      - No preventive-screening indicator of any kind (searched; none exists).
+      - Undocumented endpoint — not a contractual API. It may change without notice.
+    belongs_in: data/raw/statad_api/
+    verification: verified
+    validation: structural
+
+  - id: SRC-18-ABUDHABI-SDI-FACILITIES
+    name: Abu Dhabi SDI — licensed health facilities (ArcGIS OpenData service)
+    publisher: Department of Health – Abu Dhabi, via Abu Dhabi Spatial Data Infrastructure
+    service_url: https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer
+    catalogue_pages: https://data.abudhabi/opendata/dataset/detail?id=491e2925-4b67-4f5b-89cd-10d886f180af  # Hospitals; see acquisition_log for the rest
+    api:
+      query: <service_url>/<layerId>/query?where=1=1&outFields=*&returnGeometry=true&outSR=4326&f=geojson
+      authentication: none
+      discovery_method: >-
+        Found indirectly. The five Gov-Digital facility "XLSX" files on data.abudhabi each
+        contain ONE cell holding a URL to .../Pub/CF_Health/MapServer/<n>, which now 404s. The
+        DoH 2025 facility datasets' `esri rest` distributions named a different live path
+        (/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/<n>), which resolved.
+    provides: >-
+      Point geometry (WGS84) and 43 attributes per licensed facility: FACILITYNAME (EN/AR),
+      FACILITYLICENSE, LICENSESTATUS, TYPE/CATEGORY/SUBTYPE, REGION, CITY, ISPUBLIC,
+      INPATIENTBEDCAPACITY, SPECIALITIES, PROFESSIONALS, BEDS, emergency-capability flags,
+      contact details.
+    downloadable_data: true
+    file_format: GeoJSON (requested via outSR=4326)
+    acquisition:
+      state: dataset_obtained
+      local_path: data/raw/abudhabi_sdi/
+      downloaded: 2026-11-15
+      http_status: 200
+      features_total: 5339
+      layers:
+        - {id: 330, slug: hospitals,                features: 114}
+        - {id: 329, slug: health_centres,           features: 1290}
+        - {id: 328, slug: clinics,                  features: 1250}
+        - {id: 332, slug: pharmacy,                 features: 1715}
+        - {id: 234, slug: rehabilitation_center,    features: 434}
+        - {id: 236, slug: provision_health_service, features: 387}
+        - {id: 217, slug: diagnostic_centers,       features: 87}
+        - {id: 235, slug: mobile_health_unit,       features: 49}
+        - {id: 231, slug: dialysis_centre,          features: 13}
+      acquisition_log: data/raw/abudhabi_sdi/acquisition_log.json
+      script: data-pipeline/ingestion/fetch_abudhabi_sdi_facilities.py
+      modified_after_download: false
+    reference_period: >-
+      Live licensing register. Catalogue entries modified 2025-07-25/28. Rows carry
+      PRELIMISSUEDATE and EXPIRYDATE; there is no single publication date.
+    coverage: >-
+      Emirate of Abu Dhabi. REGION populated as Abu Dhabi (3,178) / Al Ain (1,236) /
+      Al Dhafra (491); 434 rows (all rehabilitation_center) have a blank region.
+      FACILITY-LEVEL, not patient-level. Contains no personal data.
+    permitted_reuse: >-
+      Abu Dhabi Government Open Data License, read verbatim 2026-11-15 from
+      data.abudhabi/opendata/jsonapi/node/open_data_license: "The Information Provider grants
+      you a worldwide, royalty-free, perpetual, non-exclusive license to use the Information,
+      including for commercial purposes" — free to "copy, modify, publish, translate, adapt,
+      distribute or otherwise use the information in any medium ... for any lawful purpose",
+      conditional on acknowledging the source and linking the licence. EXEMPTIONS: the licence
+      grants NO right to use Personal Information, third-party rights, or official
+      names/crests/logos. Licensed "as is", no warranty. Governed by the Abu Dhabi Government
+      Open Data Policy v1.0.
+    relevance: >-
+      Closes gap H6. Real facility names and coordinates replace the invented locations the
+      prior plan required, which is what makes a geographic outreach view honest.
+    limitations:
+      - >-
+        THIQA, BASIC and ENHANCED are "N/A" in every row. They look like insurance-acceptance
+        flags and carry NO information. IFHAS Thiqa eligibility CANNOT be derived from this file.
+      - >-
+        BEDS, SPECIALITIES and PROFESSIONALS are semicolon-delimited composite strings, not
+        numbers (e.g. "Acute Care , Pediatric , 38 , 0 , 0; ..."). Casting them yields nothing.
+        INPATIENTBEDCAPACITY is the plain integer.
+      - >-
+        Only 3,005 of 5,339 rows are LICENSESTATUS "Active". The rest are cancelled, expired,
+        preliminary or pending. Filter before treating a row as an operating facility.
+      - >-
+        40 of 5,339 features (0.75%) had defective geometry: 31 lon/lat transposed, 6 at (0,0),
+        3 outside the emirate (2 in Saudi Arabia). Repaired or flagged in data/processed/,
+        never dropped; see geo_quality.
+      - >-
+        Does NOT reconcile with SCAD by definition. Active-only: 71 hospitals / 8,828 beds here
+        vs 75 hospitals / 8,082 beds in SCAD 2801/4111 (5% and 9% variance). Licensed capacity
+        is not operational beds. DO NOT COMBINE.
+      - Undocumented service path; the previous path (Pub/CF_Health) already 404s.
+    belongs_in: data/raw/abudhabi_sdi/
+    verification: verified
+    validation: structural
+
+  - id: SRC-19-SCAD-VITAL-2025
+    name: SCAD Birth Statistics 2025 and Death Statistics 2025
+    publisher: Statistics Centre – Abu Dhabi (SCAD)
+    landing_page: https://statad.gov.ae/population?ThemeID=227&tab=Publications
+    source_urls:
+      births_2025: https://statad.gov.ae/documents/20122/3422848/publication_64080_17_1_1_2025_EN.xlsx/5c7f95d5-08ff-000e-03c8-39d08b7c4747?download=true
+      deaths_2025: https://statad.gov.ae/documents/20122/3422848/publication_64092_27_1_1_2025_EN.xlsx/6c2b4f31-9967-b65a-0fa6-c139f05c75d0?download=true
+    provides: >-
+      Births 2025 by citizenship, gender and region (5 tables); deaths 2025 by citizenship,
+      gender, region, cause and age group (5 tables). Both bilingual EN/AR with Index,
+      Metadata and Enquiries sheets.
+    downloadable_data: true
+    file_format: XLSX, bilingual EN/AR
+    acquisition:
+      state: dataset_obtained
+      downloaded: 2026-11-15
+      http_status: 200
+      files:
+        - local_path: data/raw/scad/scad_birth_statistics_2025_en.xlsx
+          content_disposition_filename: publication_64080_17_1_1_2025_EN.xlsx
+          last_modified_header: 2026-09-30T13:08:58Z
+          bytes: 1155510
+          sha256: 37c8b6b3051a762413f97253e0b5bcfef5215d18590e1a7036d8aa1c9431771b
+        - local_path: data/raw/scad/scad_death_statistics_2025_en.xlsx
+          content_disposition_filename: publication_64092_27_1_1_2025_EN.xlsx
+          last_modified_header: 2026-10-05T10:24:21Z
+          bytes: 1211030
+          sha256: 2e49419e1b0fe37ca3873f7140ea55efc2299b4094ed96c88c1597dc68f5954e
+      modified_after_download: false
+    reference_period: 2025 (calendar year)
+    publication_date_evidence: HTTP Last-Modified only (2026-09-30 / 2026-10-05); no publication date field in either workbook.
+    data_source_within_file: "Source: Department of Health – Abu Dhabi"
+    coverage: Emirate of Abu Dhabi by region and citizenship. Aggregate only.
+    permitted_reuse: As SRC-17 — SCAD terms permit reproduction with full attribution.
+    relevance: >-
+      Current birth cohort (41,235 live births 2025) for the Well-Child pathway, and the first
+      death statistics held. Supersedes the 2024 births file for current-year framing; the
+      2024 file is retained for the series.
+    limitations:
+      - >-
+        CRITICAL: the missing-value convention CHANGED between editions. Births 2024 uses "-"
+        (57 cells); births 2025 uses ":" (67 cells). Code written against 2024 will mis-parse
+        2025. Deaths 2025 uses neither.
+      - >-
+        A "Not stated" REGION column now sits alongside the pre-existing "Abroad" column.
+        Read region columns by header, never by position.
+      - Same non-tidy publication layout as the 2024 file — per-sheet explicit reads required.
+      - Births ≠ well-child attendance. Deaths ≠ morbidity. No screening data.
+      - Aggregate. Never individual-level.
+    validation_result: >-
+      Table 1 reconciles EXACTLY in both directions: regions sum to the stated emirate total on
+      every row (41,235), and Emirati + Non-Emirati + Citizenship-Not-Stated equals Total in
+      every column. Agrees exactly with API indicators 3463/3465/3466.
+    belongs_in: data/raw/scad/
+    verification: verified
+    validation: structural
+
+  - id: SRC-20-ABUDHABI-OPENDATA-CATALOGUE
+    name: Abu Dhabi Open Data Platform — catalogue and DCAT metastore
+    publisher: Abu Dhabi Government (Department of Government Enablement)
+    url: https://data.abudhabi/opendata/?language=en
+    api:
+      search: https://data.abudhabi/opendata/apis/search_main.php?fulltext=<q>&page=<n>&page-size=<n>&sort=modified&sort-order=desc
+      metastore: https://data.abudhabi/opendata/api/1/metastore/schemas/dataset/items/<identifier>
+      authentication: none
+      note: >-
+        The unfiltered metastore list endpoint times out (>60 s, repeatedly). Enumeration must
+        go through search_main.php with pagination. The portal is Drupal + a React SPA; these
+        endpoints were recovered from its JS bundle.
+    provides: DCAT-formatted metadata (title, publisher, licence, theme, issued/modified, distributions) for the catalogue.
+    downloadable_data: partial
+    file_format: JSON metadata; distributions vary (xlsx, esri rest, API, dead csv links)
+    acquisition:
+      state: dataset_obtained
+      local_path: data/raw/abudhabi_opendata/
+      downloaded: 2026-11-15
+      http_status: 200
+      datasets_enumerated: 614
+      metadata_records_held: 33
+      files_downloaded: 7
+      catalogue_snapshot: data/raw/abudhabi_opendata/catalogue_search_results.json
+      script: data-pipeline/ingestion/search_abudhabi_catalogue.py
+    coverage: Abu Dhabi Government entities plus some federal publishers (MOHAP, FCSA) republishing UAE-wide data.
+    permitted_reuse: Abu Dhabi Government Open Data License — see SRC-18 for the verbatim terms.
+    relevance: >-
+      The route by which the SDI facility service (SRC-18) was found. Also establishes, by
+      direct catalogue search, that NO Abu Dhabi preventive-screening dataset is published:
+      "screening" returns 1 match across 614 datasets, and it is not a screening-programme dataset.
+    limitations:
+      - >-
+        18 Department of Health datasets (Population Structure, Diabetes Prevalence, Cancer
+        Incidence, Facilities, Clinicians, Bed Occupancy, Vital Statistics and others) declare
+        format "csv" but their downloadURL points at https://tableau.doh.gov.ae/<Name>, which
+        has NO DNS A record. These are DEAD LINKS in the publisher's catalogue, mislabelled as
+        CSV. Nothing was obtained from them and nothing is claimed about their contents.
+      - >-
+        The five Gov-Digital facility XLSX files download successfully but contain no data —
+        one cell holding a now-404 ArcGIS URL. Superseded by SRC-18.
+      - Much of the health content is stale (DoH tabular entries modified 2022-07-17).
+    belongs_in: data/raw/abudhabi_opendata/
+    verification: verified
+    validation: structural
+
+  - id: SRC-21-MOHAP-NURSES-2008
+    name: MOHAP — Nurses by Category, Medical District, Nationality and Sex (2008)
+    publisher: Ministry of Health and Prevention (UAE federal), via data.abudhabi
+    dataset_page: https://data.abudhabi/opendata/dataset/detail?id=18c2f41d-9613-492a-aff3-4a4cd98677a6
+    provides: Counts of nurses by job category, medical district, nationality and sex for 2008.
+    downloadable_data: true
+    file_format: XLSX
+    acquisition:
+      state: dataset_obtained
+      local_path: data/raw/abudhabi_opendata/files/
+      downloaded: 2026-11-15
+      http_status: 200
+      note: Acquired because the brief named it explicitly as a known example to investigate.
+    reference_period: 2008
+    coverage: >-
+      UAE-WIDE, by MOHAP medical district. NOT Abu Dhabi-specific and NOT on the
+      Abu Dhabi / Al Ain / Al Dhafra region basis used everywhere else in this repository.
+    permitted_reuse: Abu Dhabi Government Open Data License (as republished). Publisher is MOHAP.
+    relevance: >-
+      None for the MVP. Retained only as the provenance record for a brief-named dataset that
+      was investigated and found unfit.
+    limitations:
+      - NOT FIT FOR USE. Reference period 2008 — eighteen years stale.
+      - UAE-wide federal geography; a national total must never be read as an Abu Dhabi figure.
+      - Superseded for every purpose by SRC-17 indicators 2702/2703/2704 (nurses, 2010-2025).
+    belongs_in: data/raw/abudhabi_opendata/files/
+    verification: verified
+    validation: structural
+
+  - id: SRC-22-IFHAS-PROGRAMME-STATISTICS
+    name: IFHAS and Well-Child Visit aggregate programme performance statistics
+    publisher: DoH / Abu Dhabi Public Health Center (ADPHC)
+    provides: >-
+      SOUGHT: eligible population, screening participation, completion, package-wise and
+      regional participation, follow-up and referral completion. Equivalent Well-Child Visit
+      uptake by age group.
+    downloadable_data: false
+    file_format: null
+    acquisition:
+      state: blocked
+      checked: 2026-11-15
+      reason: >-
+        NOT PUBLISHED. This is a publication gap, not a network failure. Checked: (1) the ADPHC
+        IFHAS programme page (HTTP 200, read in full — describes the programme, gives no
+        performance figures); (2) the Abu Dhabi Open Data catalogue, all 614 datasets — the term
+        "screening" returns exactly 1 match and it is not a screening-programme dataset;
+        (3) the SCAD statistics API, all 1,700 indicators — no screening, uptake, participation
+        or preventive-care indicator exists; (4) web search of ADPHC/DoH media and publications.
+        Only undated or non-comparable press figures were found: "more than 195,000 citizens
+        enrolled" (undated), "more than 150 healthcare facilities provide IFHAS services"
+        (c. 2024), newborn-screening uptake 98% (2021 MOHAP data, a DIFFERENT programme), and
+        322,000 school screenings in 2024 (a DIFFERENT programme). None is a programme
+        performance statistic for IFHAS or Well-Child Visits.
+      also_checked: >-
+        https://www.ifhas.gov.ae/ returns HTTP 404, despite being named as the programme's
+        destination in an official DoH media release dated 2025-08-01.
+      manual_instructions: >-
+        Submit a formal aggregate-data request to IFHAS.Support@adphc.gov.ae and
+        WCV.Support@adphc.gov.ae, copying the DoH Data and Digital Governance Office
+        (DDG@doh.gov.ae). Request AGGREGATE, de-identified programme indicators only, citing
+        IFHAS Appendix 9 and WCV §5.1 which define the KPIs the programme already reports
+        internally. NEVER request identifiable patient records.
+    coverage: n/a — nothing obtained
+    relevance: >-
+      This is THE critical gap for PulseReach. Without it there is no real baseline for
+      screening participation, so no model can be calibrated or validated against actual
+      programme performance.
+    limitations:
+      - >-
+        MUST NOT be confused with the IFHAS quality indicators in the clinical standard.
+        Appendix 9's ">85% participation rate" is a TARGET and a DEFINITION, not an observed
+        value. The same applies to the WCV §5.1 "target 100%" figures. Treating either as
+        programme performance data would be a fabrication.
+      - >-
+        Every screening record in PulseReach is therefore synthetic, and the UI must say so
+        wherever it displays one.
+    belongs_in: nowhere
+    verification: verified   # verified ABSENT from public sources, by direct search
+    validation: none
+
+  - id: SRC-23-FCSC-UAESTAT
+    name: FCSC UAE.Stat (.Stat Suite / SDMX)
+    publisher: Federal Competitiveness and Statistics Centre (UAE federal)
+    url: https://uaestat.fcsc.gov.ae/en
+    api:
+      sdmx_rest:
+        - https://releaseeuaestat.fcsc.gov.ae/rest
+        - https://designuaestat.fcsc.gov.ae/rest
+      documented_at: https://sis-cc.gitlab.io/dotstatsuite-documentation/using-api/api-main-features/
+      note: Endpoints recovered from the /vis page config. A standard .Stat SDMX REST API.
+    provides: >-
+      SOUGHT per the brief: health facilities by emirate/type/sector, healthcare professionals
+      by emirate and gender/sector, outpatients and inpatients by emirate and sector,
+      physicians by licensure and emirate, population estimates and demographic tables.
+    downloadable_data: unknown
+    file_format: SDMX-JSON / SDMX-ML / CSV (per .Stat Suite defaults) — unconfirmed
+    acquisition:
+      state: blocked
+      checked: 2026-11-15
+      reason: >-
+        HTTP 403 from Cloudflare (server: cloudflare, cf-ray: a5a6350f59287ebc-MAA) on every
+        API host: releaseeuaestat, designuaestat, apiuaestat, chartsuaestat, and
+        opendata.fcsc.gov.ae. Retried with a full browser header set (Accept for
+        application/vnd.sdmx.structure+json, Referer and Origin of uaestat.fcsc.gov.ae,
+        Sec-Fetch-Mode: cors) — still 403. NOTE: https://uaestat.fcsc.gov.ae/vis returns
+        HTTP 200, so the host is alive and serving; the WAF specifically rejects the data API
+        paths from this network edge.
+      manual_instructions: >-
+        From a permitted network, call GET <base>/dataflow/all/all/latest with
+        Accept: application/vnd.sdmx.structure+json;version=1.0 to list dataflows, then
+        GET <base>/data/<dataflow>/all for the series. Record each dataflow id, dimension list,
+        reference period and the stated licence before use.
+    coverage: UAE federal — NOT Abu Dhabi-specific. Any emirate breakdown must be checked per dataflow.
+    relevance: >-
+      Would be the cross-check on SCAD and MOHAP indicators that the brief asks for. Lower
+      priority than SCAD, which is authoritative for the emirate and was fully acquired.
+    limitations:
+      - Inaccessible from this environment (403). Federal scope, not emirate scope.
+      - >-
+        Cross-checking is only valid where definitions and reference periods match; FCSC
+        emirate figures and SCAD figures are not interchangeable by default.
+    belongs_in: nowhere   # until obtained from a permitted network
+    verification: unresolved
     validation: none

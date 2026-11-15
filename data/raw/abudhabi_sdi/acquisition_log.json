@@ -1,0 +1,2261 @@
+{
+ "330": {
+  "layer_id": 330,
+  "slug": "hospitals",
+  "layer_url": "https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/330",
+  "name": "Hospitals",
+  "description": "Hopsitals in Abu Dhabi Emirate||المستشفيات في إمارة أبوظبي",
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": {
+   "wkid": 4326,
+   "latestWkid": 4326,
+   "xyTolerance": 0.001,
+   "zTolerance": 0.001,
+   "mTolerance": 0.001,
+   "falseX": -450359962737.0495,
+   "falseY": -450359962737.0495,
+   "xyUnits": 10000,
+   "falseZ": 0,
+   "zUnits": 1,
+   "falseM": 0,
+   "mUnits": 1
+  },
+  "maxRecordCount": 2000,
+  "fields": [
+   {
+    "name": "OBJECTID",
+    "type": "esriFieldTypeOID",
+    "alias": "OBJECTID"
+   },
+   {
+    "name": "FACILITYNAME",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYNAME"
+   },
+   {
+    "name": "FACILITYNAMEAR",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYNAMEAR"
+   },
+   {
+    "name": "FACILITYPHONE",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYPHONE"
+   },
+   {
+    "name": "FACILITYEMAIL",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYEMAIL"
+   },
+   {
+    "name": "FACILITYLICENSE",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYLICENSE"
+   },
+   {
+    "name": "FACILITYFAX",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYFAX"
+   },
+   {
+    "name": "FACILITYPOBOX",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYPOBOX"
+   },
+   {
+    "name": "XRAY",
+    "type": "esriFieldTypeString",
+    "alias": "XRAY"
+   },
+   {
+    "name": "CTSCAN",
+    "type": "esriFieldTypeString",
+    "alias": "CTSCAN"
+   },
+   {
+    "name": "MRI",
+    "type": "esriFieldTypeString",
+    "alias": "MRI"
+   },
+   {
+    "name": "SONOGRAPHY",
+    "type": "esriFieldTypeString",
+    "alias": "SONOGRAPHY"
+   },
+   {
+    "name": "LICENSESTATUS",
+    "type": "esriFieldTypeString",
+    "alias": "LICENSESTATUS"
+   },
+   {
+    "name": "TYPE",
+    "type": "esriFieldTypeString",
+    "alias": "TYPE"
+   },
+   {
+    "name": "CATEGORY",
+    "type": "esriFieldTypeString",
+    "alias": "CATEGORY"
+   },
+   {
+    "name": "SUBTYPE",
+    "type": "esriFieldTypeString",
+    "alias": "SUBTYPE"
+   },
+   {
+    "name": "REGION",
+    "type": "esriFieldTypeString",
+    "alias": "REGION"
+   },
+   {
+    "name": "CITY",
+    "type": "esriFieldTypeString",
+    "alias": "CITY"
+   },
+   {
+    "name": "ISPUBLIC",
+    "type": "esriFieldTypeString",
+    "alias": "ISPUBLIC"
+   },
+   {
+    "name": "HASINSURANCE",
+    "type": "esriFieldTypeString",
+    "alias": "HASINSURANCE"
+   },
+   {
+    "name": "TYPEOFLICENSE",
+    "type": "esriFieldTypeString",
+    "alias": "TYPEOFLICENSE"
+   },
+   {
+    "name": "PRELIMISSUEDATE",
+    "type": "esriFieldTypeString",
+    "alias": "PRELIMISSUEDATE"
+   },
+   {
+    "name": "EXPIRYDATE",
+    "type": "esriFieldTypeString",
+    "alias": "EXPIRYDATE"
+   },
+   {
+    "name": "LEVELOFEMERGENCY",
+    "type": "esriFieldTypeString",
+    "alias": "LEVELOFEMERGENCY"
+   },
+   {
+    "name": "PEDIATRICEMERGENCYDEPARTMENT",
+    "type": "esriFieldTypeString",
+    "alias": "PEDIATRICEMERGENCYDEPARTMENT"
+   },
+   {
+    "name": "MATERNITYEMERGENCYCARE",
+    "type": "esriFieldTypeString",
+    "alias": "MATERNITYEMERGENCYCARE"
+   },
+   {
+    "name": "REMOTEEMERGENCYCARE",
+    "type": "esriFieldTypeString",
+    "alias": "REMOTEEMERGENCYCARE"
+   },
+   {
+    "name": "URGENTCARECENTERS",
+    "type": "esriFieldTypeString",
+    "alias": "URGENTCARECENTERS"
+   },
+   {
+    "name": "EMERGENCYDEPARTMENT",
+    "type": "esriFieldTypeString",
+    "alias": "EMERGENCYDEPARTMENT"
+   },
+   {
+    "name": "HOMECARESERVICES",
+    "type": "esriFieldTypeString",
+    "alias": "HOMECARESERVICES"
+   },
+   {
+    "name": "INPATIENTBEDCAPACITY",
+    "type": "esriFieldTypeString",
+    "alias": "INPATIENTBEDCAPACITY"
+   },
+   {
+    "name": "SPECIALITIES",
+    "type": "esriFieldTypeString",
+    "alias": "SPECIALITIES"
+   },
+   {
+    "name": "PROFESSIONALS",
+    "type": "esriFieldTypeString",
+    "alias": "PROFESSIONALS"
+   },
+   {
+    "name": "BEDS",
+    "type": "esriFieldTypeString",
+    "alias": "BEDS"
+   },
+   {
+    "name": "ENHANCED",
+    "type": "esriFieldTypeString",
+    "alias": "ENHANCED"
+   },
+   {
+    "name": "THIQA",
+    "type": "esriFieldTypeString",
+    "alias": "THIQA"
+   },
+   {
+    "name": "HIGHEND",
+    "type": "esriFieldTypeString",
+    "alias": "HIGHEND"
+   },
+   {
+    "name": "MIDRANGE",
+    "type": "esriFieldTypeString",
+    "alias": "MIDRANGE"
+   },
+   {
+    "name": "LOWEND",
+    "type": "esriFieldTypeString",
+    "alias": "LOWEND"
+   },
+   {
+    "name": "BASIC",
+    "type": "esriFieldTypeString",
+    "alias": "BASIC"
+   },
+   {
+    "name": "Longitude",
+    "type": "esriFieldTypeDouble",
+    "alias": "Longitude"
+   },
+   {
+    "name": "Latitude",
+    "type": "esriFieldTypeDouble",
+    "alias": "Latitude"
+   },
+   {
+    "name": "CH_FID",
+    "type": "esriFieldTypeString",
+    "alias": "CH_FID"
+   },
+   {
+    "name": "Shape",
+    "type": "esriFieldTypeGeometry",
+    "alias": "Shape"
+   }
+  ],
+  "copyrightText": "Hospitals",
+  "feature_count": 114,
+  "local": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_arcgis/hospitals.geojson",
+  "bytes": 248458,
+  "sha256": "4d899ffa0f2cd34aeed84f8c273d63821223bb6e3fa61398d5275aa0d5b50e42",
+  "features_retrieved": 114
+ },
+ "329": {
+  "layer_id": 329,
+  "slug": "health_centres",
+  "layer_url": "https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/329",
+  "name": "Centers",
+  "description": "Heatlh centers in Abu Dhabi Emirate||المراكز الصحية في إمارة أبوظبي",
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": {
+   "wkid": 4326,
+   "latestWkid": 4326,
+   "xyTolerance": 0.001,
+   "zTolerance": 0.001,
+   "mTolerance": 0.001,
+   "falseX": -450359962737.0495,
+   "falseY": -450359962737.0495,
+   "xyUnits": 10000,
+   "falseZ": 0,
+   "zUnits": 1,
+   "falseM": 0,
+   "mUnits": 1
+  },
+  "maxRecordCount": 2000,
+  "fields": [
+   {
+    "name": "OBJECTID",
+    "type": "esriFieldTypeOID",
+    "alias": "OBJECTID"
+   },
+   {
+    "name": "FACILITYNAME",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYNAME"
+   },
+   {
+    "name": "FACILITYNAMEAR",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYNAMEAR"
+   },
+   {
+    "name": "FACILITYPHONE",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYPHONE"
+   },
+   {
+    "name": "FACILITYEMAIL",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYEMAIL"
+   },
+   {
+    "name": "FACILITYLICENSE",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYLICENSE"
+   },
+   {
+    "name": "FACILITYFAX",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYFAX"
+   },
+   {
+    "name": "FACILITYPOBOX",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYPOBOX"
+   },
+   {
+    "name": "XRAY",
+    "type": "esriFieldTypeString",
+    "alias": "XRAY"
+   },
+   {
+    "name": "CTSCAN",
+    "type": "esriFieldTypeString",
+    "alias": "CTSCAN"
+   },
+   {
+    "name": "MRI",
+    "type": "esriFieldTypeString",
+    "alias": "MRI"
+   },
+   {
+    "name": "SONOGRAPHY",
+    "type": "esriFieldTypeString",
+    "alias": "SONOGRAPHY"
+   },
+   {
+    "name": "LICENSESTATUS",
+    "type": "esriFieldTypeString",
+    "alias": "LICENSESTATUS"
+   },
+   {
+    "name": "TYPE",
+    "type": "esriFieldTypeString",
+    "alias": "TYPE"
+   },
+   {
+    "name": "CATEGORY",
+    "type": "esriFieldTypeString",
+    "alias": "CATEGORY"
+   },
+   {
+    "name": "SUBTYPE",
+    "type": "esriFieldTypeString",
+    "alias": "SUBTYPE"
+   },
+   {
+    "name": "REGION",
+    "type": "esriFieldTypeString",
+    "alias": "REGION"
+   },
+   {
+    "name": "CITY",
+    "type": "esriFieldTypeString",
+    "alias": "CITY"
+   },
+   {
+    "name": "ISPUBLIC",
+    "type": "esriFieldTypeString",
+    "alias": "ISPUBLIC"
+   },
+   {
+    "name": "HASINSURANCE",
+    "type": "esriFieldTypeString",
+    "alias": "HASINSURANCE"
+   },
+   {
+    "name": "TYPEOFLICENSE",
+    "type": "esriFieldTypeString",
+    "alias": "TYPEOFLICENSE"
+   },
+   {
+    "name": "PRELIMISSUEDATE",
+    "type": "esriFieldTypeString",
+    "alias": "PRELIMISSUEDATE"
+   },
+   {
+    "name": "EXPIRYDATE",
+    "type": "esriFieldTypeString",
+    "alias": "EXPIRYDATE"
+   },
+   {
+    "name": "LEVELOFEMERGENCY",
+    "type": "esriFieldTypeString",
+    "alias": "LEVELOFEMERGENCY"
+   },
+   {
+    "name": "PEDIATRICEMERGENCYDEPARTMENT",
+    "type": "esriFieldTypeString",
+    "alias": "PEDIATRICEMERGENCYDEPARTMENT"
+   },
+   {
+    "name": "MATERNITYEMERGENCYCARE",
+    "type": "esriFieldTypeString",
+    "alias": "MATERNITYEMERGENCYCARE"
+   },
+   {
+    "name": "REMOTEEMERGENCYCARE",
+    "type": "esriFieldTypeString",
+    "alias": "REMOTEEMERGENCYCARE"
+   },
+   {
+    "name": "URGENTCARECENTERS",
+    "type": "esriFieldTypeString",
+    "alias": "URGENTCARECENTERS"
+   },
+   {
+    "name": "EMERGENCYDEPARTMENT",
+    "type": "esriFieldTypeString",
+    "alias": "EMERGENCYDEPARTMENT"
+   },
+   {
+    "name": "HOMECARESERVICES",
+    "type": "esriFieldTypeString",
+    "alias": "HOMECARESERVICES"
+   },
+   {
+    "name": "INPATIENTBEDCAPACITY",
+    "type": "esriFieldTypeString",
+    "alias": "INPATIENTBEDCAPACITY"
+   },
+   {
+    "name": "SPECIALITIES",
+    "type": "esriFieldTypeString",
+    "alias": "SPECIALITIES"
+   },
+   {
+    "name": "PROFESSIONALS",
+    "type": "esriFieldTypeString",
+    "alias": "PROFESSIONALS"
+   },
+   {
+    "name": "BEDS",
+    "type": "esriFieldTypeString",
+    "alias": "BEDS"
+   },
+   {
+    "name": "ENHANCED",
+    "type": "esriFieldTypeString",
+    "alias": "ENHANCED"
+   },
+   {
+    "name": "THIQA",
+    "type": "esriFieldTypeString",
+    "alias": "THIQA"
+   },
+   {
+    "name": "HIGHEND",
+    "type": "esriFieldTypeString",
+    "alias": "HIGHEND"
+   },
+   {
+    "name": "MIDRANGE",
+    "type": "esriFieldTypeString",
+    "alias": "MIDRANGE"
+   },
+   {
+    "name": "LOWEND",
+    "type": "esriFieldTypeString",
+    "alias": "LOWEND"
+   },
+   {
+    "name": "BASIC",
+    "type": "esriFieldTypeString",
+    "alias": "BASIC"
+   },
+   {
+    "name": "Longitude",
+    "type": "esriFieldTypeDouble",
+    "alias": "Longitude"
+   },
+   {
+    "name": "Latitude",
+    "type": "esriFieldTypeDouble",
+    "alias": "Latitude"
+   },
+   {
+    "name": "CH_FID",
+    "type": "esriFieldTypeString",
+    "alias": "CH_FID"
+   },
+   {
+    "name": "Shape",
+    "type": "esriFieldTypeGeometry",
+    "alias": "Shape"
+   }
+  ],
+  "copyrightText": "Centers",
+  "feature_count": 1290,
+  "local": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_arcgis/health_centres.geojson",
+  "bytes": 2215838,
+  "sha256": "89f6126f2ae37f3f0d412d3cf36cf86eebf9322b4c791fe4bf565a4a039a23eb",
+  "features_retrieved": 1290
+ },
+ "328": {
+  "layer_id": 328,
+  "slug": "clinics",
+  "layer_url": "https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/328",
+  "name": "Clinics",
+  "description": "Clinics in Abu Dhabi Emirate||العيادات في إمارة أبوظبي",
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": {
+   "wkid": 4326,
+   "latestWkid": 4326,
+   "xyTolerance": 0.001,
+   "zTolerance": 0.001,
+   "mTolerance": 0.001,
+   "falseX": -450359962737.0495,
+   "falseY": -450359962737.0495,
+   "xyUnits": 10000,
+   "falseZ": 0,
+   "zUnits": 1,
+   "falseM": 0,
+   "mUnits": 1
+  },
+  "maxRecordCount": 2000,
+  "fields": [
+   {
+    "name": "OBJECTID",
+    "type": "esriFieldTypeOID",
+    "alias": "OBJECTID"
+   },
+   {
+    "name": "FACILITYNAME",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYNAME"
+   },
+   {
+    "name": "FACILITYNAMEAR",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYNAMEAR"
+   },
+   {
+    "name": "FACILITYPHONE",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYPHONE"
+   },
+   {
+    "name": "FACILITYEMAIL",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYEMAIL"
+   },
+   {
+    "name": "FACILITYLICENSE",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYLICENSE"
+   },
+   {
+    "name": "FACILITYFAX",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYFAX"
+   },
+   {
+    "name": "FACILITYPOBOX",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYPOBOX"
+   },
+   {
+    "name": "XRAY",
+    "type": "esriFieldTypeString",
+    "alias": "XRAY"
+   },
+   {
+    "name": "CTSCAN",
+    "type": "esriFieldTypeString",
+    "alias": "CTSCAN"
+   },
+   {
+    "name": "MRI",
+    "type": "esriFieldTypeString",
+    "alias": "MRI"
+   },
+   {
+    "name": "SONOGRAPHY",
+    "type": "esriFieldTypeString",
+    "alias": "SONOGRAPHY"
+   },
+   {
+    "name": "LICENSESTATUS",
+    "type": "esriFieldTypeString",
+    "alias": "LICENSESTATUS"
+   },
+   {
+    "name": "TYPE",
+    "type": "esriFieldTypeString",
+    "alias": "TYPE"
+   },
+   {
+    "name": "CATEGORY",
+    "type": "esriFieldTypeString",
+    "alias": "CATEGORY"
+   },
+   {
+    "name": "SUBTYPE",
+    "type": "esriFieldTypeString",
+    "alias": "SUBTYPE"
+   },
+   {
+    "name": "REGION",
+    "type": "esriFieldTypeString",
+    "alias": "REGION"
+   },
+   {
+    "name": "CITY",
+    "type": "esriFieldTypeString",
+    "alias": "CITY"
+   },
+   {
+    "name": "ISPUBLIC",
+    "type": "esriFieldTypeString",
+    "alias": "ISPUBLIC"
+   },
+   {
+    "name": "HASINSURANCE",
+    "type": "esriFieldTypeString",
+    "alias": "HASINSURANCE"
+   },
+   {
+    "name": "TYPEOFLICENSE",
+    "type": "esriFieldTypeString",
+    "alias": "TYPEOFLICENSE"
+   },
+   {
+    "name": "PRELIMISSUEDATE",
+    "type": "esriFieldTypeString",
+    "alias": "PRELIMISSUEDATE"
+   },
+   {
+    "name": "EXPIRYDATE",
+    "type": "esriFieldTypeString",
+    "alias": "EXPIRYDATE"
+   },
+   {
+    "name": "LEVELOFEMERGENCY",
+    "type": "esriFieldTypeString",
+    "alias": "LEVELOFEMERGENCY"
+   },
+   {
+    "name": "PEDIATRICEMERGENCYDEPARTMENT",
+    "type": "esriFieldTypeString",
+    "alias": "PEDIATRICEMERGENCYDEPARTMENT"
+   },
+   {
+    "name": "MATERNITYEMERGENCYCARE",
+    "type": "esriFieldTypeString",
+    "alias": "MATERNITYEMERGENCYCARE"
+   },
+   {
+    "name": "REMOTEEMERGENCYCARE",
+    "type": "esriFieldTypeString",
+    "alias": "REMOTEEMERGENCYCARE"
+   },
+   {
+    "name": "URGENTCARECENTERS",
+    "type": "esriFieldTypeString",
+    "alias": "URGENTCARECENTERS"
+   },
+   {
+    "name": "EMERGENCYDEPARTMENT",
+    "type": "esriFieldTypeString",
+    "alias": "EMERGENCYDEPARTMENT"
+   },
+   {
+    "name": "HOMECARESERVICES",
+    "type": "esriFieldTypeString",
+    "alias": "HOMECARESERVICES"
+   },
+   {
+    "name": "INPATIENTBEDCAPACITY",
+    "type": "esriFieldTypeString",
+    "alias": "INPATIENTBEDCAPACITY"
+   },
+   {
+    "name": "SPECIALITIES",
+    "type": "esriFieldTypeString",
+    "alias": "SPECIALITIES"
+   },
+   {
+    "name": "PROFESSIONALS",
+    "type": "esriFieldTypeString",
+    "alias": "PROFESSIONALS"
+   },
+   {
+    "name": "BEDS",
+    "type": "esriFieldTypeString",
+    "alias": "BEDS"
+   },
+   {
+    "name": "ENHANCED",
+    "type": "esriFieldTypeString",
+    "alias": "ENHANCED"
+   },
+   {
+    "name": "THIQA",
+    "type": "esriFieldTypeString",
+    "alias": "THIQA"
+   },
+   {
+    "name": "HIGHEND",
+    "type": "esriFieldTypeString",
+    "alias": "HIGHEND"
+   },
+   {
+    "name": "MIDRANGE",
+    "type": "esriFieldTypeString",
+    "alias": "MIDRANGE"
+   },
+   {
+    "name": "LOWEND",
+    "type": "esriFieldTypeString",
+    "alias": "LOWEND"
+   },
+   {
+    "name": "BASIC",
+    "type": "esriFieldTypeString",
+    "alias": "BASIC"
+   },
+   {
+    "name": "Longitude",
+    "type": "esriFieldTypeDouble",
+    "alias": "Longitude"
+   },
+   {
+    "name": "Latitude",
+    "type": "esriFieldTypeDouble",
+    "alias": "Latitude"
+   },
+   {
+    "name": "CH_FID",
+    "type": "esriFieldTypeString",
+    "alias": "CH_FID"
+   },
+   {
+    "name": "Shape",
+    "type": "esriFieldTypeGeometry",
+    "alias": "Shape"
+   }
+  ],
+  "copyrightText": "Clinics",
+  "feature_count": 1250,
+  "local": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_arcgis/clinics.geojson",
+  "bytes": 1891177,
+  "sha256": "8ff9680af1aee9dc82456066a164ff5c8b3893d3b8f647ea1c4ed9cd98954233",
+  "features_retrieved": 1250
+ },
+ "332": {
+  "layer_id": 332,
+  "slug": "pharmacy",
+  "layer_url": "https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/332",
+  "name": "Pharmacy",
+  "description": "Pharmacies in Abu Dhabi Emirate||الصيدليات في إمارة أبوظبي",
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": {
+   "wkid": 4326,
+   "latestWkid": 4326,
+   "xyTolerance": 0.001,
+   "zTolerance": 0.001,
+   "mTolerance": 0.001,
+   "falseX": -450359962737.0495,
+   "falseY": -450359962737.0495,
+   "xyUnits": 10000,
+   "falseZ": 0,
+   "zUnits": 1,
+   "falseM": 0,
+   "mUnits": 1
+  },
+  "maxRecordCount": 2000,
+  "fields": [
+   {
+    "name": "OBJECTID",
+    "type": "esriFieldTypeOID",
+    "alias": "OBJECTID"
+   },
+   {
+    "name": "FACILITYNAME",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYNAME"
+   },
+   {
+    "name": "FACILITYNAMEAR",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYNAMEAR"
+   },
+   {
+    "name": "FACILITYPHONE",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYPHONE"
+   },
+   {
+    "name": "FACILITYEMAIL",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYEMAIL"
+   },
+   {
+    "name": "FACILITYLICENSE",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYLICENSE"
+   },
+   {
+    "name": "FACILITYFAX",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYFAX"
+   },
+   {
+    "name": "FACILITYPOBOX",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYPOBOX"
+   },
+   {
+    "name": "XRAY",
+    "type": "esriFieldTypeString",
+    "alias": "XRAY"
+   },
+   {
+    "name": "CTSCAN",
+    "type": "esriFieldTypeString",
+    "alias": "CTSCAN"
+   },
+   {
+    "name": "MRI",
+    "type": "esriFieldTypeString",
+    "alias": "MRI"
+   },
+   {
+    "name": "SONOGRAPHY",
+    "type": "esriFieldTypeString",
+    "alias": "SONOGRAPHY"
+   },
+   {
+    "name": "LICENSESTATUS",
+    "type": "esriFieldTypeString",
+    "alias": "LICENSESTATUS"
+   },
+   {
+    "name": "TYPE",
+    "type": "esriFieldTypeString",
+    "alias": "TYPE"
+   },
+   {
+    "name": "CATEGORY",
+    "type": "esriFieldTypeString",
+    "alias": "CATEGORY"
+   },
+   {
+    "name": "SUBTYPE",
+    "type": "esriFieldTypeString",
+    "alias": "SUBTYPE"
+   },
+   {
+    "name": "REGION",
+    "type": "esriFieldTypeString",
+    "alias": "REGION"
+   },
+   {
+    "name": "CITY",
+    "type": "esriFieldTypeString",
+    "alias": "CITY"
+   },
+   {
+    "name": "ISPUBLIC",
+    "type": "esriFieldTypeString",
+    "alias": "ISPUBLIC"
+   },
+   {
+    "name": "HASINSURANCE",
+    "type": "esriFieldTypeString",
+    "alias": "HASINSURANCE"
+   },
+   {
+    "name": "TYPEOFLICENSE",
+    "type": "esriFieldTypeString",
+    "alias": "TYPEOFLICENSE"
+   },
+   {
+    "name": "PRELIMISSUEDATE",
+    "type": "esriFieldTypeString",
+    "alias": "PRELIMISSUEDATE"
+   },
+   {
+    "name": "EXPIRYDATE",
+    "type": "esriFieldTypeString",
+    "alias": "EXPIRYDATE"
+   },
+   {
+    "name": "LEVELOFEMERGENCY",
+    "type": "esriFieldTypeString",
+    "alias": "LEVELOFEMERGENCY"
+   },
+   {
+    "name": "PEDIATRICEMERGENCYDEPARTMENT",
+    "type": "esriFieldTypeString",
+    "alias": "PEDIATRICEMERGENCYDEPARTMENT"
+   },
+   {
+    "name": "MATERNITYEMERGENCYCARE",
+    "type": "esriFieldTypeString",
+    "alias": "MATERNITYEMERGENCYCARE"
+   },
+   {
+    "name": "REMOTEEMERGENCYCARE",
+    "type": "esriFieldTypeString",
+    "alias": "REMOTEEMERGENCYCARE"
+   },
+   {
+    "name": "URGENTCARECENTERS",
+    "type": "esriFieldTypeString",
+    "alias": "URGENTCARECENTERS"
+   },
+   {
+    "name": "EMERGENCYDEPARTMENT",
+    "type": "esriFieldTypeString",
+    "alias": "EMERGENCYDEPARTMENT"
+   },
+   {
+    "name": "HOMECARESERVICES",
+    "type": "esriFieldTypeString",
+    "alias": "HOMECARESERVICES"
+   },
+   {
+    "name": "INPATIENTBEDCAPACITY",
+    "type": "esriFieldTypeString",
+    "alias": "INPATIENTBEDCAPACITY"
+   },
+   {
+    "name": "SPECIALITIES",
+    "type": "esriFieldTypeString",
+    "alias": "SPECIALITIES"
+   },
+   {
+    "name": "PROFESSIONALS",
+    "type": "esriFieldTypeString",
+    "alias": "PROFESSIONALS"
+   },
+   {
+    "name": "BEDS",
+    "type": "esriFieldTypeString",
+    "alias": "BEDS"
+   },
+   {
+    "name": "ENHANCED",
+    "type": "esriFieldTypeString",
+    "alias": "ENHANCED"
+   },
+   {
+    "name": "THIQA",
+    "type": "esriFieldTypeString",
+    "alias": "THIQA"
+   },
+   {
+    "name": "HIGHEND",
+    "type": "esriFieldTypeString",
+    "alias": "HIGHEND"
+   },
+   {
+    "name": "MIDRANGE",
+    "type": "esriFieldTypeString",
+    "alias": "MIDRANGE"
+   },
+   {
+    "name": "LOWEND",
+    "type": "esriFieldTypeString",
+    "alias": "LOWEND"
+   },
+   {
+    "name": "BASIC",
+    "type": "esriFieldTypeString",
+    "alias": "BASIC"
+   },
+   {
+    "name": "Longitude",
+    "type": "esriFieldTypeDouble",
+    "alias": "Longitude"
+   },
+   {
+    "name": "Latitude",
+    "type": "esriFieldTypeDouble",
+    "alias": "Latitude"
+   },
+   {
+    "name": "CH_FID",
+    "type": "esriFieldTypeString",
+    "alias": "CH_FID"
+   },
+   {
+    "name": "Shape",
+    "type": "esriFieldTypeGeometry",
+    "alias": "Shape"
+   }
+  ],
+  "copyrightText": "Pharmacy",
+  "feature_count": 1715,
+  "local": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_arcgis/pharmacy.geojson",
+  "bytes": 2607466,
+  "sha256": "e8e54a6b2afc895198caf8afc7d91b9aaf5ee864152efc336c8de6a94031dcc5",
+  "features_retrieved": 1715
+ },
+ "217": {
+  "layer_id": 217,
+  "slug": "diagnostic_centers",
+  "layer_url": "https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/217",
+  "name": "Diagnostic Center",
+  "description": "Diagnostic centers in  Abu Dhbai Emirate||مراكز التشخيص في إمارة أبوظبي",
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": {
+   "wkid": 4326,
+   "latestWkid": 4326,
+   "xyTolerance": 0.001,
+   "zTolerance": 0.001,
+   "mTolerance": 0.001,
+   "falseX": -450359962737.0495,
+   "falseY": -450359962737.0495,
+   "xyUnits": 10000,
+   "falseZ": 0,
+   "zUnits": 1,
+   "falseM": 0,
+   "mUnits": 1
+  },
+  "maxRecordCount": 2000,
+  "fields": [
+   {
+    "name": "OBJECTID",
+    "type": "esriFieldTypeOID",
+    "alias": "OBJECTID"
+   },
+   {
+    "name": "FACILITYNAME",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYNAME"
+   },
+   {
+    "name": "FACILITYNAMEAR",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYNAMEAR"
+   },
+   {
+    "name": "FACILITYPHONE",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYPHONE"
+   },
+   {
+    "name": "FACILITYEMAIL",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYEMAIL"
+   },
+   {
+    "name": "FACILITYLICENSE",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYLICENSE"
+   },
+   {
+    "name": "FACILITYFAX",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYFAX"
+   },
+   {
+    "name": "FACILITYPOBOX",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYPOBOX"
+   },
+   {
+    "name": "XRAY",
+    "type": "esriFieldTypeString",
+    "alias": "XRAY"
+   },
+   {
+    "name": "CTSCAN",
+    "type": "esriFieldTypeString",
+    "alias": "CTSCAN"
+   },
+   {
+    "name": "MRI",
+    "type": "esriFieldTypeString",
+    "alias": "MRI"
+   },
+   {
+    "name": "SONOGRAPHY",
+    "type": "esriFieldTypeString",
+    "alias": "SONOGRAPHY"
+   },
+   {
+    "name": "LICENSESTATUS",
+    "type": "esriFieldTypeString",
+    "alias": "LICENSESTATUS"
+   },
+   {
+    "name": "TYPE",
+    "type": "esriFieldTypeString",
+    "alias": "TYPE"
+   },
+   {
+    "name": "CATEGORY",
+    "type": "esriFieldTypeString",
+    "alias": "CATEGORY"
+   },
+   {
+    "name": "SUBTYPE",
+    "type": "esriFieldTypeString",
+    "alias": "SUBTYPE"
+   },
+   {
+    "name": "REGION",
+    "type": "esriFieldTypeString",
+    "alias": "REGION"
+   },
+   {
+    "name": "CITY",
+    "type": "esriFieldTypeString",
+    "alias": "CITY"
+   },
+   {
+    "name": "ISPUBLIC",
+    "type": "esriFieldTypeString",
+    "alias": "ISPUBLIC"
+   },
+   {
+    "name": "HASINSURANCE",
+    "type": "esriFieldTypeString",
+    "alias": "HASINSURANCE"
+   },
+   {
+    "name": "TYPEOFLICENSE",
+    "type": "esriFieldTypeString",
+    "alias": "TYPEOFLICENSE"
+   },
+   {
+    "name": "PRELIMISSUEDATE",
+    "type": "esriFieldTypeString",
+    "alias": "PRELIMISSUEDATE"
+   },
+   {
+    "name": "EXPIRYDATE",
+    "type": "esriFieldTypeString",
+    "alias": "EXPIRYDATE"
+   },
+   {
+    "name": "LEVELOFEMERGENCY",
+    "type": "esriFieldTypeString",
+    "alias": "LEVELOFEMERGENCY"
+   },
+   {
+    "name": "PEDIATRICEMERGENCYDEPARTMENT",
+    "type": "esriFieldTypeString",
+    "alias": "PEDIATRICEMERGENCYDEPARTMENT"
+   },
+   {
+    "name": "MATERNITYEMERGENCYCARE",
+    "type": "esriFieldTypeString",
+    "alias": "MATERNITYEMERGENCYCARE"
+   },
+   {
+    "name": "REMOTEEMERGENCYCARE",
+    "type": "esriFieldTypeString",
+    "alias": "REMOTEEMERGENCYCARE"
+   },
+   {
+    "name": "URGENTCARECENTERS",
+    "type": "esriFieldTypeString",
+    "alias": "URGENTCARECENTERS"
+   },
+   {
+    "name": "EMERGENCYDEPARTMENT",
+    "type": "esriFieldTypeString",
+    "alias": "EMERGENCYDEPARTMENT"
+   },
+   {
+    "name": "HOMECARESERVICES",
+    "type": "esriFieldTypeString",
+    "alias": "HOMECARESERVICES"
+   },
+   {
+    "name": "INPATIENTBEDCAPACITY",
+    "type": "esriFieldTypeString",
+    "alias": "INPATIENTBEDCAPACITY"
+   },
+   {
+    "name": "SPECIALITIES",
+    "type": "esriFieldTypeString",
+    "alias": "SPECIALITIES"
+   },
+   {
+    "name": "PROFESSIONALS",
+    "type": "esriFieldTypeString",
+    "alias": "PROFESSIONALS"
+   },
+   {
+    "name": "BEDS",
+    "type": "esriFieldTypeString",
+    "alias": "BEDS"
+   },
+   {
+    "name": "ENHANCED",
+    "type": "esriFieldTypeString",
+    "alias": "ENHANCED"
+   },
+   {
+    "name": "THIQA",
+    "type": "esriFieldTypeString",
+    "alias": "THIQA"
+   },
+   {
+    "name": "HIGHEND",
+    "type": "esriFieldTypeString",
+    "alias": "HIGHEND"
+   },
+   {
+    "name": "MIDRANGE",
+    "type": "esriFieldTypeString",
+    "alias": "MIDRANGE"
+   },
+   {
+    "name": "LOWEND",
+    "type": "esriFieldTypeString",
+    "alias": "LOWEND"
+   },
+   {
+    "name": "BASIC",
+    "type": "esriFieldTypeString",
+    "alias": "BASIC"
+   },
+   {
+    "name": "Longitude",
+    "type": "esriFieldTypeDouble",
+    "alias": "Longitude"
+   },
+   {
+    "name": "Latitude",
+    "type": "esriFieldTypeDouble",
+    "alias": "Latitude"
+   },
+   {
+    "name": "CH_FID",
+    "type": "esriFieldTypeString",
+    "alias": "CH_FID"
+   },
+   {
+    "name": "Shape",
+    "type": "esriFieldTypeGeometry",
+    "alias": "Shape"
+   }
+  ],
+  "copyrightText": "DiagnosticCentre",
+  "feature_count": 87,
+  "local": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_arcgis/diagnostic_centers.geojson",
+  "bytes": 140196,
+  "sha256": "6d24cf24ffef11c091d20e4b1bfdbd0b1f59415ea14e5da85aa40e534ae5792e",
+  "features_retrieved": 87
+ },
+ "231": {
+  "layer_id": 231,
+  "slug": "dialysis_centre",
+  "layer_url": "https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/231",
+  "name": "Dialysis Centre",
+  "description": "This dataset contains information about Dialysis Centre||تحتوي مجموعة البيانات هذه على معلومات حول مركز الغسيل الكلوي",
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": {
+   "wkid": 4326,
+   "latestWkid": 4326,
+   "xyTolerance": 0.001,
+   "zTolerance": 0.001,
+   "mTolerance": 0.001,
+   "falseX": -450359962737.0495,
+   "falseY": -450359962737.0495,
+   "xyUnits": 10000,
+   "falseZ": 0,
+   "zUnits": 1,
+   "falseM": 0,
+   "mUnits": 1
+  },
+  "maxRecordCount": 2000,
+  "fields": [
+   {
+    "name": "OBJECTID",
+    "type": "esriFieldTypeOID",
+    "alias": "OBJECTID"
+   },
+   {
+    "name": "FACILITYNAME",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYNAME"
+   },
+   {
+    "name": "FACILITYNAMEAR",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYNAMEAR"
+   },
+   {
+    "name": "FACILITYPHONE",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYPHONE"
+   },
+   {
+    "name": "FACILITYEMAIL",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYEMAIL"
+   },
+   {
+    "name": "FACILITYLICENSE",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYLICENSE"
+   },
+   {
+    "name": "FACILITYFAX",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYFAX"
+   },
+   {
+    "name": "FACILITYPOBOX",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYPOBOX"
+   },
+   {
+    "name": "XRAY",
+    "type": "esriFieldTypeString",
+    "alias": "XRAY"
+   },
+   {
+    "name": "CTSCAN",
+    "type": "esriFieldTypeString",
+    "alias": "CTSCAN"
+   },
+   {
+    "name": "MRI",
+    "type": "esriFieldTypeString",
+    "alias": "MRI"
+   },
+   {
+    "name": "SONOGRAPHY",
+    "type": "esriFieldTypeString",
+    "alias": "SONOGRAPHY"
+   },
+   {
+    "name": "LICENSESTATUS",
+    "type": "esriFieldTypeString",
+    "alias": "LICENSESTATUS"
+   },
+   {
+    "name": "TYPE",
+    "type": "esriFieldTypeString",
+    "alias": "TYPE"
+   },
+   {
+    "name": "CATEGORY",
+    "type": "esriFieldTypeString",
+    "alias": "CATEGORY"
+   },
+   {
+    "name": "SUBTYPE",
+    "type": "esriFieldTypeString",
+    "alias": "SUBTYPE"
+   },
+   {
+    "name": "REGION",
+    "type": "esriFieldTypeString",
+    "alias": "REGION"
+   },
+   {
+    "name": "CITY",
+    "type": "esriFieldTypeString",
+    "alias": "CITY"
+   },
+   {
+    "name": "ISPUBLIC",
+    "type": "esriFieldTypeString",
+    "alias": "ISPUBLIC"
+   },
+   {
+    "name": "HASINSURANCE",
+    "type": "esriFieldTypeString",
+    "alias": "HASINSURANCE"
+   },
+   {
+    "name": "TYPEOFLICENSE",
+    "type": "esriFieldTypeString",
+    "alias": "TYPEOFLICENSE"
+   },
+   {
+    "name": "PRELIMISSUEDATE",
+    "type": "esriFieldTypeString",
+    "alias": "PRELIMISSUEDATE"
+   },
+   {
+    "name": "EXPIRYDATE",
+    "type": "esriFieldTypeString",
+    "alias": "EXPIRYDATE"
+   },
+   {
+    "name": "LEVELOFEMERGENCY",
+    "type": "esriFieldTypeString",
+    "alias": "LEVELOFEMERGENCY"
+   },
+   {
+    "name": "PEDIATRICEMERGENCYDEPARTMENT",
+    "type": "esriFieldTypeString",
+    "alias": "PEDIATRICEMERGENCYDEPARTMENT"
+   },
+   {
+    "name": "MATERNITYEMERGENCYCARE",
+    "type": "esriFieldTypeString",
+    "alias": "MATERNITYEMERGENCYCARE"
+   },
+   {
+    "name": "REMOTEEMERGENCYCARE",
+    "type": "esriFieldTypeString",
+    "alias": "REMOTEEMERGENCYCARE"
+   },
+   {
+    "name": "URGENTCARECENTERS",
+    "type": "esriFieldTypeString",
+    "alias": "URGENTCARECENTERS"
+   },
+   {
+    "name": "EMERGENCYDEPARTMENT",
+    "type": "esriFieldTypeString",
+    "alias": "EMERGENCYDEPARTMENT"
+   },
+   {
+    "name": "HOMECARESERVICES",
+    "type": "esriFieldTypeString",
+    "alias": "HOMECARESERVICES"
+   },
+   {
+    "name": "INPATIENTBEDCAPACITY",
+    "type": "esriFieldTypeString",
+    "alias": "INPATIENTBEDCAPACITY"
+   },
+   {
+    "name": "SPECIALITIES",
+    "type": "esriFieldTypeString",
+    "alias": "SPECIALITIES"
+   },
+   {
+    "name": "PROFESSIONALS",
+    "type": "esriFieldTypeString",
+    "alias": "PROFESSIONALS"
+   },
+   {
+    "name": "BEDS",
+    "type": "esriFieldTypeString",
+    "alias": "BEDS"
+   },
+   {
+    "name": "ENHANCED",
+    "type": "esriFieldTypeString",
+    "alias": "ENHANCED"
+   },
+   {
+    "name": "THIQA",
+    "type": "esriFieldTypeString",
+    "alias": "THIQA"
+   },
+   {
+    "name": "HIGHEND",
+    "type": "esriFieldTypeString",
+    "alias": "HIGHEND"
+   },
+   {
+    "name": "MIDRANGE",
+    "type": "esriFieldTypeString",
+    "alias": "MIDRANGE"
+   },
+   {
+    "name": "LOWEND",
+    "type": "esriFieldTypeString",
+    "alias": "LOWEND"
+   },
+   {
+    "name": "BASIC",
+    "type": "esriFieldTypeString",
+    "alias": "BASIC"
+   },
+   {
+    "name": "Longitude",
+    "type": "esriFieldTypeDouble",
+    "alias": "Longitude"
+   },
+   {
+    "name": "Latitude",
+    "type": "esriFieldTypeDouble",
+    "alias": "Latitude"
+   },
+   {
+    "name": "CH_FID",
+    "type": "esriFieldTypeString",
+    "alias": "CH_FID"
+   },
+   {
+    "name": "Shape",
+    "type": "esriFieldTypeGeometry",
+    "alias": "Shape"
+   }
+  ],
+  "copyrightText": "DialysisCentre",
+  "feature_count": 13,
+  "local": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_arcgis/dialysis_centre.geojson",
+  "bytes": 20954,
+  "sha256": "9ae33ecc6a73f7878f7a5d45c6fddd64644af1b4b74d526bb4527c26951d3c6b",
+  "features_retrieved": 13
+ },
+ "234": {
+  "layer_id": 234,
+  "slug": "rehabilitation_center",
+  "layer_url": "https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/234",
+  "name": "Rehabilitation Centre",
+  "description": "This dataset contains information about Rehabilitation Center||تحتوي مجموعة البيانات هذه على معلومات حول مركز إعادة التأهيل",
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": {
+   "wkid": 4326,
+   "latestWkid": 4326,
+   "xyTolerance": 0.001,
+   "zTolerance": 0.001,
+   "mTolerance": 0.001,
+   "falseX": -450359962737.0495,
+   "falseY": -450359962737.0495,
+   "xyUnits": 10000,
+   "falseZ": 0,
+   "zUnits": 1,
+   "falseM": 0,
+   "mUnits": 1
+  },
+  "maxRecordCount": 2000,
+  "fields": [
+   {
+    "name": "OBJECTID",
+    "type": "esriFieldTypeOID",
+    "alias": "OBJECTID"
+   },
+   {
+    "name": "FACILITYNAME",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYNAME"
+   },
+   {
+    "name": "FACILITYNAMEAR",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYNAMEAR"
+   },
+   {
+    "name": "FACILITYPHONE",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYPHONE"
+   },
+   {
+    "name": "FACILITYEMAIL",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYEMAIL"
+   },
+   {
+    "name": "FACILITYLICENSE",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYLICENSE"
+   },
+   {
+    "name": "FACILITYFAX",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYFAX"
+   },
+   {
+    "name": "FACILITYPOBOX",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYPOBOX"
+   },
+   {
+    "name": "XRAY",
+    "type": "esriFieldTypeString",
+    "alias": "XRAY"
+   },
+   {
+    "name": "CTSCAN",
+    "type": "esriFieldTypeString",
+    "alias": "CTSCAN"
+   },
+   {
+    "name": "MRI",
+    "type": "esriFieldTypeString",
+    "alias": "MRI"
+   },
+   {
+    "name": "SONOGRAPHY",
+    "type": "esriFieldTypeString",
+    "alias": "SONOGRAPHY"
+   },
+   {
+    "name": "LICENSESTATUS",
+    "type": "esriFieldTypeString",
+    "alias": "LICENSESTATUS"
+   },
+   {
+    "name": "TYPE",
+    "type": "esriFieldTypeString",
+    "alias": "TYPE"
+   },
+   {
+    "name": "CATEGORY",
+    "type": "esriFieldTypeString",
+    "alias": "CATEGORY"
+   },
+   {
+    "name": "SUBTYPE",
+    "type": "esriFieldTypeString",
+    "alias": "SUBTYPE"
+   },
+   {
+    "name": "REGION",
+    "type": "esriFieldTypeString",
+    "alias": "REGION"
+   },
+   {
+    "name": "CITY",
+    "type": "esriFieldTypeString",
+    "alias": "CITY"
+   },
+   {
+    "name": "ISPUBLIC",
+    "type": "esriFieldTypeString",
+    "alias": "ISPUBLIC"
+   },
+   {
+    "name": "HASINSURANCE",
+    "type": "esriFieldTypeString",
+    "alias": "HASINSURANCE"
+   },
+   {
+    "name": "TYPEOFLICENSE",
+    "type": "esriFieldTypeString",
+    "alias": "TYPEOFLICENSE"
+   },
+   {
+    "name": "PRELIMISSUEDATE",
+    "type": "esriFieldTypeString",
+    "alias": "PRELIMISSUEDATE"
+   },
+   {
+    "name": "EXPIRYDATE",
+    "type": "esriFieldTypeString",
+    "alias": "EXPIRYDATE"
+   },
+   {
+    "name": "LEVELOFEMERGENCY",
+    "type": "esriFieldTypeString",
+    "alias": "LEVELOFEMERGENCY"
+   },
+   {
+    "name": "PEDIATRICEMERGENCYDEPARTMENT",
+    "type": "esriFieldTypeString",
+    "alias": "PEDIATRICEMERGENCYDEPARTMENT"
+   },
+   {
+    "name": "MATERNITYEMERGENCYCARE",
+    "type": "esriFieldTypeString",
+    "alias": "MATERNITYEMERGENCYCARE"
+   },
+   {
+    "name": "REMOTEEMERGENCYCARE",
+    "type": "esriFieldTypeString",
+    "alias": "REMOTEEMERGENCYCARE"
+   },
+   {
+    "name": "URGENTCARECENTERS",
+    "type": "esriFieldTypeString",
+    "alias": "URGENTCARECENTERS"
+   },
+   {
+    "name": "EMERGENCYDEPARTMENT",
+    "type": "esriFieldTypeString",
+    "alias": "EMERGENCYDEPARTMENT"
+   },
+   {
+    "name": "HOMECARESERVICES",
+    "type": "esriFieldTypeString",
+    "alias": "HOMECARESERVICES"
+   },
+   {
+    "name": "INPATIENTBEDCAPACITY",
+    "type": "esriFieldTypeString",
+    "alias": "INPATIENTBEDCAPACITY"
+   },
+   {
+    "name": "SPECIALITIES",
+    "type": "esriFieldTypeString",
+    "alias": "SPECIALITIES"
+   },
+   {
+    "name": "PROFESSIONALS",
+    "type": "esriFieldTypeString",
+    "alias": "PROFESSIONALS"
+   },
+   {
+    "name": "BEDS",
+    "type": "esriFieldTypeString",
+    "alias": "BEDS"
+   },
+   {
+    "name": "ENHANCED",
+    "type": "esriFieldTypeString",
+    "alias": "ENHANCED"
+   },
+   {
+    "name": "THIQA",
+    "type": "esriFieldTypeString",
+    "alias": "THIQA"
+   },
+   {
+    "name": "HIGHEND",
+    "type": "esriFieldTypeString",
+    "alias": "HIGHEND"
+   },
+   {
+    "name": "MIDRANGE",
+    "type": "esriFieldTypeString",
+    "alias": "MIDRANGE"
+   },
+   {
+    "name": "LOWEND",
+    "type": "esriFieldTypeString",
+    "alias": "LOWEND"
+   },
+   {
+    "name": "BASIC",
+    "type": "esriFieldTypeString",
+    "alias": "BASIC"
+   },
+   {
+    "name": "Longitude",
+    "type": "esriFieldTypeDouble",
+    "alias": "Longitude"
+   },
+   {
+    "name": "Latitude",
+    "type": "esriFieldTypeDouble",
+    "alias": "Latitude"
+   },
+   {
+    "name": "CH_FID",
+    "type": "esriFieldTypeString",
+    "alias": "CH_FID"
+   },
+   {
+    "name": "Shape",
+    "type": "esriFieldTypeGeometry",
+    "alias": "Shape"
+   }
+  ],
+  "copyrightText": "Rehabilitation Center",
+  "feature_count": 434,
+  "local": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_arcgis/rehabilitation_center.geojson",
+  "bytes": 560828,
+  "sha256": "c8b061ef832b484bdbd2d5e0380d3e24185e363b4adc5d4dbb2b380d017cad2d",
+  "features_retrieved": 434
+ },
+ "235": {
+  "layer_id": 235,
+  "slug": "mobile_health_unit",
+  "layer_url": "https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/235",
+  "name": "Mobile HealthUnit",
+  "description": "This dataset contains information about Mobile Health Unit||تحتوي مجموعة البيانات هذه على معلومات حول الوحدة الصحية المتنقلة",
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": {
+   "wkid": 4326,
+   "latestWkid": 4326,
+   "xyTolerance": 0.001,
+   "zTolerance": 0.001,
+   "mTolerance": 0.001,
+   "falseX": -450359962737.0495,
+   "falseY": -450359962737.0495,
+   "xyUnits": 10000,
+   "falseZ": 0,
+   "zUnits": 1,
+   "falseM": 0,
+   "mUnits": 1
+  },
+  "maxRecordCount": 2000,
+  "fields": [
+   {
+    "name": "OBJECTID",
+    "type": "esriFieldTypeOID",
+    "alias": "OBJECTID"
+   },
+   {
+    "name": "FACILITYNAME",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYNAME"
+   },
+   {
+    "name": "FACILITYNAMEAR",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYNAMEAR"
+   },
+   {
+    "name": "FACILITYPHONE",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYPHONE"
+   },
+   {
+    "name": "FACILITYEMAIL",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYEMAIL"
+   },
+   {
+    "name": "FACILITYLICENSE",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYLICENSE"
+   },
+   {
+    "name": "FACILITYFAX",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYFAX"
+   },
+   {
+    "name": "FACILITYPOBOX",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYPOBOX"
+   },
+   {
+    "name": "XRAY",
+    "type": "esriFieldTypeString",
+    "alias": "XRAY"
+   },
+   {
+    "name": "CTSCAN",
+    "type": "esriFieldTypeString",
+    "alias": "CTSCAN"
+   },
+   {
+    "name": "MRI",
+    "type": "esriFieldTypeString",
+    "alias": "MRI"
+   },
+   {
+    "name": "SONOGRAPHY",
+    "type": "esriFieldTypeString",
+    "alias": "SONOGRAPHY"
+   },
+   {
+    "name": "LICENSESTATUS",
+    "type": "esriFieldTypeString",
+    "alias": "LICENSESTATUS"
+   },
+   {
+    "name": "TYPE",
+    "type": "esriFieldTypeString",
+    "alias": "TYPE"
+   },
+   {
+    "name": "CATEGORY",
+    "type": "esriFieldTypeString",
+    "alias": "CATEGORY"
+   },
+   {
+    "name": "SUBTYPE",
+    "type": "esriFieldTypeString",
+    "alias": "SUBTYPE"
+   },
+   {
+    "name": "REGION",
+    "type": "esriFieldTypeString",
+    "alias": "REGION"
+   },
+   {
+    "name": "CITY",
+    "type": "esriFieldTypeString",
+    "alias": "CITY"
+   },
+   {
+    "name": "ISPUBLIC",
+    "type": "esriFieldTypeString",
+    "alias": "ISPUBLIC"
+   },
+   {
+    "name": "HASINSURANCE",
+    "type": "esriFieldTypeString",
+    "alias": "HASINSURANCE"
+   },
+   {
+    "name": "TYPEOFLICENSE",
+    "type": "esriFieldTypeString",
+    "alias": "TYPEOFLICENSE"
+   },
+   {
+    "name": "PRELIMISSUEDATE",
+    "type": "esriFieldTypeString",
+    "alias": "PRELIMISSUEDATE"
+   },
+   {
+    "name": "EXPIRYDATE",
+    "type": "esriFieldTypeString",
+    "alias": "EXPIRYDATE"
+   },
+   {
+    "name": "LEVELOFEMERGENCY",
+    "type": "esriFieldTypeString",
+    "alias": "LEVELOFEMERGENCY"
+   },
+   {
+    "name": "PEDIATRICEMERGENCYDEPARTMENT",
+    "type": "esriFieldTypeString",
+    "alias": "PEDIATRICEMERGENCYDEPARTMENT"
+   },
+   {
+    "name": "MATERNITYEMERGENCYCARE",
+    "type": "esriFieldTypeString",
+    "alias": "MATERNITYEMERGENCYCARE"
+   },
+   {
+    "name": "REMOTEEMERGENCYCARE",
+    "type": "esriFieldTypeString",
+    "alias": "REMOTEEMERGENCYCARE"
+   },
+   {
+    "name": "URGENTCARECENTERS",
+    "type": "esriFieldTypeString",
+    "alias": "URGENTCARECENTERS"
+   },
+   {
+    "name": "EMERGENCYDEPARTMENT",
+    "type": "esriFieldTypeString",
+    "alias": "EMERGENCYDEPARTMENT"
+   },
+   {
+    "name": "HOMECARESERVICES",
+    "type": "esriFieldTypeString",
+    "alias": "HOMECARESERVICES"
+   },
+   {
+    "name": "INPATIENTBEDCAPACITY",
+    "type": "esriFieldTypeString",
+    "alias": "INPATIENTBEDCAPACITY"
+   },
+   {
+    "name": "SPECIALITIES",
+    "type": "esriFieldTypeString",
+    "alias": "SPECIALITIES"
+   },
+   {
+    "name": "PROFESSIONALS",
+    "type": "esriFieldTypeString",
+    "alias": "PROFESSIONALS"
+   },
+   {
+    "name": "BEDS",
+    "type": "esriFieldTypeString",
+    "alias": "BEDS"
+   },
+   {
+    "name": "ENHANCED",
+    "type": "esriFieldTypeString",
+    "alias": "ENHANCED"
+   },
+   {
+    "name": "THIQA",
+    "type": "esriFieldTypeString",
+    "alias": "THIQA"
+   },
+   {
+    "name": "HIGHEND",
+    "type": "esriFieldTypeString",
+    "alias": "HIGHEND"
+   },
+   {
+    "name": "MIDRANGE",
+    "type": "esriFieldTypeString",
+    "alias": "MIDRANGE"
+   },
+   {
+    "name": "LOWEND",
+    "type": "esriFieldTypeString",
+    "alias": "LOWEND"
+   },
+   {
+    "name": "BASIC",
+    "type": "esriFieldTypeString",
+    "alias": "BASIC"
+   },
+   {
+    "name": "Longitude",
+    "type": "esriFieldTypeDouble",
+    "alias": "Longitude"
+   },
+   {
+    "name": "Latitude",
+    "type": "esriFieldTypeDouble",
+    "alias": "Latitude"
+   },
+   {
+    "name": "CH_FID",
+    "type": "esriFieldTypeString",
+    "alias": "CH_FID"
+   },
+   {
+    "name": "Shape",
+    "type": "esriFieldTypeGeometry",
+    "alias": "Shape"
+   }
+  ],
+  "copyrightText": "MobileHealthUnit",
+  "feature_count": 49,
+  "local": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_arcgis/mobile_health_unit.geojson",
+  "bytes": 78300,
+  "sha256": "6555701ba7339ba4c7a4215ea147fd04f2147dd8a7b719988e7bbdabd75c2025",
+  "features_retrieved": 49
+ },
+ "236": {
+  "layer_id": 236,
+  "slug": "provision_health_service",
+  "layer_url": "https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/236",
+  "name": "Provision Health Services",
+  "description": "This dataset contains information about Provision Health Service||تحتوي مجموعة البيانات هذه على معلومات حول خدمة الصحة المقدمة",
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": {
+   "wkid": 4326,
+   "latestWkid": 4326,
+   "xyTolerance": 0.001,
+   "zTolerance": 0.001,
+   "mTolerance": 0.001,
+   "falseX": -450359962737.0495,
+   "falseY": -450359962737.0495,
+   "xyUnits": 10000,
+   "falseZ": 0,
+   "zUnits": 1,
+   "falseM": 0,
+   "mUnits": 1
+  },
+  "maxRecordCount": 2000,
+  "fields": [
+   {
+    "name": "OBJECTID",
+    "type": "esriFieldTypeOID",
+    "alias": "OBJECTID"
+   },
+   {
+    "name": "FACILITYNAME",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYNAME"
+   },
+   {
+    "name": "FACILITYNAMEAR",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYNAMEAR"
+   },
+   {
+    "name": "FACILITYPHONE",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYPHONE"
+   },
+   {
+    "name": "FACILITYEMAIL",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYEMAIL"
+   },
+   {
+    "name": "FACILITYLICENSE",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYLICENSE"
+   },
+   {
+    "name": "FACILITYFAX",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYFAX"
+   },
+   {
+    "name": "FACILITYPOBOX",
+    "type": "esriFieldTypeString",
+    "alias": "FACILITYPOBOX"
+   },
+   {
+    "name": "XRAY",
+    "type": "esriFieldTypeString",
+    "alias": "XRAY"
+   },
+   {
+    "name": "CTSCAN",
+    "type": "esriFieldTypeString",
+    "alias": "CTSCAN"
+   },
+   {
+    "name": "MRI",
+    "type": "esriFieldTypeString",
+    "alias": "MRI"
+   },
+   {
+    "name": "SONOGRAPHY",
+    "type": "esriFieldTypeString",
+    "alias": "SONOGRAPHY"
+   },
+   {
+    "name": "LICENSESTATUS",
+    "type": "esriFieldTypeString",
+    "alias": "LICENSESTATUS"
+   },
+   {
+    "name": "TYPE",
+    "type": "esriFieldTypeString",
+    "alias": "TYPE"
+   },
+   {
+    "name": "CATEGORY",
+    "type": "esriFieldTypeString",
+    "alias": "CATEGORY"
+   },
+   {
+    "name": "SUBTYPE",
+    "type": "esriFieldTypeString",
+    "alias": "SUBTYPE"
+   },
+   {
+    "name": "REGION",
+    "type": "esriFieldTypeString",
+    "alias": "REGION"
+   },
+   {
+    "name": "CITY",
+    "type": "esriFieldTypeString",
+    "alias": "CITY"
+   },
+   {
+    "name": "ISPUBLIC",
+    "type": "esriFieldTypeString",
+    "alias": "ISPUBLIC"
+   },
+   {
+    "name": "HASINSURANCE",
+    "type": "esriFieldTypeString",
+    "alias": "HASINSURANCE"
+   },
+   {
+    "name": "TYPEOFLICENSE",
+    "type": "esriFieldTypeString",
+    "alias": "TYPEOFLICENSE"
+   },
+   {
+    "name": "PRELIMISSUEDATE",
+    "type": "esriFieldTypeString",
+    "alias": "PRELIMISSUEDATE"
+   },
+   {
+    "name": "EXPIRYDATE",
+    "type": "esriFieldTypeString",
+    "alias": "EXPIRYDATE"
+   },
+   {
+    "name": "LEVELOFEMERGENCY",
+    "type": "esriFieldTypeString",
+    "alias": "LEVELOFEMERGENCY"
+   },
+   {
+    "name": "PEDIATRICEMERGENCYDEPARTMENT",
+    "type": "esriFieldTypeString",
+    "alias": "PEDIATRICEMERGENCYDEPARTMENT"
+   },
+   {
+    "name": "MATERNITYEMERGENCYCARE",
+    "type": "esriFieldTypeString",
+    "alias": "MATERNITYEMERGENCYCARE"
+   },
+   {
+    "name": "REMOTEEMERGENCYCARE",
+    "type": "esriFieldTypeString",
+    "alias": "REMOTEEMERGENCYCARE"
+   },
+   {
+    "name": "URGENTCARECENTERS",
+    "type": "esriFieldTypeString",
+    "alias": "URGENTCARECENTERS"
+   },
+   {
+    "name": "EMERGENCYDEPARTMENT",
+    "type": "esriFieldTypeString",
+    "alias": "EMERGENCYDEPARTMENT"
+   },
+   {
+    "name": "HOMECARESERVICES",
+    "type": "esriFieldTypeString",
+    "alias": "HOMECARESERVICES"
+   },
+   {
+    "name": "INPATIENTBEDCAPACITY",
+    "type": "esriFieldTypeString",
+    "alias": "INPATIENTBEDCAPACITY"
+   },
+   {
+    "name": "SPECIALITIES",
+    "type": "esriFieldTypeString",
+    "alias": "SPECIALITIES"
+   },
+   {
+    "name": "PROFESSIONALS",
+    "type": "esriFieldTypeString",
+    "alias": "PROFESSIONALS"
+   },
+   {
+    "name": "BEDS",
+    "type": "esriFieldTypeString",
+    "alias": "BEDS"
+   },
+   {
+    "name": "ENHANCED",
+    "type": "esriFieldTypeString",
+    "alias": "ENHANCED"
+   },
+   {
+    "name": "THIQA",
+    "type": "esriFieldTypeString",
+    "alias": "THIQA"
+   },
+   {
+    "name": "HIGHEND",
+    "type": "esriFieldTypeString",
+    "alias": "HIGHEND"
+   },
+   {
+    "name": "MIDRANGE",
+    "type": "esriFieldTypeString",
+    "alias": "MIDRANGE"
+   },
+   {
+    "name": "LOWEND",
+    "type": "esriFieldTypeString",
+    "alias": "LOWEND"
+   },
+   {
+    "name": "BASIC",
+    "type": "esriFieldTypeString",
+    "alias": "BASIC"
+   },
+   {
+    "name": "Longitude",
+    "type": "esriFieldTypeDouble",
+    "alias": "Longitude"
+   },
+   {
+    "name": "Latitude",
+    "type": "esriFieldTypeDouble",
+    "alias": "Latitude"
+   },
+   {
+    "name": "CH_FID",
+    "type": "esriFieldTypeString",
+    "alias": "CH_FID"
+   },
+   {
+    "name": "Shape",
+    "type": "esriFieldTypeGeometry",
+    "alias": "Shape"
+   }
+  ],
+  "copyrightText": "Provision HealthService",
+  "feature_count": 387,
+  "local": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_arcgis/provision_health_service.geojson",
+  "bytes": 626441,
+  "sha256": "42de5a95523cbcb7434808e9d8ab23cc4f5273f2fc25b8f5f653a85e51519602",
+  "features_retrieved": 387
+ }
+}

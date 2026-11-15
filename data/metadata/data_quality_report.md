@@ -1,10 +1,12 @@
 # PulseReach — Data Quality Report
 
-**Date:** 2026-11-14
-**Scope:** every file held in `data/` as of this date — two SCAD workbooks. Nothing else has been
-downloaded, so nothing else is assessed here.
-**Method:** each file opened with `openpyxl`, sheets and table layouts enumerated, column headers
-and missing-value markers read cell-by-cell, and every stated total recomputed from its components.
+**Date:** 2026-11-15
+**Scope:** every file held in `data/` as of this date — 215 files in `data/raw/`, plus the one
+validated transformation in `data/processed/`.
+**Method:** each XLSX opened with `openpyxl` and read cell-by-cell; each API extract parsed and
+its dimensions, units, reference periods and row counts enumerated; every stated total
+recomputed from its components; every facility coordinate bounds-checked; every file
+SHA-256-checksummed (`data/reference/raw_checksums.sha256`, all 215 verified).
 
 > **No file in `data/` has been clinically validated.** "Validated" below means *structurally*
 > inspected and arithmetically cross-checked. It does not mean the data is fit for any clinical
@@ -14,122 +16,219 @@ and missing-value markers read cell-by-cell, and every stated total recomputed f
 
 ## 1. Summary
 
-| File | Opens | Structure | Totals reconcile | Fit for intended use |
+| Source group | Files | Opens | Totals reconcile | Fit for intended use |
 |---|---|---|---|---|
-| `raw/scad/scad_health_statistics_2022_en.xlsx` | Yes | 11 sheets, as published | **Yes — exactly** | Yes, as aggregate context and facility-mix shape |
-| `raw/scad/scad_birth_statistics_2024_en.xlsx` | Yes | 8 sheets, as published | **Yes — exactly** | Yes, as birth-cohort shape |
+| `raw/scad/` (5 publications) | 5 | Yes | **Yes — exactly** | Yes, as aggregate context and cohort shape |
+| `raw/statad_api/` (86 indicators + 71 metadata) | 158 | Yes | **Yes — exactly** | Yes, with the §2.1 aggregate-row rule enforced |
+| `raw/abudhabi_sdi/` (5,339 facilities) | 10 | Yes | n/a (register) | Yes, 99.25% of geometry usable |
+| `raw/abudhabi_opendata/` (metadata + 7 files) | 42 | Yes | n/a | Metadata yes; **5 of 7 files contain no data** |
+| `processed/facilities/` | 3 | Yes | Cross-checks to SCAD ±5–9% | Yes — the validated facility layer |
 
-Both files are authentic SCAD publications, internally consistent, and unmodified since download
-(SHA-256 recorded in the manifest). Neither contains individual-level data. Neither contains any
-preventive-screening indicator.
+All files are authentic, unmodified since download, and attributable. **None contains
+individual-level data. None contains any preventive-screening indicator.**
+
+**The two pre-existing SCAD files are byte-for-byte unchanged.** The 2022 workbook's source URL
+was re-fetched on 2026-11-15 and returned an identical SHA-256
+(`398529220d625a7b68dec04a34a902fa5603f9c026ee3a47d2920d4c4a76ff27`) — independent confirmation
+that the held copy is authentic and uncorrupted.
 
 ---
 
-## 2. `scad_health_statistics_2022_en.xlsx`
+## 2. `raw/statad_api/` — SCAD Statistics API (86 indicators)
 
 ### Verified
-
-- **Opens cleanly.** `Microsoft Excel 2007+`, 1,173,070 bytes, 11 sheets:
-  `Index`, `Table 1`–`Table 8`, `Metadata`, `Enquiries`.
-- **Totals reconcile exactly.** Table 2: the three regional columns sum to the stated Total on
-  every row (Hospitals 42+18+7 = 67; Health Centres 730+320+86 = 1,136; Clinics 405+211+149 = 765;
-  Pharmacies 721+286+61 = 1,068; Others 221+63+3 = 287), and the five facility-type rows sum to the
-  stated grand total of 3,323. Table 4: Doctors + Nurses + Dentists + Pharmacists + Others =
-  12,922 + 32,933 + 3,029 + 5,269 + 12,628 = **66,781**, matching the stated total. Table 1's
-  headline figures (3,323 facilities; 7,372 beds; 66,781 professionals; 53,875 blood units) agree
-  with the detail tables.
-- **Provenance stated in-file.** Every table carries "Source: Health Department - Abu Dhabi."
-- **Glossary present.** The `Metadata` sheet defines Clinic, Health center, Hospital, Patient and
-  Diagnosed condition, and links a Health Statistics Methodology document.
+- **All 86 indicator extracts parse cleanly.** 71 carry an accompanying official
+  *Metadata and Methodology* XLSX from SCAD's own endpoint.
+- **Totals reconcile exactly.** On every indicator tested, the region members sum precisely to
+  the stated `Emirate of Abu Dhabi` member — population 2025: 3,008,513 + 1,003,647 + 346,761 =
+  **4,358,921**, matching standalone indicator 3916 to the person. Hospital beds 5,574 + 2,060 +
+  448 = **8,082**. Clinics 462 + 230 + 233 = **925**. Physicians 9,864 + 3,374 + 542 + 31 =
+  **13,811**.
+- **Cross-source agreement.** Births 2025 reconciles across three independent API cuts
+  (by citizenship, by region, by gender) *and* the separately downloaded XLSX publication:
+  **41,235** in all four.
+- **Provenance stated in-extract.** Every record carries `"data_source": "SCAD Official"` and an
+  `updated` timestamp.
+- **Long series.** Population to 1960, births to 1977, capacity and workforce to 2009/2010.
 
 ### Problems found
 
 | # | Issue | Severity | Consequence |
 |---|---|---|---|
-| H1 | **Reference period is 2022** — four years old as of today. 2023/2024 editions were not located on the SCAD health publications page (the newest listed is this 2022 file). | High | Any figure quoted must be labelled "2022". It cannot describe the current facility estate. |
-| H2 | **Not a tidy dataset.** Title in row 2, unit in row 3, row-dimension label in row 5, column headers in row 6/7, data from row 7/8, source note below. Arabic labels occupy parallel columns. A default `read_excel` yields garbage. | Medium | Every table needs an explicit per-sheet read (skiprows/usecols). Cannot be ingested generically. |
-| H3 | **Tables 6 and 7 are percentages of the infection mix, not rates.** Each column sums to 100% — they describe which diseases make up infections within a group, not how common infection is. | High | Cannot be converted to counts. Must never be used as a risk or prevalence input. |
-| H4 | **Table 7 age bands (0-14, 15-29, 30-44, 45-59, 60+) do not align with any IFHAS band** (18-39, 40-64, 65-75, 25-29, 30-65, 40-75, 50-64, 55-75, 60-75, 20-34, 35-39, 20-35). | High | No mapping exists. Do not interpolate one; doing so would invent clinical data. |
-| H5 | **Floating-point artefacts.** Percentage totals print as `100.00000000000001` / `99.99999999999999`. | Low | Round for display; never compare percentages for equality. |
-| H6 | **No facility names, addresses or coordinates.** Counts by type and region only. | High | Cannot support a map view. The synthetic facility layer needs invented locations (see §5). |
-| H7 | **No preventive-screening indicators at all** — no IFHAS uptake, no well-child attendance, no screening coverage. | High | Confirms that screening history has no official source and must be synthetic. |
-| H8 | **No publication-date field in the workbook.** Only the HTTP `Last-Modified` header (2023-11-06) is held, which is a server timestamp. | Low | Cite the reference period (2022), not a publication date. |
+| **A1** | **Embedded aggregate rows.** **65 of 86 indicators** include an aggregate member *inside* the dimension — `Total`, or `Emirate of Abu Dhabi` in `REGION_EN`. | **High** | A naive `GROUP BY … SUM()` **double-counts**. `3466_births_by_gender` sums to **82,470** against a true 41,235. Every consumer must filter aggregate members explicitly. This is the single most dangerous property of this source. |
+| **A2** | **`Missing/Unknown` dimension member** present in **35 of 86** indicators (physicians by region: 31 people; births by region: 2). | High | A third missing-data convention beyond the workbooks' `-` and `Not Stated`. It is a real category — preserve it; never coerce to zero or drop it. |
+| **A3** | **Corrupted age-band labels.** In `4868_projection_of_population_by_age_group`, bands `5-9` and `10-14` are returned as **`"2026-05-09"`** and **`"2026-10-14"`**. The Arabic labels are mangled *identically*, so the fault is upstream in SCAD's pipeline, not a locale artifact. | High | Values (209,060 and 182,960) are intact; only the labels are wrong. Must be remapped explicitly, with the remap documented. Any code keying on the label string will mis-bucket children. |
+| **A4** | **Disclosure rounding.** 2024 age bands sum to **4,146,925** against a stated total of **4,135,985** — **+10,940**. Bands are evidently rounded to the nearest 5. | Medium | Usable as a *distribution shape*, never as counts. A synthetic cohort built from them approximates the 2024 age structure; it does not reproduce it. (This is a larger discrepancy than the ±15 previously observed on the census page — see §5.) |
+| **A5** | **Projection years are sparse.** Indicator 4868 covers only 2024, 2030, 2035, 2040 — there is no 2025 age breakdown and no annual series. | Medium | Single-year-of-age child population still cannot be read directly. Derive it from the 1977–2025 births series and state the assumption. |
+| **A6** | **Mixed periodicity in one catalogue.** The overview mixes Annual, Quarterly, Monthly and Semi-Annual indicators, and its latest-period `VALUE` is not comparable across rows. | Medium | Never read headline values from the overview; always fetch the indicator detail and respect `OBS_DT`. |
+| **A7** | **Undocumented endpoint.** Recovered from inline page JavaScript. No contract, no versioning, no deprecation policy. | Medium | Treat the local extracts as the source of record. Re-acquisition may break without notice; the scripts in `data-pipeline/ingestion/` record exactly what was called. |
+| **A8** | **No preventive-screening indicator exists** anywhere in the 1,700-indicator catalogue. | High | Confirms from data — not documentation — that screening history has no official source. |
 
 ---
 
-## 3. `scad_birth_statistics_2024_en.xlsx`
+## 3. `raw/abudhabi_sdi/` — Abu Dhabi health facility register (5,339 features)
 
 ### Verified
-
-- **Opens cleanly.** 1,177,885 bytes, 8 sheets: `Index`, `Table 1`–`Table 5`, `Metadata`,
-  `Enquiries`.
-- **Totals reconcile exactly, in both directions.** Table 1 rows: Emirati 9,676 + 5,524 + 318 + 110
-  = **15,628** as stated. Table 1 columns: Abu Dhabi Region 9,676 + 17,510 + 167 = **27,353**;
-  Al Ain 5,524 + 5,307 + 43 = **10,874**; Al Dhafra 318 + 675 + 3 = **996**. Grand total
-  15,628 + 23,492 + 213 = **39,333** as stated. Male/Female sub-rows sum to their citizenship rows.
-- **Provenance stated in-file.** "Source: Department of Health – Abu Dhabi".
-- **Glossary present** — defines live birth (full WHO wording) and sex ratio at birth.
-- **Reference period is current-ish:** 2024, the most recent annual edition. A 2025 edition
-  (`publication_64080_17_1_1_2025_EN.xlsx`) is listed on the SCAD population page and should be
-  checked before the figures are used in a submission.
+- **All 10 GeoJSON extracts parse cleanly.** Feature counts match the service's own
+  `returnCountOnly` response exactly for every layer.
+- **Geometry is real and correctly projected.** Requested at `outSR=4326`; 5,299 of 5,339
+  features (99.25%) fall inside the Abu Dhabi bounding box with no nulls.
+- **Facility identity is present** — `FACILITYNAME` in English and Arabic, `FACILITYLICENSE`,
+  `LICENSESTATUS`, `REGION`, `CITY`. This is what closes prior gap H6.
+- **Cross-validates against SCAD** once licence status is respected (see B4).
 
 ### Problems found
 
 | # | Issue | Severity | Consequence |
 |---|---|---|---|
-| B1 | **A fourth region column, `Abroad`** (110 births), sits between Al Dhafra and the emirate total. Code assuming three regions will mis-total by 110 or silently treat `Abroad` as Al Dhafra. | High | Read region columns by header, never by position. `Abroad` is a distinct category. |
-| B2 | **Two different missing-value encodings.** The literal string `"-"` appears in cells, *and* there are explicit `Not Stated (Gender)` / `Citizenship Not Stated` categories. `Emirati × Abroad` = 110 while `Non-Emirati × Abroad` = `"-"`. | High | `"-"` must not be coerced to 0 — it means not applicable/not reported. A naive numeric cast produces a column of mixed types or silent zeros. |
-| B3 | **`Not Stated (Gender)` rows total 0** across all regions while the category still exists, and `Citizenship Not Stated` is a real 213 births. | Medium | Retain both categories. Dropping "not stated" would overstate data completeness — exactly the kind of silent cleaning the governance rules forbid. |
-| B4 | **Same non-tidy publication layout** as the health workbook. | Medium | Per-sheet explicit reads required. |
-| B5 | **Births ≠ well-child attendance.** The file carries no screening, visit or outcome data. | High | The Well-Child pathway gets a cohort *size* from this file and nothing else. |
-| B6 | **Single year only.** No multi-year series in this file, so no cohort ageing. | Medium | A 0–6 synthetic cohort needs seven birth years; only 2024 is held. Either fetch 2019–2023 editions or state the flat-cohort assumption explicitly in the generator. |
+| **B1** | **Insurance columns are empty.** `THIQA`, `BASIC`, `ENHANCED` are the literal string `"N/A"` in **every one** of the 4,905 populated rows. | **High** | They look like insurance-acceptance flags and carry **no information**. **IFHAS Thiqa eligibility cannot be derived from this file.** Anyone reading these as booleans gets a silent, uniform wrong answer. |
+| **B2** | **Composite string fields.** `BEDS`, `SPECIALITIES` and `PROFESSIONALS` are semicolon-delimited composite records, not numbers — e.g. `"Acute Care , Pediatric , 38 , 0 , 0; Critical Care Unit , …"`. | High | Casting to numeric yields nothing (a first attempt here parsed **0** of 114 hospitals). `INPATIENTBEDCAPACITY` is the plain integer and is the field to use for bed counts. Populated mainly for hospitals. |
+| **B3** | **Only 3,005 of 5,339 rows are `Active`.** The remainder are Cancelled (231), Cancelled by Law (147), Preliminary – Cancelled by Law (368), About to Expire (287), Expired (50), Temporary Closed (73), Revoked (3) and others. 434 rows (all `rehabilitation_center`) have blank status *and* blank region. | High | The register is a **licensing** record, not a list of operating facilities. Filter on `license_status` before counting anything as a live facility. |
+| **B4** | **Does not reconcile with SCAD, by definition.** Active-only: **71 hospitals / 8,828 beds** here vs **75 hospitals / 8,082 beds** in SCAD 2801/4111 (5% and 9% variance). Unfiltered: 114 hospitals / 11,721 beds. | High | Close enough to confirm both describe the same estate; far enough apart to prove the definitions differ (licensed capacity vs operational beds). **Do not combine them, and do not present either as the other.** |
+| **B5** | **Defective geometry in 40 features (0.75%).** 31 have lon/lat transposed; 6 sit at `(0,0)`; 3 are genuinely outside the emirate (two in Saudi Arabia — `AL AIN ROYAL HOSPITAL` at 37.76E/26.75N and a mobile blood unit at 42.19E/18.10N). | Medium | Repaired or flagged — never dropped — in `processed/facilities/`, each row carrying `geo_quality`. The 9 unusable rows must be excluded from any map, not plotted at a default location. |
+| **B6** | **No reference date.** A live register with `PRELIMISSUEDATE` / `EXPIRYDATE` per row but no publication date; catalogue entries say modified 2025-07-25/28. | Low | Cite the retrieval date (2026-11-15), recorded in each file's `_source` block. |
+| **B7** | **Contains facility contact details** (`FACILITYEMAIL`, `FACILITYPHONE`), some of which are named individuals' work addresses. | Medium | Business contact data, not patient data — but the Abu Dhabi licence grants **no right to use Personal Information**. Do not surface these in any UI or redistribute them. |
 
 ---
 
-## 4. Population context figures (no file)
+## 4. `raw/scad/` — SCAD publications (5 workbooks)
 
-Figures read from the SCAD census portal are recorded in the manifest, not in `data/raw/`, because
-SCAD publishes no file for them. One quality finding is worth stating because it affects any use:
+### Verified — 2025 editions
+- **Both 2025 workbooks open cleanly**, 8 sheets each (`Index`, `Table 1`–`Table 5`,
+  `Metadata`, `Enquiries`), same bilingual publication layout as the 2024 file.
+- **Births 2025 Table 1 reconciles EXACTLY in both directions.** Rows: every citizenship and
+  gender row's five region values sum to its stated emirate total. Columns: Emirati 16,310 +
+  Non-Emirati 24,758 + Citizenship Not Stated 167 = **41,235** = stated Total, and the same
+  holds for each of Abu Dhabi (28,822), Al Ain (11,246), Al Dhafra (1,065), Abroad (100) and
+  Not stated (2).
+- **Provenance stated in-file:** "Source: Department of Health – Abu Dhabi".
+- **Glossary present** in both `Metadata` sheets.
+
+### Problems found
 
 | # | Issue | Severity | Consequence |
 |---|---|---|---|
-| P1 | **The age-by-sex pyramid is rounded and does not reconcile to the headline totals.** Summing the 18 bands gives female 1,368,935 and male 2,767,065 (total 4,136,000) against stated figures of 1,368,925 / 2,767,060 (total 4,135,985) — a discrepancy of +10, +5 and +15. The band values are evidently rounded to the nearest 5. | Medium | Usable as a *distribution shape*, never as counts. Do not publish band figures as exact. Any synthetic cohort built from them must be described as approximating the 2024 age structure, not reproducing it. |
-| P2 | **No methodology, revision status or per-dataset licence** accompanies the pyramid, since it is a page asset rather than a published dataset. | Medium | Do not promote it into `data/raw/` as if it were a dataset. Request the table from SCAD (`info@scad.gov.ae`) if it is needed as data. |
-| P3 | **2024 figures are subject to SCAD's statistical revision policy** (2023 is already published as "R1", a revision). | Low | Record the read date alongside any quoted figure. |
+| **C1** | **The missing-value convention CHANGED between editions.** Births 2024 uses `"-"` (57 cells). **Births 2025 uses `":"` (67 cells).** Deaths 2025 uses neither. | **High** | Code written and tested against the 2024 file will **mis-parse the 2025 file**. Neither marker may be coerced to 0 — both mean not-applicable/not-reported. The repository now needs a marker set of `{-, :, Not Stated, Not stated, Missing/Unknown}`. |
+| **C2** | **A new `Not stated` REGION column** sits alongside the pre-existing `Abroad` column in the 2025 editions — five region columns before the emirate total, where 2024 had four. | High | Read region columns **by header, never by position**. Positional code written for 2024 silently shifts by one on 2025. |
+| **C3** | **`Abroad` persists as a region** (100 births, 101 deaths in 2025). | High | Carried forward from 2024 finding B1. It is a distinct category, not a region of residence, and must not be folded into Al Dhafra or dropped. |
+| **C4** | **Same non-tidy publication layout** — title row 2, unit row 3, dimension label row 5, headers row 6, data row 7, source notes below; Arabic in parallel columns. | Medium | Every table needs an explicit per-sheet `skiprows`/`usecols` read. No generic ingestion. |
+| **C5** | **Deaths 2025 Table 1 shows `Not Stated (Gender)` with real non-zero values** (8 in Abu Dhabi, 1 in Al Ain) where births shows zeros. | Medium | Retain the category in both. Dropping "not stated" overstates completeness. |
+| **C6** | **Births ≠ well-child attendance; deaths ≠ morbidity.** Neither file carries a screening, visit or outcome field. | High | The Well-Child pathway gets a cohort *size* from these files and nothing else. |
+| **C7** | `scad_health_tables_en.xlsx` is a **single flat 925-row sheet** with no metadata sheet, no stated reference period and a 2023 server timestamp. | Medium | Long-run context only. Do not cite a reference period it does not state. |
 
-The 0–4 band (206,745 people) is the only direct read on the Well-Child age range, and it does not
-decompose into the single years of age that the 14-visit schedule needs.
+### Carried forward — `scad_health_statistics_2022_en.xlsx`
+Findings **H1–H8** from the previous report stand unchanged. The two that still bind:
+- **H3:** Tables 6–7 are **percentage-of-infection-mix, not prevalence or incidence**. They
+  cannot be converted to counts and must never be used as a risk or prevalence input.
+- **H4:** their age bands (0-14, 15-29, 30-44, 45-59, 60+) align with **no** IFHAS band. Do not
+  interpolate a mapping; doing so would invent clinical data.
+
+**H1 is now mitigated:** the 2022 reference period is superseded for facilities, beds,
+professionals and patients by the 2025 API indicators. Keep the 2022 file for series continuity
+and **label every figure drawn from it "2022"** — the two vintages must not be mixed (see §6).
 
 ---
 
-## 5. Gaps that no held file can close
+## 5. `raw/abudhabi_opendata/` — catalogue and downloaded files
 
-These are the things PulseReach needs and that **no acquired source provides**. They are listed
-here so the gap is a documented fact rather than an assumption a later phase might paper over.
+| # | Issue | Severity | Consequence |
+|---|---|---|---|
+| **D1** | **18 Department of Health datasets declare `format: "csv"` but point at `https://tableau.doh.gov.ae/<Name>`, a host with NO DNS A record.** Affects Population Structure, Diabetes Prevalence, Cancer Incidence, Non-Communicable Diseases, Facilities, Clinicians, Bed Occupancy, Vital Statistics, Birth/Death Statistics and more. | **High** | **Dead links in the publisher's own catalogue**, mislabelled as CSV while being dashboard pages. Nothing was obtained and nothing is claimed about their contents. Catalogue metadata alone is not evidence that data exists. |
+| **D2** | **5 of 7 downloaded files contain no data.** Each Gov-Digital facility "XLSX" holds a single cell containing a now-404 ArcGIS URL (`Pub/CF_Health/MapServer/<n>`). | High | Retained as provenance for how SRC-18 was found. A successful HTTP 200 and a valid XLSX signature do **not** mean a file contains data — it must be opened. |
+| **D3** | **The MOHAP nurse workbooks are UAE-wide and dated 2008.** | High | **Not fit for use.** Wrong geography (MOHAP medical districts, not Abu Dhabi regions) and eighteen years stale. Superseded by API indicators 2702/2703/2704. Retained only as the provenance record for a brief-named dataset. |
+| **D4** | Much of the DoH tabular catalogue was last modified **2022-07-17**. | Medium | Treat catalogue currency per dataset; the portal's advertised breadth is not a currency guarantee. |
+| **D5** | The unfiltered metastore list endpoint **times out (>60 s, repeatedly)**. | Low | Enumerate via `search_main.php` with pagination (614 datasets recorded in `catalogue_search_results.json`). |
+
+### Population context figures (previous §4) — now superseded
+The census-page figures previously recorded in the manifest are **superseded by indicators
+3916 / 3175 / 3919** (SRC-17), which supply the same quantities as machine-readable series with
+a 2025 reference period and longer history. Previous findings **P1–P3** are retained in spirit
+by **A4** (rounding) and **A3** (label corruption), both of which are larger and better
+evidenced than the originals. Do not cite the page figures where an API series covers the same
+quantity.
+
+---
+
+## 6. Datasets that must NOT be combined
+
+Recorded explicitly because each pairing looks joinable and is not:
+
+| A | B | Why not |
+|---|---|---|
+| SCAD Health Statistics **2022** | SCAD API **2025** capacity indicators | Four-year gap; the 2022 workbook's facility taxonomy (Hospitals / Health Centres / Clinics / Pharmacies / Others) is not the API's indicator set. Label the vintage on every figure. |
+| SDI facility `INPATIENTBEDCAPACITY` | SCAD `Hospital Beds` (4111) | Licensed capacity vs operational beds — 8,828 vs 8,082 on Active licences (B4). |
+| SDI facility counts | SCAD `Hospitals`/`Clinics` counts | 71 vs 75 hospitals; the register counts licences, SCAD counts facilities (B3, B4). |
+| Births **2024** parsing code | Births **2025** file | Different missing-value marker and an extra region column (C1, C2). |
+| 2022 infection age bands | Any IFHAS age band | No mapping exists (H4). |
+| MOHAP nurses (UAE, 2008) | Any Abu Dhabi workforce figure | Wrong geography, wrong decade (D3). |
+| Any `Total` / `Emirate of Abu Dhabi` member | Its own sibling members | Double-counting (A1). |
+
+---
+
+## 7. Gaps that no held file can close
 
 | Need | Status | Resolution |
 |---|---|---|
 | Individual-level patient records | No official source; none permitted | Synthetic only (Synthea base + custom layer) |
-| IFHAS screening history / uptake | **No source whatsoever**, confirmed again by H7 | Custom synthetic generation |
-| Well-Child visit attendance | **No source whatsoever** | Custom synthetic generation |
-| Screening coverage rates for Abu Dhabi | Not in any held file | None available — do not estimate one |
-| Facility names and coordinates | Not in SCAD (H6); MOHAP geocoded file unverified and unreachable | Synthetic facilities, proportioned to SCAD Table 2 counts, with invented coordinates clearly labelled |
-| Single-year-of-age child population | Only a 0–4 aggregate (P3) | Approximate from births (B6) and state the assumption |
-| Abu Dhabi disease prevalence | **Not available.** Tables 6–7 are not prevalence (H3) | Do not use. NHANES must not substitute. |
+| **IFHAS screening history / participation / completion** | **No source whatsoever.** Confirmed by A8 (0 of 1,700 indicators), D1 (catalogue search: 1 match for "screening", not a programme dataset), and direct reading of the ADPHC programme page. | Custom synthetic generation. Formal aggregate request to `IFHAS.Support@adphc.gov.ae` (see SRC-22). |
+| **Well-Child visit attendance / uptake** | **No source whatsoever.** Nearest official figures are a different programme (newborn screening 98%, 2021; 322,000 school screenings, 2024). | `WCV.Support@adphc.gov.ae` |
+| Screening coverage rates for Abu Dhabi | Not in any held file | None available — **do not estimate one** |
+| Facility-level Thiqa acceptance | Columns exist but are empty (B1) | DoH licensing data request |
+| Single-year-of-age child population | Only 5-year bands, sparse years, corrupt labels (A3, A5) | Derive from the 1977–2025 births series; state the assumption |
+| Abu Dhabi disease prevalence | **Not available.** 2022 Tables 6–7 are not prevalence (H3); API disease indicators are notification counts and mix percentages, not prevalence | Do not use. **NHANES must not substitute.** |
+| Child vaccination / immunisation coverage | MOHAP dataset unreachable (TLS); no Abu Dhabi equivalent found | Re-attempt from a UAE network |
+
+**Facility names and coordinates — previously listed here as an open gap — is CLOSED** by
+`raw/abudhabi_sdi/` (5,339 facilities) and `processed/facilities/`.
 
 ---
 
-## 6. Assessment
+## 8. `processed/facilities/` — the one validated transformation
 
-**The two held files are good quality for what they are** — authentic, internally consistent,
-unmodified, attributable aggregate official statistics. Their totals reconcile to the unit, which
-is a meaningful check that the download is complete and uncorrupted.
+Built by [`data-pipeline/transformation/build_facilities.py`](../../data-pipeline/transformation/build_facilities.py),
+reproducible from `raw/` alone.
 
-**They are not, and cannot become, the data PulseReach runs on.** They contain no individuals and
-no screening information. Their value is bounded and specific: real regional facility counts and a
-real birth cohort to make a synthetic population plausible, plus citable context figures.
+- **5,339 rows**, one per source feature. **Nothing dropped, no value invented.**
+- Output SHA-256 recorded in `quality_report.json` alongside per-layer counts.
+- Every row carries **`geo_quality`**: `ok` (5,299), `swapped_repaired` (31),
+  `missing_placeholder` (6), `out_of_bounds` (3).
+- Composite string fields copied **verbatim**, with the trap documented in the module docstring
+  and the quality report.
+- `license_status` and `region` distributions emitted so B3's filtering requirement is visible
+  at the point of use.
 
-The most consequential finding is a negative one, now confirmed from files rather than inferred
-from documentation: **no official source provides Abu Dhabi preventive-screening history,
-attendance or coverage.** Every screening record PulseReach uses will be synthetic, and the system
-must say so wherever it shows one.
+**`geo_quality` must be carried through any downstream use.** Rows that are not `ok` or
+`swapped_repaired` have no usable coordinates and must be excluded from a map rather than
+defaulted.
+
+---
+
+## 9. Assessment
+
+**The held data is good quality for what it is** — authentic, internally consistent, unmodified,
+attributable official statistics, with totals that reconcile to the unit across every indicator
+and workbook tested. Two independent sources now cross-validate each other on health-system
+capacity to within 5–9%, which is the strongest consistency evidence this project has had.
+
+**The defects found are real and several are dangerous**, specifically because they fail
+silently rather than loudly: embedded aggregates that double-count (A1), a missing-value marker
+that changed between editions of the same publication (C1), age-band labels corrupted into
+dates (A3), insurance columns that are uniformly empty while looking populated (B1), composite
+strings that cast to nothing (B2), and 18 catalogue entries whose host does not exist (D1).
+Every one is documented above with its consequence. **Finding them is the value of this phase**;
+none is a reason to withhold the data, and all must be carried into Phase 3 as explicit rules.
+
+**What has changed since the previous report:** Abu Dhabi population structure and health
+facility locations are no longer gaps. The reference period for the health system moved from
+2022 to 2025. The birth series extends to 1977, so a seven-year 0–6 cohort no longer needs a
+flat-cohort assumption.
+
+**What has not changed, and is the most consequential finding here:** **no official source
+provides Abu Dhabi preventive-screening history, attendance or coverage.** This is now
+confirmed three ways — 0 of 1,700 SCAD indicators, 1 non-qualifying match across 614 catalogue
+datasets, and the programme page itself. Every screening record PulseReach uses will be
+synthetic, and the system must say so wherever it shows one.
+
+**A boundary worth restating:** the IFHAS Appendix 9 ">85% participation" and the WCV §5.1
+"target 100%" figures are **definitions and targets in a clinical standard, not observed
+programme performance**. They must never be presented as measured values.

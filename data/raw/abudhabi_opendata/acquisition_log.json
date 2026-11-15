@@ -1,0 +1,1142 @@
+{
+ "491e2925-4b67-4f5b-89cd-10d886f180af": {
+  "identifier": "491e2925-4b67-4f5b-89cd-10d886f180af",
+  "slug": "doh_hospitals_2025",
+  "catalogue_title": "Hospitals",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=491e2925-4b67-4f5b-89cd-10d886f180af",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_hospitals_2025.json",
+   "title": "Hospitals",
+   "publisher": "Department of Health",
+   "license": "https://data.abudhabi/opendata/addata_open_license",
+   "issued": "2025-07-23",
+   "modified": "2025-07-23",
+   "theme": [
+    "Urban Development and Infrastructure"
+   ],
+   "description": "Hopsitals in Abu Dhabi Emirate",
+   "contactPoint": {
+    "fn": "Mariam Al Marar",
+    "fnlear": "Mariam Al Marar",
+    "hasEmail": "malmarar@doh.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "esri rest",
+    "mediaType": null,
+    "title": "Hospitals",
+    "url": "https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/330",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "c33bedd4-0547-4324-b0b2-1fe5c58d476f": {
+  "identifier": "c33bedd4-0547-4324-b0b2-1fe5c58d476f",
+  "slug": "doh_health_centres_2025",
+  "catalogue_title": "Health Centres",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=c33bedd4-0547-4324-b0b2-1fe5c58d476f",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_health_centres_2025.json",
+   "title": "Health Centres",
+   "publisher": "Department of Health",
+   "license": "https://data.abudhabi/opendata/addata_open_license",
+   "issued": "2025-07-23",
+   "modified": "2025-07-23",
+   "theme": [
+    "Urban Development and Infrastructure"
+   ],
+   "description": "Heatlh centers in Abu Dhabi Emirate",
+   "contactPoint": {
+    "fn": "Mariam Al Marar",
+    "fnlear": "Mariam Al Marar",
+    "hasEmail": "malmarar@doh.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "esri rest",
+    "mediaType": null,
+    "title": "Health Centres",
+    "url": "https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/329",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "38106739-eb6d-43b3-8534-007ebcc3ecfa": {
+  "identifier": "38106739-eb6d-43b3-8534-007ebcc3ecfa",
+  "slug": "doh_clinics_2025",
+  "catalogue_title": "Clinics",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=38106739-eb6d-43b3-8534-007ebcc3ecfa",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_clinics_2025.json",
+   "title": "Clinics",
+   "publisher": "Department of Health",
+   "license": "https://data.abudhabi/opendata/addata_open_license",
+   "issued": "2025-07-23",
+   "modified": "2025-07-23",
+   "theme": [
+    "Urban Development and Infrastructure"
+   ],
+   "description": "Clinics in Abu Dhabi Emirate",
+   "contactPoint": {
+    "fn": "Mariam Al Marar",
+    "fnlear": "Mariam Al Marar",
+    "hasEmail": "malmarar@doh.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "esri rest",
+    "mediaType": null,
+    "title": "Clinics",
+    "url": "https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/328",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "76c8cfa8-ce6f-48c6-a3db-5ee5d69972fe": {
+  "identifier": "76c8cfa8-ce6f-48c6-a3db-5ee5d69972fe",
+  "slug": "doh_pharmacy_2025",
+  "catalogue_title": "Pharmacy",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=76c8cfa8-ce6f-48c6-a3db-5ee5d69972fe",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_pharmacy_2025.json",
+   "title": "Pharmacy",
+   "publisher": "Department of Health",
+   "license": "https://data.abudhabi/opendata/addata_open_license",
+   "issued": "2025-07-23",
+   "modified": "2025-07-23",
+   "theme": [
+    "Urban Development and Infrastructure"
+   ],
+   "description": "Pharmacies in Abu Dhabi Emirate",
+   "contactPoint": {
+    "fn": "Mariam Al Marar",
+    "fnlear": "Mariam Al Marar",
+    "hasEmail": "malmarar@doh.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "esri rest",
+    "mediaType": null,
+    "title": "Pharmacy",
+    "url": "https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/332",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "bf944d80-c181-47c0-924a-062dba2ecbd5": {
+  "identifier": "bf944d80-c181-47c0-924a-062dba2ecbd5",
+  "slug": "doh_diagnostic_centers_2025",
+  "catalogue_title": "Diagnostic Centers",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=bf944d80-c181-47c0-924a-062dba2ecbd5",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_diagnostic_centers_2025.json",
+   "title": "Diagnostic Centers",
+   "publisher": "Department of Health",
+   "license": "https://data.abudhabi/opendata/addata_open_license",
+   "issued": "2025-07-23",
+   "modified": "2025-07-23",
+   "theme": [
+    "Urban Development and Infrastructure"
+   ],
+   "description": "Diagnostic centers in Abu Dhbai Emirate",
+   "contactPoint": {
+    "fn": "Mariam Al Marar",
+    "fnlear": "Mariam Al Marar",
+    "hasEmail": "malmarar@doh.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "esri rest",
+    "mediaType": null,
+    "title": "Diagnostic Centers",
+    "url": "https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/217",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "133a02c6-9c16-4dd8-8971-32afcebe5d4d": {
+  "identifier": "133a02c6-9c16-4dd8-8971-32afcebe5d4d",
+  "slug": "doh_dialysis_centre_2025",
+  "catalogue_title": "Dialysis Centre",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=133a02c6-9c16-4dd8-8971-32afcebe5d4d",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_dialysis_centre_2025.json",
+   "title": "Dialysis Centre",
+   "publisher": "Department of Health",
+   "license": "https://data.abudhabi/opendata/addata_open_license",
+   "issued": "2025-07-23",
+   "modified": "2025-07-23",
+   "theme": [
+    "Urban Development and Infrastructure"
+   ],
+   "description": "This dataset contains information about Dialysis Centre",
+   "contactPoint": {
+    "fn": "Mariam Al Marar",
+    "fnlear": "Mariam Al Marar",
+    "hasEmail": "malmarar@doh.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "esri rest",
+    "mediaType": null,
+    "title": "Dialysis Centre",
+    "url": "https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/231",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "aa2544fe-d6e5-426a-b6c9-4a27b213b754": {
+  "identifier": "aa2544fe-d6e5-426a-b6c9-4a27b213b754",
+  "slug": "doh_mobile_health_unit_2025",
+  "catalogue_title": "Mobile Health Unit",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=aa2544fe-d6e5-426a-b6c9-4a27b213b754",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_mobile_health_unit_2025.json",
+   "title": "Mobile Health Unit",
+   "publisher": "Department of Health",
+   "license": "https://data.abudhabi/opendata/addata_open_license",
+   "issued": "2025-07-23",
+   "modified": "2025-07-23",
+   "theme": [
+    "Urban Development and Infrastructure"
+   ],
+   "description": "This dataset contains information about Mobile Health Unit",
+   "contactPoint": {
+    "fn": "Mariam Al Marar",
+    "fnlear": "Mariam Al Marar",
+    "hasEmail": "malmarar@doh.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "esri rest",
+    "mediaType": null,
+    "title": "Mobile Health Unit",
+    "url": "https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/235",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "049fc043-3acd-40a6-ba1b-abb08e0f30e2": {
+  "identifier": "049fc043-3acd-40a6-ba1b-abb08e0f30e2",
+  "slug": "doh_provision_health_service_2025",
+  "catalogue_title": "Provision Health Service",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=049fc043-3acd-40a6-ba1b-abb08e0f30e2",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_provision_health_service_2025.json",
+   "title": "Provision Health Service",
+   "publisher": "Department of Health",
+   "license": "https://data.abudhabi/opendata/addata_open_license",
+   "issued": "2025-07-23",
+   "modified": "2025-07-23",
+   "theme": [
+    "Urban Development and Infrastructure"
+   ],
+   "description": "This dataset contains information about Provision Health Service",
+   "contactPoint": {
+    "fn": "Mariam Al Marar",
+    "fnlear": "Mariam Al Marar",
+    "hasEmail": "malmarar@doh.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "esri rest",
+    "mediaType": null,
+    "title": "Provision Health Service",
+    "url": "https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/236",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "6aeca57b-2e10-43b3-935a-8a741f1bac89": {
+  "identifier": "6aeca57b-2e10-43b3-935a-8a741f1bac89",
+  "slug": "doh_rehabilitation_center_2025",
+  "catalogue_title": "Rehabilitation Center",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=6aeca57b-2e10-43b3-935a-8a741f1bac89",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_rehabilitation_center_2025.json",
+   "title": "Rehabilitation Center",
+   "publisher": "Department of Health",
+   "license": "https://data.abudhabi/opendata/addata_open_license",
+   "issued": "2025-07-23",
+   "modified": "2025-07-23",
+   "theme": [
+    "Urban Development and Infrastructure"
+   ],
+   "description": "This dataset contains information about Rehabilitation Center",
+   "contactPoint": {
+    "fn": "Mariam Al Marar",
+    "fnlear": "Mariam Al Marar",
+    "hasEmail": "malmarar@doh.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "esri rest",
+    "mediaType": null,
+    "title": "Rehabilitation Center",
+    "url": "https://arcgis.sdi.abudhabi.ae/agspublish/rest/services/OpenData/ADSDI_OpenData/MapServer/234",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "0d2b8550-8f89-441a-a6a3-377d52d19fca": {
+  "identifier": "0d2b8550-8f89-441a-a6a3-377d52d19fca",
+  "slug": "govdigital_hospitals",
+  "catalogue_title": "Hospitals",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=0d2b8550-8f89-441a-a6a3-377d52d19fca",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/govdigital_hospitals.json",
+   "title": "Hospitals",
+   "publisher": "Abu Dhabi Digital Authority",
+   "license": "https://data.abudhabi/opendata/addata_open_license",
+   "issued": "2020-05-29T20:00:00+00:00",
+   "modified": "2023-09-27T05:24:57+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "provide health and care treatment",
+   "contactPoint": {
+    "fn": "Najla Sultan Alzaabi",
+    "fnlear": " نجلاء سلطان الزعابي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "esri rest",
+    "mediaType": null,
+    "title": "Hospitals ",
+    "url": "https://data.abudhabi/opendata/sites/default/files/uploaded_resources/Hospitals.xlsx",
+    "downloaded": true,
+    "local": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/files/govdigital_hospitals.xlsx",
+    "bytes": 4834,
+    "sha256": "3de3459e0a9871bfe47afaafed07baa84143d109c6701b01efa80cacef6d65e9",
+    "http_content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "last_modified": "Thu, 19 Jan 2023 10:06:29 GMT",
+    "content_disposition": null,
+    "magic": "504b0304"
+   }
+  ]
+ },
+ "1944d4b6-9c9d-454f-b219-a129ce70d547": {
+  "identifier": "1944d4b6-9c9d-454f-b219-a129ce70d547",
+  "slug": "govdigital_health_centres",
+  "catalogue_title": "Health Centres             ",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=1944d4b6-9c9d-454f-b219-a129ce70d547",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/govdigital_health_centres.json",
+   "title": "Health Centres             ",
+   "publisher": "Abu Dhabi Digital Authority",
+   "license": "https://data.abudhabi/opendata/addata_open_license",
+   "issued": "2020-05-29T20:00:00+00:00",
+   "modified": "2023-09-26T06:28:00+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "provide health and care treatment ",
+   "contactPoint": {
+    "fn": "Najla Sultan Alzaabi",
+    "fnlear": " نجلاء سلطان الزعابي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "esri rest",
+    "mediaType": null,
+    "title": "Health Centres             ",
+    "url": "https://data.abudhabi/opendata/sites/default/files/uploaded_resources/Health%20Centres.xlsx",
+    "downloaded": true,
+    "local": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/files/govdigital_health_centres.xlsx",
+    "bytes": 4834,
+    "sha256": "c2c28cc54a012215f471507038133589961d8e9081b39eda1d6cb52494a08f2a",
+    "http_content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "last_modified": "Thu, 19 Jan 2023 10:03:02 GMT",
+    "content_disposition": null,
+    "magic": "504b0304"
+   }
+  ]
+ },
+ "851b3d1e-aeb8-45b2-9b3c-5716ead5bb19": {
+  "identifier": "851b3d1e-aeb8-45b2-9b3c-5716ead5bb19",
+  "slug": "govdigital_clinics",
+  "catalogue_title": "Clinics",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=851b3d1e-aeb8-45b2-9b3c-5716ead5bb19",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/govdigital_clinics.json",
+   "title": "Clinics",
+   "publisher": "Abu Dhabi Digital Authority",
+   "license": "https://data.abudhabi/opendata/addata_open_license",
+   "issued": "2020-05-29T20:00:00+00:00",
+   "modified": "2023-09-26T06:27:59+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "provide health and care treatment",
+   "contactPoint": {
+    "fn": "Najla Sultan Alzaabi",
+    "fnlear": " نجلاء سلطان الزعابي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "esri rest",
+    "mediaType": null,
+    "title": "Clinics",
+    "url": "https://data.abudhabi/opendata/sites/default/files/uploaded_resources/Clinics.xlsx",
+    "downloaded": true,
+    "local": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/files/govdigital_clinics.xlsx",
+    "bytes": 4834,
+    "sha256": "5fff2777f0f6a884343c75acb47dae258b3a9a6acedd46b3e437fa1780f542fc",
+    "http_content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "last_modified": "Thu, 19 Jan 2023 09:58:28 GMT",
+    "content_disposition": null,
+    "magic": "504b0304"
+   }
+  ]
+ },
+ "5871bfaf-562c-4312-95ff-30880fdbea36": {
+  "identifier": "5871bfaf-562c-4312-95ff-30880fdbea36",
+  "slug": "govdigital_pharmacies",
+  "catalogue_title": "Pharmacies",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=5871bfaf-562c-4312-95ff-30880fdbea36",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/govdigital_pharmacies.json",
+   "title": "Pharmacies",
+   "publisher": "Abu Dhabi Digital Authority",
+   "license": "https://data.abudhabi/opendata/addata_open_license",
+   "issued": "2020-05-29T20:00:00+00:00",
+   "modified": "2023-09-26T06:27:56+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "provide medicine and health items ",
+   "contactPoint": {
+    "fn": "Najla Sultan Alzaabi",
+    "fnlear": " نجلاء سلطان الزعابي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "esri rest",
+    "mediaType": null,
+    "title": "Pharmacies",
+    "url": "https://data.abudhabi/opendata/sites/default/files/uploaded_resources/Pharmacies.xlsx",
+    "downloaded": true,
+    "local": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/files/govdigital_pharmacies.xlsx",
+    "bytes": 4835,
+    "sha256": "82a5657b2fa4b186bf1b7f5770a2830ec479bd48e9f2a38fc0fc5b37cb5484b9",
+    "http_content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "last_modified": "Thu, 19 Jan 2023 09:56:02 GMT",
+    "content_disposition": null,
+    "magic": "504b0304"
+   }
+  ]
+ },
+ "faad8d06-e366-4cc5-9f06-6234b9dc00ae": {
+  "identifier": "faad8d06-e366-4cc5-9f06-6234b9dc00ae",
+  "slug": "govdigital_diagnostic_centers_blood_banks",
+  "catalogue_title": "Diagnostic Centers , Blood Banks       ",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=faad8d06-e366-4cc5-9f06-6234b9dc00ae",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/govdigital_diagnostic_centers_blood_banks.json",
+   "title": "Diagnostic Centers , Blood Banks       ",
+   "publisher": "Abu Dhabi Digital Authority",
+   "license": "https://data.abudhabi/opendata/addata_open_license",
+   "issued": "2020-05-29T20:00:00+00:00",
+   "modified": "2023-09-26T06:28:01+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "Clinic to discovering the case of problem and donating ",
+   "contactPoint": {
+    "fn": "Najla Sultan Alzaabi",
+    "fnlear": " نجلاء سلطان الزعابي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "esri rest",
+    "mediaType": null,
+    "title": "Diagnostic Centers , Blood Banks",
+    "url": "https://data.abudhabi/opendata/sites/default/files/uploaded_resources/Diagnostic%20Centers%20%2C%20Blood%20Banks.xlsx",
+    "downloaded": true,
+    "local": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/files/govdigital_diagnostic_centers_blood_banks.xlsx",
+    "bytes": 4837,
+    "sha256": "b63d0e4ed8ca50672755569a6bb91298b606d1bc04103b74e7a5b503f89922ff",
+    "http_content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "last_modified": "Thu, 19 Jan 2023 10:09:54 GMT",
+    "content_disposition": null,
+    "magic": "504b0304"
+   }
+  ]
+ },
+ "1dc618d2-2931-492c-916b-93b5dfb2c2be": {
+  "identifier": "1dc618d2-2931-492c-916b-93b5dfb2c2be",
+  "slug": "doh_population_benchmark_selected_time_series",
+  "catalogue_title": "Population benchmark with selected time series",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=1dc618d2-2931-492c-916b-93b5dfb2c2be",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_population_benchmark_selected_time_series.json",
+   "title": "Population benchmark with selected time series",
+   "publisher": "Department of Health ",
+   "license": "https://data.abudhabi/addata_open_license",
+   "issued": "2022-07-17T20:00:00+00:00",
+   "modified": "2022-07-17T20:00:00+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "Key population health metrics such as population growth, life expectancy, and mortality rates as well as health system capacity statistics with benchmarks",
+   "contactPoint": {
+    "fn": "Khawla Mohamed Al Hammadi",
+    "fnlear": " خولة محمد الحمادي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "csv",
+    "mediaType": null,
+    "title": "Population benchmark with selected time series",
+    "url": "https://tableau.doh.gov.ae/SelectedTimeSeries",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "941ac91f-5ad3-49b9-84f8-6da26a9f4023": {
+  "identifier": "941ac91f-5ad3-49b9-84f8-6da26a9f4023",
+  "slug": "doh_population_benchmark_intl_comparison",
+  "catalogue_title": "Population benchmark and international comparison ",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=941ac91f-5ad3-49b9-84f8-6da26a9f4023",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_population_benchmark_intl_comparison.json",
+   "title": "Population benchmark and international comparison ",
+   "publisher": "Department of Health ",
+   "license": "https://data.abudhabi/addata_open_license",
+   "issued": "2022-07-17T20:00:00+00:00",
+   "modified": "2022-07-17T20:00:00+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "Key population health metrics such as population growth, life expectancy, and mortality rates as well as health system capacity statistics with benchmarks",
+   "contactPoint": {
+    "fn": "Khawla Mohamed Al Hammadi",
+    "fnlear": " خولة محمد الحمادي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "csv",
+    "mediaType": null,
+    "title": "Population benchmark and international comparison ",
+    "url": "https://tableau.doh.gov.ae/InternationalComparisons",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "f864d8f8-7049-42ba-bb01-1449dfe9cad6": {
+  "identifier": "f864d8f8-7049-42ba-bb01-1449dfe9cad6",
+  "slug": "doh_population_structure",
+  "catalogue_title": "Population Structure ",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=f864d8f8-7049-42ba-bb01-1449dfe9cad6",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_population_structure.json",
+   "title": "Population Structure ",
+   "publisher": "Department of Health ",
+   "license": "https://data.abudhabi/addata_open_license",
+   "issued": "2022-07-17T20:00:00+00:00",
+   "modified": "2022-07-17T20:00:00+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "Key population health metrics such as population growth, life expectancy, and mortality rates as well as health system capacity statistics with benchmarks",
+   "contactPoint": {
+    "fn": "Khawla Mohamed Al Hammadi",
+    "fnlear": " خولة محمد الحمادي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "csv",
+    "mediaType": null,
+    "title": "Population Structure ",
+    "url": "https://tableau.doh.gov.ae/PopulationStructure",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "2af30982-4430-42aa-8832-6d7dfaf84602": {
+  "identifier": "2af30982-4430-42aa-8832-6d7dfaf84602",
+  "slug": "doh_population_and_benchmarks",
+  "catalogue_title": "Population and Benchmarks",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=2af30982-4430-42aa-8832-6d7dfaf84602",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_population_and_benchmarks.json",
+   "title": "Population and Benchmarks",
+   "publisher": "Department of Health ",
+   "license": "https://data.abudhabi/addata_open_license",
+   "issued": "2022-07-17T20:00:00+00:00",
+   "modified": "2022-07-17T20:00:00+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "Key population health metrics such as population growth, life expectancy, and mortality rates as well as health system capacity statistics with benchmarks",
+   "contactPoint": {
+    "fn": "Khawla Mohamed Al Hammadi",
+    "fnlear": " خولة محمد الحمادي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "csv",
+    "mediaType": null,
+    "title": "Population and Benchmarks",
+    "url": "https://tableau.doh.gov.ae/SelectedTimeSeries",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "44a7f9a4-00a3-4c01-aad8-b96eaf71575f": {
+  "identifier": "44a7f9a4-00a3-4c01-aad8-b96eaf71575f",
+  "slug": "doh_diabetes_prevalence",
+  "catalogue_title": "Diabetes Prevalence",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=44a7f9a4-00a3-4c01-aad8-b96eaf71575f",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_diabetes_prevalence.json",
+   "title": "Diabetes Prevalence",
+   "publisher": "Department of Health ",
+   "license": "https://data.abudhabi/addata_open_license",
+   "issued": "2022-07-17T20:00:00+00:00",
+   "modified": "2022-07-17T20:00:00+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "Highlights on Cancer incidence, Cancer deaths and Diabetes prevalence",
+   "contactPoint": {
+    "fn": "Khawla Mohamed Al Hammadi",
+    "fnlear": " خولة محمد الحمادي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "csv",
+    "mediaType": null,
+    "title": "Diabetes Prevalence",
+    "url": "https://tableau.doh.gov.ae/DiabetesPrevalence",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "70f6902b-fff1-496d-9f35-1712c5ef2aa2": {
+  "identifier": "70f6902b-fff1-496d-9f35-1712c5ef2aa2",
+  "slug": "doh_non_communicable_diseases",
+  "catalogue_title": "Non-Communicable Diseases",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=70f6902b-fff1-496d-9f35-1712c5ef2aa2",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_non_communicable_diseases.json",
+   "title": "Non-Communicable Diseases",
+   "publisher": "Department of Health ",
+   "license": "https://data.abudhabi/addata_open_license",
+   "issued": "2022-07-17T20:00:00+00:00",
+   "modified": "2022-07-17T20:00:00+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "Highlights on Cancer incidence, Cancer deaths and Diabetes prevalence",
+   "contactPoint": {
+    "fn": "Khawla Mohamed Al Hammadi",
+    "fnlear": " خولة محمد الحمادي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "csv",
+    "mediaType": null,
+    "title": "Non-Communicable Diseases",
+    "url": "https://tableau.doh.gov.ae/CancerIncidence",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "e715313f-f83d-471d-97be-4006246ee95a": {
+  "identifier": "e715313f-f83d-471d-97be-4006246ee95a",
+  "slug": "doh_cancer_incidence",
+  "catalogue_title": "Cancer Incidence",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=e715313f-f83d-471d-97be-4006246ee95a",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_cancer_incidence.json",
+   "title": "Cancer Incidence",
+   "publisher": "Department of Health ",
+   "license": "https://data.abudhabi/addata_open_license",
+   "issued": "2022-07-17T20:00:00+00:00",
+   "modified": "2022-07-17T20:00:00+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "Highlights on Cancer incidence, Cancer deaths and Diabetes prevalence",
+   "contactPoint": {
+    "fn": "Khawla Mohamed Al Hammadi",
+    "fnlear": " خولة محمد الحمادي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "csv",
+    "mediaType": null,
+    "title": "Cancer Incidence",
+    "url": "https://tableau.doh.gov.ae/CancerIncidence",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "daa986b0-1832-41d1-aa44-bc5ea258d8e6": {
+  "identifier": "daa986b0-1832-41d1-aa44-bc5ea258d8e6",
+  "slug": "doh_cancer_death",
+  "catalogue_title": "Cancer death",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=daa986b0-1832-41d1-aa44-bc5ea258d8e6",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_cancer_death.json",
+   "title": "Cancer death",
+   "publisher": "Department of Health ",
+   "license": "https://data.abudhabi/addata_open_license",
+   "issued": "2022-07-17T20:00:00+00:00",
+   "modified": "2022-07-17T20:00:00+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "Highlights on Cancer incidence, Cancer deaths and Diabetes prevalence",
+   "contactPoint": {
+    "fn": "Khawla Mohamed Al Hammadi",
+    "fnlear": " خولة محمد الحمادي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "csv",
+    "mediaType": null,
+    "title": "Cancer death",
+    "url": "https://tableau.doh.gov.ae/CancerDeath",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "25b1c6ae-141e-43c0-8521-ec1f8ae0049f": {
+  "identifier": "25b1c6ae-141e-43c0-8521-ec1f8ae0049f",
+  "slug": "doh_vital_statistics",
+  "catalogue_title": "Vital Statistics",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=25b1c6ae-141e-43c0-8521-ec1f8ae0049f",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_vital_statistics.json",
+   "title": "Vital Statistics",
+   "publisher": "Department of Health ",
+   "license": "https://data.abudhabi/addata_open_license",
+   "issued": "2022-07-17T20:00:00+00:00",
+   "modified": "2022-07-17T20:00:00+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "An overview on the number of births and deaths by gender and nationality and highlights of selected indicators such as rates and causes of death",
+   "contactPoint": {
+    "fn": "Khawla Mohamed Al Hammadi",
+    "fnlear": " خولة محمد الحمادي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "csv",
+    "mediaType": null,
+    "title": "Vital Statistics",
+    "url": "https://tableau.doh.gov.ae/BirthsandDeaths",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "f91f00e5-7b6b-4003-af75-7b3aa33d6d4d": {
+  "identifier": "f91f00e5-7b6b-4003-af75-7b3aa33d6d4d",
+  "slug": "doh_birth_statistics",
+  "catalogue_title": "Birth Statistics ",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=f91f00e5-7b6b-4003-af75-7b3aa33d6d4d",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_birth_statistics.json",
+   "title": "Birth Statistics ",
+   "publisher": "Department of Health ",
+   "license": "https://data.abudhabi/addata_open_license",
+   "issued": "2022-07-17T20:00:00+00:00",
+   "modified": "2022-07-17T20:00:00+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "An overview on the number of births and deaths by gender and nationality and highlights of selected indicators such as rates and causes of death",
+   "contactPoint": {
+    "fn": "Khawla Mohamed Al Hammadi",
+    "fnlear": " خولة محمد الحمادي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "csv",
+    "mediaType": null,
+    "title": "Birth Statistics ",
+    "url": "https://tableau.doh.gov.ae/BirthsDashboard",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "7115379b-ff84-4251-858e-cbcf5dc4da5f": {
+  "identifier": "7115379b-ff84-4251-858e-cbcf5dc4da5f",
+  "slug": "doh_death_statistics",
+  "catalogue_title": "Death Statistics ",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=7115379b-ff84-4251-858e-cbcf5dc4da5f",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_death_statistics.json",
+   "title": "Death Statistics ",
+   "publisher": "Department of Health ",
+   "license": "https://data.abudhabi/addata_open_license",
+   "issued": "2022-07-17T20:00:00+00:00",
+   "modified": "2022-07-17T20:00:00+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "An overview on the number of births and deaths by gender and nationality and highlights of selected indicators such as rates and causes of death\r\n\r\n\r\n",
+   "contactPoint": {
+    "fn": "Khawla Mohamed Al Hammadi",
+    "fnlear": " خولة محمد الحمادي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "csv",
+    "mediaType": null,
+    "title": "Death Statistics ",
+    "url": "https://tableau.doh.gov.ae/DeathDashboard",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "b6a5c783-272d-48f6-8b27-e445f520d7a5": {
+  "identifier": "b6a5c783-272d-48f6-8b27-e445f520d7a5",
+  "slug": "doh_communicable_diseases",
+  "catalogue_title": "Communicable Diseases",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=b6a5c783-272d-48f6-8b27-e445f520d7a5",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_communicable_diseases.json",
+   "title": "Communicable Diseases",
+   "publisher": "Department of Health ",
+   "license": "https://data.abudhabi/addata_open_license",
+   "issued": "2022-07-17T20:00:00+00:00",
+   "modified": "2022-07-17T20:00:00+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "Statistics on infectious diseases by nationality and age group with highlights of diseases preventable by vaccination as well as adults visa medical screening",
+   "contactPoint": {
+    "fn": "Khawla Mohamed Al Hammadi",
+    "fnlear": " خولة محمد الحمادي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "csv",
+    "mediaType": null,
+    "title": "Communicable Diseases",
+    "url": "https://tableau.doh.gov.ae/Communicablediseases",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "87621300-3368-4404-b333-b735227f4ca6": {
+  "identifier": "87621300-3368-4404-b333-b735227f4ca6",
+  "slug": "doh_facilities",
+  "catalogue_title": "Facilities",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=87621300-3368-4404-b333-b735227f4ca6",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_facilities.json",
+   "title": "Facilities",
+   "publisher": "Department of Health ",
+   "license": "https://data.abudhabi/addata_open_license",
+   "issued": "2022-07-17T20:00:00+00:00",
+   "modified": "2022-07-17T20:00:00+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "A summary on the past and current capacity and performance of the health care system\r\n",
+   "contactPoint": {
+    "fn": "Khawla Mohamed Al Hammadi",
+    "fnlear": " خولة محمد الحمادي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "csv",
+    "mediaType": null,
+    "title": "Facilities",
+    "url": "https://tableau.doh.gov.ae/Facilities",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "0dc8adf5-e1fe-4b71-8b55-438ceed4cfcc": {
+  "identifier": "0dc8adf5-e1fe-4b71-8b55-438ceed4cfcc",
+  "slug": "doh_clinicians",
+  "catalogue_title": "Clinicians ",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=0dc8adf5-e1fe-4b71-8b55-438ceed4cfcc",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_clinicians.json",
+   "title": "Clinicians ",
+   "publisher": "Department of Health ",
+   "license": "https://data.abudhabi/addata_open_license",
+   "issued": "2022-07-17T20:00:00+00:00",
+   "modified": "2022-07-17T20:00:00+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "A summary on the past and current capacity and performance of the health care system",
+   "contactPoint": {
+    "fn": "Khawla Mohamed Al Hammadi",
+    "fnlear": "خولة محمد الحمادي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "csv",
+    "mediaType": null,
+    "title": "Hospitals",
+    "url": "https://addata.gov.ae/dataset/hospitals/resource/5c4ade1b-3f54-4149-a0e3-3dbbff988e52?language=en",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "cec3fbe4-7b23-44d5-8cb2-68768c64b339": {
+  "identifier": "cec3fbe4-7b23-44d5-8cb2-68768c64b339",
+  "slug": "doh_bed_occupancy",
+  "catalogue_title": "Bed Occupancy ",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=cec3fbe4-7b23-44d5-8cb2-68768c64b339",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_bed_occupancy.json",
+   "title": "Bed Occupancy ",
+   "publisher": "Department of Health ",
+   "license": "https://data.abudhabi/addata_open_license",
+   "issued": "2022-07-17T20:00:00+00:00",
+   "modified": "2022-07-17T20:00:00+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "A summary on the past and current capacity and performance of the health care system",
+   "contactPoint": {
+    "fn": "Khawla Mohamed Al Hammadi",
+    "fnlear": " خولة محمد الحمادي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "csv",
+    "mediaType": null,
+    "title": "Bed Occupancy ",
+    "url": "https://tableau.doh.gov.ae/OccupancyPercentage",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "b23df5bd-eac5-4069-9854-245d3977ffd3": {
+  "identifier": "b23df5bd-eac5-4069-9854-245d3977ffd3",
+  "slug": "doh_bed_type_occupancy",
+  "catalogue_title": "Bed Type Occupancy ",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=b23df5bd-eac5-4069-9854-245d3977ffd3",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_bed_type_occupancy.json",
+   "title": "Bed Type Occupancy ",
+   "publisher": "Department of Health ",
+   "license": "https://data.abudhabi/addata_open_license",
+   "issued": "2022-07-17T20:00:00+00:00",
+   "modified": "2022-07-17T20:00:00+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "A summary on the past and current capacity and performance of the health care system\r\n",
+   "contactPoint": {
+    "fn": "Khawla Mohamed Al Hammadi",
+    "fnlear": " خولة محمد الحمادي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "csv",
+    "mediaType": null,
+    "title": "Bed Type Occupancy ",
+    "url": "https://tableau.doh.gov.ae/BedTypeOccupancy",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "eafaad8b-ad82-4840-8c69-7de1294f4370": {
+  "identifier": "eafaad8b-ad82-4840-8c69-7de1294f4370",
+  "slug": "doh_payer_members",
+  "catalogue_title": "Payer Members",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=eafaad8b-ad82-4840-8c69-7de1294f4370",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_payer_members.json",
+   "title": "Payer Members",
+   "publisher": "Department of Health ",
+   "license": "https://data.abudhabi/addata_open_license",
+   "issued": "2022-07-17T20:00:00+00:00",
+   "modified": "2022-07-17T20:00:00+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "Insurance claims statistics in the inpatient and outpatient setting\r\n\r\n\r\n",
+   "contactPoint": {
+    "fn": "Khawla Mohamed Al Hammadi",
+    "fnlear": " خولة محمد الحمادي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "csv",
+    "mediaType": null,
+    "title": "Payer Members",
+    "url": "https://tableau.doh.gov.ae/Claims_Payers",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "81b57879-4423-4c07-9041-53ed5a90bacc": {
+  "identifier": "81b57879-4423-4c07-9041-53ed5a90bacc",
+  "slug": "doh_abu_dhabi_health_statistics_2017",
+  "catalogue_title": "Abu Dhabi Health Statistics 2017 ",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=81b57879-4423-4c07-9041-53ed5a90bacc",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/doh_abu_dhabi_health_statistics_2017.json",
+   "title": "Abu Dhabi Health Statistics 2017 ",
+   "publisher": "Department of Health ",
+   "license": "https://data.abudhabi/addata_open_license",
+   "issued": "2022-07-17T20:00:00+00:00",
+   "modified": "2022-07-17T20:00:00+00:00",
+   "theme": [
+    "Health"
+   ],
+   "description": "Official statistics 2017\r\n",
+   "contactPoint": {
+    "fn": "Khawla Mohamed Al Hammadi",
+    "fnlear": " خولة محمد الحمادي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "csv",
+    "mediaType": null,
+    "title": "Abu Dhabi Health Statistics 2017",
+    "url": "https://addata.gov.ae/tags/abu-dhabi-health-statistics?language=en",
+    "downloaded": false,
+    "reason": "non-file distribution (API/esri rest/landing page)"
+   }
+  ]
+ },
+ "18c2f41d-9613-492a-aff3-4a4cd98677a6": {
+  "identifier": "18c2f41d-9613-492a-aff3-4a4cd98677a6",
+  "slug": "mohap_nurses_by_category_district_nationality_sex",
+  "catalogue_title": "Nurses by Category, Medical District, Nationality, and Sex",
+  "dataset_page": "https://data.abudhabi/opendata/dataset/detail?id=18c2f41d-9613-492a-aff3-4a4cd98677a6",
+  "metadata": {
+   "path": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/metadata/mohap_nurses_by_category_district_nationality_sex.json",
+   "title": "Nurses by Category, Medical District, Nationality, and Sex",
+   "publisher": "Ministry of Health and Prevention ",
+   "license": "https://data.abudhabi/addata_open_license",
+   "issued": "2021-02-22T00:00:00+00:00",
+   "modified": "2021-02-22T00:00:00+00:00",
+   "theme": [
+    "Society",
+    "Health"
+   ],
+   "description": "Nurses by Category, Medical District, Nationality, and Sex\r\n\r\n",
+   "contactPoint": {
+    "fn": "Najla Sultan Alzaabi",
+    "fnlear": " نجلاء سلطان الزعابي",
+    "hasEmail": "noemailprovided@adda.gov.ae"
+   }
+  },
+  "distributions": [
+   {
+    "format": "API",
+    "mediaType": null,
+    "title": "Nurses by Category, Medical District, Nationality, and Sex",
+    "url": "https://data.abudhabi/opendata/sites/default/files/uploaded_resources/Nurses%20by%20Category%2C%20Medical%20District%2C%20Nationality%2C%20and%20Sex%20API.xlsx",
+    "downloaded": true,
+    "local": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/files/mohap_nurses_by_category_district_nationality_sex.xlsx",
+    "bytes": 5031,
+    "sha256": "d0263d0656ed78ea5256da9756418120fcfabd083607e5beee546e585d33b029",
+    "http_content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "last_modified": "Fri, 17 Feb 2023 11:20:18 GMT",
+    "content_disposition": null,
+    "magic": "504b0304"
+   },
+   {
+    "format": "excel",
+    "mediaType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "title": "Nurses by Category, Medical District, Nationality, and Sex",
+    "url": "https://data.abudhabi/opendata/sites/default/files/uploaded_resources/Nurses%20by%20Category%2C%20Medical%20District%2C%20Nationality%2C%20and%20Sex.xlsx",
+    "downloaded": true,
+    "local": "/private/tmp/claude-501/-Users-allada-swethaditya-Personal-pulse-reach/43428f19-cc74-40ba-a8c9-ed8fa71701c4/scratchpad/dl_abudhabi/files/mohap_nurses_by_category_district_nationality_sex_1.xlsx",
+    "bytes": 4947,
+    "sha256": "9d935f85b0bb01b8ff81e32d8ccb2b955db41ba74789c344eb8d72a46ea119c8",
+    "http_content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "last_modified": "Fri, 17 Feb 2023 11:21:45 GMT",
+    "content_disposition": null,
+    "magic": "504b0304"
+   }
+  ]
+ }
+}
