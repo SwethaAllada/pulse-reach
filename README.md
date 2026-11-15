@@ -39,9 +39,11 @@ docker compose --env-file .env -f infrastructure/docker-compose.yml up --build  
 cd backend
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+alembic upgrade head          # needs DATABASE_URL in backend/.env; creates the official/clinical/synthetic schemas
 uvicorn app.main:app --reload --port 8000
+pytest                        # set TEST_DATABASE_URL to also run the live-PostgreSQL test
 ```
-Health check: <http://localhost:8000/health> · Swagger: <http://localhost:8000/docs>
+Health check: <http://localhost:8000/health> (process) · <http://localhost:8000/health/db> (database, 503 if unavailable) · Swagger: <http://localhost:8000/docs>
 
 ### Frontend
 ```bash
