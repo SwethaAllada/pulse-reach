@@ -1,10 +1,10 @@
 # PulseReach — `clinical` schema ERD
 
-**Source of truth:** [`../phase-3-database-design.md`](../phase-3-database-design.md) revision 2.3, §4 (tables), §2.1 (schema boundaries).
+**Source of truth:** [`../phase-3-database-design.md`](../phase-3-database-design.md) revision 2.5, §4 (tables), §2.1 (schema boundaries).
 **Scope:** the twelve approved `clinical` tables (D16 approved the four additions: `rule_load`, `verification_status`, `guard`, `rule_item_open_question`). Design only — no DDL, models or migrations exist.
 **Status:** DRAFT. **Nothing in this schema is clinically validated** (`clinical_review_status = 'not_reviewed'`). The YAML in `data-pipeline/rules/` is the only source of truth; the database is a loaded, append-only copy (R-C1, R-C2). No clinical, legal or governance approval is claimed.
 
-Views (`v_rule_current`, `v_rule_authority`) are not entities and are not drawn.
+Views (`v_rule_current`, `v_rule_authority`, `v_rule_item_effective_authority`) are not entities and are not drawn.
 
 ## 1. Legend
 
@@ -126,7 +126,7 @@ erDiagram
         text source_reference
         text verification_status FK
         boolean requires_clinical_review
-        boolean is_authoritative "generated: verified AND NOT review"
+        boolean is_authoritative "generated: verified AND NOT review; not approval, not in force"
         text effective_date_text "nullable; WCV all NULL"
         text effective_date_precision
         date effective_date_from "nullable"
@@ -146,7 +146,7 @@ erDiagram
         text rule_id PK, FK
         text rule_version PK, FK
         smallint condition_ordinal PK
-        text kind
+        text kind "CHECK inclusion / exclusion"
         text as_printed
         boolean machine_evaluable
         text attribute "nullable"
@@ -165,7 +165,7 @@ erDiagram
         text source_reference
         boolean inherited_from_rule
         text verification_status FK
-        boolean is_authoritative "generated: item status verified"
+        boolean status_is_verified "generated: own status only; NOT authority (see view)"
         text condition_text "nullable"
         text_array components_text "nullable"
         text_array rule_refs "nullable"
@@ -196,7 +196,7 @@ erDiagram
 | 3 | `rule_load` | `open_question` | `first_load_id` | No | 1 ─ N | |
 | 4 | `rule_load` | `open_question` | `last_changed_load_id` | No | 1 ─ N | |
 | 5 | `verification_status` | `rule` | `verification_status` | No | 1 ─ N | |
-| 6 | `verification_status` | `rule_item` | `verification_status` | No | 1 ─ N | Item-level authority is the item's own status |
+| 6 | `verification_status` | `rule_item` | `verification_status` | No | 1 ─ N | The item's **own** status only; effective authority also requires the parent rule to be authoritative (view `v_rule_item_effective_authority`, §7) |
 | 7 | `rule` | `rule_condition` | `(rule_id, rule_version)` | No | 1 ─ N | Composite FK |
 | 8 | `rule` | `rule_item` | `(rule_id, rule_version)` | No | 1 ─ N | Composite FK |
 | 9 | `rule` | `rule_open_question` | `(rule_id, rule_version)` | No | 1 ─ N | Association half |
@@ -231,7 +231,7 @@ Both are derived from each rule's / item's own `open_question_ids` (validated by
 | `guard` | PK `guard_id` | |
 | `open_question` | PK `oq_id` | Upserted per load (current state) |
 | `rule` | **PK `(rule_id, rule_version)`** | Append-only; `content_sha256` mismatch on an existing key fails the load |
-| `rule_condition` | **PK `(rule_id, rule_version, condition_ordinal)`** | |
+| `rule_condition` | **PK `(rule_id, rule_version, condition_ordinal)`**; `CHECK (kind IN ('inclusion','exclusion'))` (CD-4) | 5 `inclusion` + 3 `exclusion` today; exclusion evaluation semantics pending (OC-4) |
 | `rule_item` | **PK `(rule_id, rule_version, category, code)`** | `code` for IFHAS components is a derived slug (D10); the raw string is never the key |
 | `rule_open_question` | **PK `(rule_id, rule_version, oq_id)`** | |
 | `rule_item_open_question` | **PK `(rule_id, rule_version, category, code, oq_id)`** | |
@@ -255,7 +255,8 @@ Every FK **within** `clinical` is NOT NULL, except the two `guard` FKs whose nul
 | Is the original YAML preserved? | `rule.spec`, `rule.history` (verbatim JSONB) + `rule.content_sha256` + `rule.yaml_path` |
 | When did an open question first appear / last change? | `open_question.first_load_id`, `last_changed_load_id → rule_load` |
 | Is the standard document actually held? | `standard.acquisition_state` (`blocked` for both today) + `local_copy_sha256` (only if `document_obtained`); soft pointer `manifest_source_id` to `official.source` |
-| Is a rule authoritative? | **Derived**, never set: `rule.is_authoritative = (verification_status = 'verified' AND NOT requires_clinical_review)`; items: `verification_status = 'verified'` |
+| Is a rule authoritative? | **Derived**, never set: `rule.is_authoritative = (verification_status = 'verified' AND NOT requires_clinical_review)`. **Authoritative = a faithful, source-checked transcription of a published standard that is not flagged for review. It is not clinical approval and not confirmation that the standard is in force** (design R-C8). A proposed third condition (no open `blocks_rule` question link) is **not** part of the formula (CD-2 pending, OC-1) |
+| Is an item authoritative? | **Not by its own column.** `rule_item.status_is_verified` records the item's own status only. `effective_authority = status_is_verified AND parent rule.is_authoritative`, exposed by the **view** `v_rule_item_effective_authority` (CD-1). Not a table; the 12-table count is unchanged |
 
 ## 8. Schema boundaries
 
@@ -324,6 +325,8 @@ The `synthetic` side is shown only as inbound references because D2 keeps the sy
 | 1 | The twenty nullable projection columns of `rule` are collapsed into one placeholder line. | Presentation only; listed in full in §5. |
 | 2 | `text_array` / `char64` are Mermaid-safe renderings of `TEXT[]` / `CHAR(64)`. | Presentation only. |
 | 3 | `guard.result_status` / `reason_code` drawn as mandatory although §4.2 does not state nullability. | Flagged in §9 #2. |
-| 4 | Mermaid cannot show generated columns, CHECKs, append-only triggers or the `standard.manifest_source_id` soft reference as a line in the `erDiagram`. | Shown as column comments, in §4/§7, and as a dotted line in the boundary flowchart. |
+| 4 | Mermaid cannot show generated columns, CHECKs, append-only triggers, views or the `standard.manifest_source_id` soft reference as a line in the `erDiagram`. | Shown as column comments, in §4/§7, and as a dotted line in the boundary flowchart. |
+| 5 | `rule_item.is_authoritative` renamed `status_is_verified` (CD-1); the parent-aware `v_rule_item_effective_authority` view is described in §7 but not drawn (views are not entities). | Matches design §4.2. |
+| 6 | The proposed link `effect` (CD-2) is **not** drawn: it is proposed, unapproved, and not in the canonical column lists. | Open — clinical/rules owner (OC-1). |
 
 No tables or relationships were added beyond the canonical design, and none of the twelve tables was omitted.

@@ -715,7 +715,9 @@ sources:
     acquisition:
       state: dataset_obtained
       local_path: data/raw/abudhabi_sdi/
-      downloaded: 2026-11-15
+      # Retrieval date per each file's own _source.retrieved stamp: 2026-11-14T13:20:17Z to 13:20:58Z (UTC).
+      # 2026-11-15 is the date the files were copied into the repository, not the retrieval date.
+      downloaded: 2026-11-14
       http_status: 200
       features_total: 5339
       layers:

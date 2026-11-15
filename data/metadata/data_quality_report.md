@@ -18,8 +18,8 @@ SHA-256-checksummed (`data/reference/raw_checksums.sha256`, all 215 verified).
 
 | Source group | Files | Opens | Totals reconcile | Fit for intended use |
 |---|---|---|---|---|
-| `raw/scad/` (5 publications) | 5 | Yes | **Yes — exactly** | Yes, as aggregate context and cohort shape |
-| `raw/statad_api/` (86 indicators + 71 metadata) | 158 | Yes | **Yes — exactly** | Yes, with the §2.1 aggregate-row rule enforced |
+| `raw/scad/` (5 publications) | 5 | Yes | Yes on the named checks (e.g. births 2025 Table 1, §4) | Yes, as aggregate context and cohort shape |
+| `raw/statad_api/` (86 indicators + 71 metadata) | 158 | Yes | **Partly.** 486 of 528 testable single-dimension (indicator, year) cells reconcile; **42 do not**. A screening of the multi-dimension cubes finds **479 of 4,858** slices that do not (§2, A4) | Yes, with the §2.1 aggregate-row rule enforced and reconciliation treated as a classified report |
 | `raw/abudhabi_sdi/` (5,339 facilities) | 10 | Yes | n/a (register) | Yes, 99.25% of geometry usable |
 | `raw/abudhabi_opendata/` (metadata + 7 files) | 42 | Yes | n/a | Metadata yes; **5 of 7 files contain no data** |
 | `processed/facilities/` | 3 | Yes | Cross-checks to SCAD ±5–9% | Yes — the validated facility layer |
@@ -39,8 +39,13 @@ that the held copy is authentic and uncorrupted.
 ### Verified
 - **All 86 indicator extracts parse cleanly.** 71 carry an accompanying official
   *Metadata and Methodology* XLSX from SCAD's own endpoint.
-- **Totals reconcile exactly.** On every indicator tested, the region members sum precisely to
-  the stated `Emirate of Abu Dhabi` member — population 2025: 3,008,513 + 1,003,647 + 346,761 =
+- **Totals reconcile on the named checks, not on every cell.** For the known-answer checks below,
+  the region members sum precisely to the stated `Emirate of Abu Dhabi` member. Across the 528
+  single-dimension (indicator, year) cells that have both an aggregate and leaves, **486 reconcile
+  and 42 do not** (33 are source zeros in `3465` births by region, 1977–2009; 4 are projection
+  rounding; 4 are small residuals; 1 is the unexplained 2024 age-band gap, A4). The multi-dimension
+  cubes were screened and **479 of 4,858 slices do not reconcile** (299 have all leaves at `0`).
+  No regional birth split exists in the held data before 2010. Known answers — population 2025: 3,008,513 + 1,003,647 + 346,761 =
   **4,358,921**, matching standalone indicator 3916 to the person. Hospital beds 5,574 + 2,060 +
   448 = **8,082**. Clinics 462 + 230 + 233 = **925**. Physicians 9,864 + 3,374 + 542 + 31 =
   **13,811**.
@@ -58,7 +63,7 @@ that the held copy is authentic and uncorrupted.
 | **A1** | **Embedded aggregate rows.** **65 of 86 indicators** include an aggregate member *inside* the dimension — `Total`, or `Emirate of Abu Dhabi` in `REGION_EN`. | **High** | A naive `GROUP BY … SUM()` **double-counts**. `3466_births_by_gender` sums to **82,470** against a true 41,235. Every consumer must filter aggregate members explicitly. This is the single most dangerous property of this source. |
 | **A2** | **`Missing/Unknown` dimension member** present in **35 of 86** indicators (physicians by region: 31 people; births by region: 2). | High | A third missing-data convention beyond the workbooks' `-` and `Not Stated`. It is a real category — preserve it; never coerce to zero or drop it. |
 | **A3** | **Corrupted age-band labels.** In `4868_projection_of_population_by_age_group`, bands `5-9` and `10-14` are returned as **`"2026-05-09"`** and **`"2026-10-14"`**. The Arabic labels are mangled *identically*, so the fault is upstream in SCAD's pipeline, not a locale artifact. | High | Values (209,060 and 182,960) are intact; only the labels are wrong. Must be remapped explicitly, with the remap documented. Any code keying on the label string will mis-bucket children. |
-| **A4** | **Disclosure rounding.** 2024 age bands sum to **4,146,925** against a stated total of **4,135,985** — **+10,940**. Bands are evidently rounded to the nearest 5. | Medium | Usable as a *distribution shape*, never as counts. A synthetic cohort built from them approximates the 2024 age structure; it does not reproduce it. (This is a larger discrepancy than the ±15 previously observed on the census page — see §5.) |
+| **A4** | **Unexplained 2024 age-band gap.** 2024 age bands (`4868`, a *projection* indicator) sum to **4,146,925** against a stated total of **4,135,985** — **+10,940**. The band *values* are multiples of 5, but rounding 17 values to the nearest 5 changes the sum by at most ±42.5, so **rounding does not explain the gap** (it is about 257 times larger). Cause unknown; publisher question OP-S2. The other four projection mismatches (2030, 2035 in `4868`; 2040 in `4869`; 2030 in `4870`, each ±1,000 to 3,000) *are* consistent with rounding to the nearest thousand. | Medium | Usable as a *distribution shape*, never as counts. A synthetic cohort built from them approximates the 2024 age structure; it does not reproduce it. (This is a larger discrepancy than the ±15 previously observed on the census page — see §5.) |
 | **A5** | **Projection years are sparse.** Indicator 4868 covers only 2024, 2030, 2035, 2040 — there is no 2025 age breakdown and no annual series. | Medium | Single-year-of-age child population still cannot be read directly. Derive it from the 1977–2025 births series and state the assumption. |
 | **A6** | **Mixed periodicity in one catalogue.** The overview mixes Annual, Quarterly, Monthly and Semi-Annual indicators, and its latest-period `VALUE` is not comparable across rows. | Medium | Never read headline values from the overview; always fetch the indicator detail and respect `OBS_DT`. |
 | **A7** | **Undocumented endpoint.** Recovered from inline page JavaScript. No contract, no versioning, no deprecation policy. | Medium | Treat the local extracts as the source of record. Re-acquisition may break without notice; the scripts in `data-pipeline/ingestion/` record exactly what was called. |
@@ -82,11 +87,11 @@ that the held copy is authentic and uncorrupted.
 | # | Issue | Severity | Consequence |
 |---|---|---|---|
 | **B1** | **Insurance columns are empty.** `THIQA`, `BASIC`, `ENHANCED` are the literal string `"N/A"` in **every one** of the 4,905 populated rows. | **High** | They look like insurance-acceptance flags and carry **no information**. **IFHAS Thiqa eligibility cannot be derived from this file.** Anyone reading these as booleans gets a silent, uniform wrong answer. |
-| **B2** | **Composite string fields.** `BEDS`, `SPECIALITIES` and `PROFESSIONALS` are semicolon-delimited composite records, not numbers — e.g. `"Acute Care , Pediatric , 38 , 0 , 0; Critical Care Unit , …"`. | High | Casting to numeric yields nothing (a first attempt here parsed **0** of 114 hospitals). `INPATIENTBEDCAPACITY` is the plain integer and is the field to use for bed counts. Populated mainly for hospitals. |
-| **B3** | **Only 3,005 of 5,339 rows are `Active`.** The remainder are Cancelled (231), Cancelled by Law (147), Preliminary – Cancelled by Law (368), About to Expire (287), Expired (50), Temporary Closed (73), Revoked (3) and others. 434 rows (all `rehabilitation_center`) have blank status *and* blank region. | High | The register is a **licensing** record, not a list of operating facilities. Filter on `license_status` before counting anything as a live facility. |
+| **B2** | **Composite string fields.** `BEDS`, `SPECIALITIES` and `PROFESSIONALS` are semicolon-delimited composite records, not numbers — e.g. `"Acute Care , Pediatric , 38 , 0 , 0; Critical Care Unit , …"`. | High | Casting to numeric yields nothing (a first attempt here parsed **0** of 114 hospitals). `INPATIENTBEDCAPACITY` is the field to use for bed counts, but it is a **digit string, not an integer**: `"0"` (2,586) is a source-stated zero, `""` (2,208) means not recorded and must not be read as 0, and `null` (434) is an unidentified record. Positive values occur only for hospitals (111 of 114). |
+| **B3** | **Only 3,005 of 5,339 rows are `Active`.** There are **14 distinct non-null raw status values**: Active (3,005), Preliminary - Cancelled by Law (368), Preliminary - Active (327), About to Expire (287), Cancelled (231), Preliminary - Cancelled (151), Cancelled by Law (147), Preliminary - About to Expire (106), Preliminary - In Progress (85), Temporary Closed (73), Expired (50), Pending Cancellation (48), **`Preliminary -Cancelled by Law` (24; a typo variant with a missing space, kept as its own value)** and Revoked (3). 434 rows (all `rehabilitation_center`) have blank status *and* blank region. | High | The register is a **licensing** record, not a list of operating facilities. Filter on `license_status` before counting anything as a live facility. |
 | **B4** | **Does not reconcile with SCAD, by definition.** Active-only: **71 hospitals / 8,828 beds** here vs **75 hospitals / 8,082 beds** in SCAD 2801/4111 (5% and 9% variance). Unfiltered: 114 hospitals / 11,721 beds. | High | Close enough to confirm both describe the same estate; far enough apart to prove the definitions differ (licensed capacity vs operational beds). **Do not combine them, and do not present either as the other.** |
 | **B5** | **Defective geometry in 40 features (0.75%).** 31 have lon/lat transposed; 6 sit at `(0,0)`; 3 are genuinely outside the emirate (two in Saudi Arabia — `AL AIN ROYAL HOSPITAL` at 37.76E/26.75N and a mobile blood unit at 42.19E/18.10N). | Medium | Repaired or flagged — never dropped — in `processed/facilities/`, each row carrying `geo_quality`. The 9 unusable rows must be excluded from any map, not plotted at a default location. |
-| **B6** | **No reference date.** A live register with `PRELIMISSUEDATE` / `EXPIRYDATE` per row but no publication date; catalogue entries say modified 2025-07-25/28. | Low | Cite the retrieval date (2026-11-15), recorded in each file's `_source` block. |
+| **B6** | **No reference date.** A live register with `PRELIMISSUEDATE` / `EXPIRYDATE` per row but no publication date; catalogue entries say modified 2025-07-25/28. | Low | Cite the retrieval date, **2026-11-14** (UTC, 13:20:17Z–13:20:58Z), recorded in each file's `_source` block. 2026-11-15 is the date the files were copied into the repository, not the retrieval date. |
 | **B7** | **Contains facility contact details** (`FACILITYEMAIL`, `FACILITYPHONE`), some of which are named individuals' work addresses. | Medium | Business contact data, not patient data — but the Abu Dhabi licence grants **no right to use Personal Information**. Do not surface these in any UI or redistribute them. |
 
 ---
@@ -114,7 +119,7 @@ that the held copy is authentic and uncorrupted.
 | **C4** | **Same non-tidy publication layout** — title row 2, unit row 3, dimension label row 5, headers row 6, data row 7, source notes below; Arabic in parallel columns. | Medium | Every table needs an explicit per-sheet `skiprows`/`usecols` read. No generic ingestion. |
 | **C5** | **Deaths 2025 Table 1 shows `Not Stated (Gender)` with real non-zero values** (8 in Abu Dhabi, 1 in Al Ain) where births shows zeros. | Medium | Retain the category in both. Dropping "not stated" overstates completeness. |
 | **C6** | **Births ≠ well-child attendance; deaths ≠ morbidity.** Neither file carries a screening, visit or outcome field. | High | The Well-Child pathway gets a cohort *size* from these files and nothing else. |
-| **C7** | `scad_health_tables_en.xlsx` is a **single flat 925-row sheet** with no metadata sheet, no stated reference period and a 2023 server timestamp. | Medium | Long-run context only. Do not cite a reference period it does not state. |
+| **C7** | `scad_health_tables_en.xlsx` is a **single flat 925-row sheet** with no metadata sheet. It **does state its periods** inside the 30 stacked tables' titles (e.g. "Table 1: Key Health Statistics, Abu Dhabi, 2012"; others span 2008–2012, 1973–2012, 2005–2012); its embedded document title is "Health Statistic 2012" (embedded created/modified 2013-12-30 / 2014-01-29). **No server timestamp is recorded for it** (the `2023-11-06` `Last-Modified` belongs to a different file, the 2022 workbook). It has no manifest entry, URL or retrieval record (OU-14, OP-S6). | Medium | Long-run context only. Cite its periods as "content states: 2012 edition; sources as printed", never as a retrieval or licence record. |
 
 ### Carried forward — `scad_health_statistics_2022_en.xlsx`
 Findings **H1–H8** from the previous report stand unchanged. The two that still bind:
@@ -143,7 +148,7 @@ and **label every figure drawn from it "2022"** — the two vintages must not be
 The census-page figures previously recorded in the manifest are **superseded by indicators
 3916 / 3175 / 3919** (SRC-17), which supply the same quantities as machine-readable series with
 a 2025 reference period and longer history. Previous findings **P1–P3** are retained in spirit
-by **A4** (rounding) and **A3** (label corruption), both of which are larger and better
+by **A4** (an unexplained gap, not rounding) and **A3** (label corruption), both of which are larger and better
 evidenced than the originals. Do not cite the page figures where an API series covers the same
 quantity.
 
@@ -206,8 +211,9 @@ defaulted.
 ## 9. Assessment
 
 **The held data is good quality for what it is** — authentic, internally consistent, unmodified,
-attributable official statistics, with totals that reconcile to the unit across every indicator
-and workbook tested. Two independent sources now cross-validate each other on health-system
+attributable official statistics. Totals reconcile to the unit on the named known-answer checks
+and on 486 of 528 testable single-dimension cells; 42 such cells and 479 of 4,858 multi-dimension
+slices do not reconcile (§2) and are reported, not corrected. Two independent sources now cross-validate each other on health-system
 capacity to within 5–9%, which is the strongest consistency evidence this project has had.
 
 **The defects found are real and several are dangerous**, specifically because they fail

@@ -1,6 +1,6 @@
 # PulseReach — `official` schema ERD
 
-**Source of truth:** [`../phase-3-database-design.md`](../phase-3-database-design.md) revision 2.3, §3 (tables), §2.1 (schema boundaries).
+**Source of truth:** [`../phase-3-database-design.md`](../phase-3-database-design.md) revision 2.5, §3 (tables), §2.1 (schema boundaries).
 **Scope:** the nine approved `official` tables. Design only — no DDL, models or migrations exist.
 **Status:** DRAFT. Reflects the canonical design; nothing here is clinically, legally or governance approved. Recommendations D6 and D7 (and D11, which affects `synthetic`) await owner confirmation.
 
@@ -68,7 +68,7 @@ erDiagram
         char64 sha256 "NOT unique"
         bigint byte_size
         text file_role "CHECK 6 values"
-        timestamptz retrieved_at "nullable; never defaulted"
+        timestamptz retrieved_at "nullable; tool-written retrieval only; never defaulted (D-P1 open)"
         text source_effective_note "nullable free text"
         boolean contains_data
         boolean fit_for_use "nullable"
@@ -93,7 +93,7 @@ erDiagram
         text unit_raw
         text measure_kind "CHECK 6 values"
         boolean is_additive "generated"
-        text series_kind "observed / projected"
+        text series_kind "observed / projected; 4 projected: 4866 4868 4869 4870"
         text periodicity "annual"
         text region_basis "CHECK 3 values"
         bigint metadata_source_file_id FK "nullable"
@@ -151,7 +151,8 @@ erDiagram
     facility {
         bigint facility_id PK
         text source_layer "UK part; CHECK 9 values"
-        integer source_object_id "UK part"
+        integer source_object_id "UK part; row identity"
+        text ch_fid UK "raw publisher key; verbatim; CD-10"
         text license_no UK "nullable; NULL not blank"
         text identity_status "identified / unidentified"
         text facility_name_en "nullable"
@@ -165,7 +166,7 @@ erDiagram
         text is_public_raw "nullable"
         boolean is_public "nullable derived"
         boolean has_insurance "nullable"
-        integer inpatient_bed_capacity "nullable; licensed beds"
+        integer inpatient_bed_capacity "nullable; licensed beds; source is a string: 0 vs empty vs null"
         text beds_raw "nullable"
         text specialities_raw "nullable"
         text professionals_raw "nullable"
@@ -177,14 +178,14 @@ erDiagram
         float source_latitude "as published; nullable"
         float longitude "usable; nullable"
         float latitude "usable; nullable"
-        text geo_quality "CHECK 4 values"
+        text geo_quality "CHECK 4 values; ok = inside bounding box only"
         bigint source_file_id FK
         date source_effective_date "nullable; usually NULL"
         text transform_version
     }
 
     license_status_map {
-        text raw_value PK "15 distinct today"
+        text raw_value PK "14 non-null raw values today"
         text status_group "nullable"
         boolean is_operating "NULL until confirmed"
         text review_state "unreviewed / proposed / confirmed"
@@ -230,7 +231,7 @@ No `CASCADE` anywhere (§2.2).
 | `indicator_dimension` | **PK `(indicator_id, dimension_type)`**; `UNIQUE (indicator_id, ordinal)` | composite PK |
 | `dimension_member` | `UNIQUE NULLS NOT DISTINCT (dimension_type, raw_label_en, raw_label_ar)` | PostgreSQL 15+ (compose pins 16) |
 | `observation` | **Partial unique** `UNIQUE NULLS NOT DISTINCT (indicator_id, source_file_id, period_year, <10 member columns>) WHERE quality_flag IS NULL` | Duplicate-key rows (indicator 3422) load with `quality_flag = 'duplicate_key_conflict'` and fall outside the index (D5) |
-| `facility` | `UNIQUE (source_layer, source_object_id)`; `UNIQUE (license_no)` (NULLs distinct) | `OBJECTID` is unique only within a layer |
+| `facility` | `UNIQUE (source_layer, source_object_id)`; `UNIQUE (license_no)` (NULLs distinct); `UNIQUE (ch_fid)` (NOT NULL; CD-10) | `OBJECTID` is unique only within a layer; `(source_layer, source_object_id)` remains the row identity; `ch_fid` is raw publisher evidence, never a date |
 | `license_status_map` | PK `raw_value` | |
 
 ## 5. Provenance relationships
@@ -240,7 +241,7 @@ No `CASCADE` anywhere (§2.2).
 | Every observation → file → publisher | `observation.source_file_id → source_file.source_id → source` |
 | Every facility → file → publisher | `facility.source_file_id → source_file.source_id → source` |
 | Indicator definition → metadata workbook | `indicator.metadata_source_file_id → source_file` (nullable) |
-| Vintage | `source_file.retrieved_at` is a **retrieval** timestamp; `facility.source_effective_date` and `source_file.source_effective_note` hold publisher dates **only if stated** (D15) |
+| Vintage | `source_file.retrieved_at` is a **retrieval** timestamp (SDI: 2026-11-14 UTC; SCAD API: `NULL`, not recorded); the repository-copy date (2026-11-15) is neither retrieval nor effective; `facility.source_effective_date` and `source_file.source_effective_note` hold publisher dates **only if stated** (D15). Four time concepts, never substituted (design §3.2, CD-9) |
 | As-published vs usable coordinates | `facility.source_longitude/latitude` (verbatim) vs `longitude/latitude` (usable, only when `geo_quality IN ('ok','swapped_repaired')`) |
 | Original vs corrected labels | `dimension_member.raw_label_*` (verbatim) vs `label_corrected_en` + `correction_basis` (only when `correction_state = 'applied'`) |
 | Loader/transform lineage | `observation.loader_version`, `facility.transform_version`, `source_file.loader_version` |
@@ -300,7 +301,7 @@ Nullable FKs: `indicator.metadata_source_file_id`, `dimension_member.region_id`,
 5. **Leaf/aggregate reconciliation** (leaves sum to aggregate) is a load test, not a constraint.
 6. **`working_calendar`** exists only if D12 is decided that way; omitted here.
 7. **D6 / D15** change column types and provenance content on `facility`, not relationships.
-8. **`license_status_map`**: the loader inserts any unseen raw value as `unreviewed` so the FK holds; the 15 current values are not yet reviewed (D13).
+8. **`license_status_map`**: the loader inserts any unseen raw value as `unreviewed` so the FK holds; the 14 current non-null raw values are not yet reviewed (D13). The 15th key in the processed report is the `NULL` of the 434 unidentified records and is not a row.
 
 ## 9. Discrepancies between this ERD and the canonical design
 
@@ -311,5 +312,7 @@ Nullable FKs: `indicator.metadata_source_file_id`, `dimension_member.region_id`,
 | 3 | `char(64)` is rendered `char64` and `double precision` as `float` because Mermaid's type token does not accept parentheses/spaces. | Presentation only. |
 | 4 | Generated columns (`is_additive`) and CHECK constraints are shown only as comments. | Presentation only; §3 remains authoritative. |
 | 5 | Mermaid cannot express "partial unique index" or `NULLS NOT DISTINCT`; these are listed in §4 instead. | Presentation only. |
+| 6 | `facility.ch_fid` added (CD-10), a **column**, not a table. | Matches design §3.4. |
+| 7 | Views (`v_observation_leaf` excluding projected series; `v_indicator_year_shape` carrying `mismatch_class`) and the `mismatch_class` vocabulary are not entities and are not drawn; nothing is stored on `observation` for reconciliation (CD-6, CD-7). | Described in design §3.3. |
 
 No tables or relationships were added beyond the canonical design, and none of the nine tables was omitted.

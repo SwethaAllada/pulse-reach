@@ -121,8 +121,10 @@ column headers row 6, data from row 7, source notes below.
 - Deaths 2025 `Not Stated (Gender)` carries real non-zero values (8 Abu Dhabi, 1 Al Ain).
 - Births ≠ well-child attendance; deaths ≠ morbidity. Neither file has a screening or visit field.
 
-`scad_health_tables_en.xlsx` is a single flat 925-row English sheet with no metadata sheet and no
-stated reference period. Long-run context only.
+`scad_health_tables_en.xlsx` is a single flat 925-row English sheet with no metadata sheet. Its
+30 stacked tables state their periods in their titles (first: "Table 1: Key Health Statistics,
+Abu Dhabi, 2012"; others span 2008–2012, 1973–2012, 2005–2012) and its embedded document title is
+"Health Statistic 2012". It records no server timestamp, URL or manifest entry. Long-run context only.
 
 ---
 
@@ -200,7 +202,7 @@ layer id, retrieval timestamp and the exact query.
 | `REGION` | string | `Abu Dhabi` (3,178) / `Al Ain` (1,236) / `Al Dhafra` (491); blank for 434 rows |
 | `CITY` | string | City or area |
 | `ISPUBLIC` | Yes/No | Public vs private |
-| `INPATIENTBEDCAPACITY` | **integer** | **The bed-count field.** Populated for all 114 hospitals. |
+| `INPATIENTBEDCAPACITY` | **string** (digits) | **The bed-count field.** A *string* in the source, not an integer: digit string `"0"` (2,586 features) is a source-stated zero, digit string `> 0` (111, all hospitals) is a count, empty string `""` (2,208) means not recorded and is **not** zero, and `null` (434) is an unidentified record. Positive for 111 of 114 hospitals (the other 3 are `"0"`). Licensed capacity, not operational beds. |
 | `BEDS` | **composite string** | Semicolon-delimited records: `"Acute Care , Pediatric , 38 , 0 , 0; …"`. **Not numeric — casting yields nothing.** |
 | `SPECIALITIES` | **composite string** | `"Surgery - Thoracic Surgery; Dental - Prosthodontics; …"` |
 | `PROFESSIONALS` | **composite string** | `"Allied Health Care - 68; Consultant Physician - 27; …"` |

@@ -3,9 +3,10 @@
 **Phase 3, Step 3 (design only).** No SQL, SQLAlchemy model, migration, loader or transformation code was written or changed. This document specifies how every `official` table is populated from the files that are actually in the repository.
 
 **Date:** 2026-11-15
-**Canonical design:** [`../phase-3-database-design.md`](../phase-3-database-design.md) revision 2.3 (§3, §2, §6.3, §8). **ERD:** [`../erd/official-schema-erd.md`](../erd/official-schema-erd.md).
+**Canonical design:** [`../phase-3-database-design.md`](../phase-3-database-design.md) revision 2.5 (§3, §2, §6.3, §8, §13). **ERD:** [`../erd/official-schema-erd.md`](../erd/official-schema-erd.md).
 **Companions:** [`clinical-yaml-to-database-mapping.md`](clinical-yaml-to-database-mapping.md), [`data-loading-and-validation-strategy.md`](data-loading-and-validation-strategy.md).
 **Status:** **DRAFT for review.** Nothing here is clinically, legally, governance- or publisher-approved. **D6, D7, D11 are recommendations awaiting owner confirmation (not approved). D3, D4, D5, D13 still need external clarification. D2 is provisional.** The mapping is written so that none of those decisions has to be guessed: wherever one matters, the source ambiguity is preserved and the interim behaviour is stated.
+**Revision (Phase 3, Step 4):** corrected per the reconciliation report (MC-1 … MC-5 and the owner-approved CD-5 … CD-11): reconciliation cause table, multi-dimension screening result, SDI retrieval date, `CH_FID`, bed-capacity states, licence-status sensitivity. The open items (D-P1, D13, OP-S1 … OP-S6, OP-D1 … OP-D4) remain open; no publisher, clinical, legal or governance approval is claimed.
 
 > **How to read the mappings.** `$` is a parsed JSON file. `$.Data.Data[i]` is the *i*-th (0-based) observation record of an indicator file. "Verbatim" means no trimming, case change, re-encoding or type coercion. A "loader assertion" fails the load (nothing is written for that unit); a "report" records a finding and the load continues. Both are defined in the strategy document.
 
@@ -110,12 +111,16 @@ Numbers quoted below as "verified" were recomputed from the files in this step, 
 
 | Files | Evidence available | Mapping |
 |---|---|---|
-| 9 SDI GeoJSON | each carries `_source.retrieved`, e.g. `2026-11-14T13:20:17Z` … `13:20:58Z` | use it (UTC, second precision). **It disagrees with the manifest/README ("retrieved 2026-11-15")** — the in-file stamp is the primary evidence; the disagreement is reported (**OU-13**) |
+| 9 SDI GeoJSON | each carries `_source.retrieved`, e.g. `2026-11-14T13:20:17Z` … `13:20:58Z` | use it (UTC, second precision). **SDI retrieval date: 2026-11-14.** The manifest/README previously said 2026-11-15, which is the date the files were **copied into the repository**, not the retrieval date; the in-file stamp is the primary evidence and the manifest/README have been corrected (MC-14). Retrieval and repository-copy dates are different facts and are never interchanged (**OU-13**) |
 | 86 + 71 SCAD API files | **no timestamp in the files, none in `acquisition_log.json`** (it records path, size, sha256, row count, title, `updated`). The manifest gives only `downloaded: 2026-11-15` (a date) | **`NULL`**. A date is not a timestamp; storing `2026-11-15T00:00:00Z` would invent precision (**OU-13**) |
 | 5 SCAD workbooks | manifest `downloaded` (date) and HTTP `Last-Modified` header (publisher-side) | `retrieved_at = NULL`; header goes to `source_effective_note` as text, e.g. `HTTP Last-Modified: 2026-09-30 13:08:58+00:00` |
 | Open-data files | per-entry content of `acquisition_log.json` is **not** profiled here | use a timestamp only if the entry carries one; otherwise `NULL` |
 
 **`source_effective_note`** carries publisher-stated dates as text only: for each SCAD indicator JSON `Metadata.updated` verbatim (e.g. `Metadata.updated=2025-12-19T00:00:00`); for metadata workbooks `Last data update` verbatim; for the catalogue the `modified` value; for SCAD workbooks the `Last-Modified` header. It is **not** `facility.source_effective_date` and never feeds a vintage ordering.
+
+**Logged paths are not identifiers (PV-4).** All 86 `statad_api` log entries, and the metadata/file paths of the open-data log, record absolute paths into another session's temporary directory (`/private/tmp/…/dl_*`) that are not in the repository and cannot be opened. A loader keys on the **repository-relative path plus SHA-256** and **ignores the logged `path` field** (LV-13).
+
+**Four time concepts (CD-9)** are kept apart: publication/effective (publisher-stated, verbatim, `source_effective_note`), publisher update (`Metadata.updated`, verbatim, both signals kept where they disagree), retrieval (`retrieved_at`, tool-written only) and processing/load (`registered_at`, `transform_version`, load-report time — always ours). Whether to add a nullable `retrieved_on DATE` for a date-only claim is **D-P1 and remains open**; until decided, `retrieved_at` is `NULL` and the manifest date is reported as an unverified claim. The retrieval of the 157 SCAD files is bounded by the latest publisher `updated` (2026-11-05) and the repository copy (2026-11-15); those bounds are **not values** and are never written to `retrieved_at`.
 
 **Consequence of a `NULL` `retrieved_at`.** `v_observation_current` ("latest `source_file` per indicator by `retrieved_at`") is well-defined today only because each indicator has exactly one detail file. The loader therefore **refuses to register a second detail file for an indicator while either file has `retrieved_at IS NULL`** (it cannot order them) — see strategy §8.
 
@@ -156,7 +161,7 @@ Numbers quoted below as "verified" were recomputed from the files in this step, 
 | `unit_raw` | `$.Data.Configuration[0].unit` | **verbatim, 13 distinct strings** (verified), including `People\ Square kilometer` (literal backslash) and `Death per 1,000 Population in a specific age-group`. Not trimmed, not normalised | required |
 | `measure_kind` | reviewed mapping `unit_raw → kind` (below) | CHECK 6 values | **`unclassified` until the mapping is reviewed** (**OU-10**) |
 | `is_additive` | generated | `measure_kind = 'count'` | never written by the loader |
-| `series_kind` | title | `projected` iff `title_en` matches `(?i)projection`; else `observed`. **Verified: this is 4 indicators — 4866, 4868, 4869, 4870** (all have years 2024/2030/2035/2040). The design text says "4868 is projected"; the rule covers all four (discrepancy D-1) | required |
+| `series_kind` | title | `projected` iff `title_en` matches `(?i)projection`; else `observed`. **Verified: this is 4 indicators — 4866, 4868, 4869, 4870** (all have years 2024/2030/2035/2040). The canonical design (rev 2.5) now states all four; the loader asserts the set equals exactly `{4866, 4868, 4869, 4870}` and reports any other title match (LV-11). A fifth SCAD projection indicator, 4867 (by citizenship), is referenced by 4866's `relatedSV` but is **not held** (OP-S3) | required |
 | `periodicity` | `$.Data.Configuration[0].timeUnit` | `['Yearly'] → 'annual'`. **Assertion:** all 86 are `['Yearly']` (verified) and no row has `MONTH_*`/`QUARTER_*` set (verified: 0) | any other ⇒ fail (the CHECK allows only `annual`) |
 | `region_basis` | title / reviewed mapping | see below | `unspecified` default |
 | `metadata_source_file_id` | `source_file` of `indicator_metadata/<id>_*_metadata.xlsx` | FK | `NULL` for the 15 |
@@ -305,16 +310,24 @@ Shape (verified): 17 indicators no dimensions, 55 one, 10 two, 4 three = 86. A d
 - **Aggregates are loaded, flagged, never dropped** (5,001 of 14,913 rows are `aggregate`; 9,912 `leaf` — verified). Year-dependent shape is real: of 1,345 (indicator, year) cells, 890 contain an aggregate row and 455 do not.
 - `measure_kind ≠ 'count'` (rate, percentage, ratio, density) ⇒ `is_additive = false`: no view sums them (R-O3).
 - Counts are additive **across leaf members at one period**, never across periods.
-- **Reconciliation is a classified report, not a hard failure.** The design says leaves sum to the aggregate ("the quality report states they do"). Verified on the 680 (indicator, year) cells of the single-dimension `People`/`Number` indicators: **486 reconcile, 141 have no aggregate, 11 are aggregate-only, and 42 do not reconcile** (7 indicators; discrepancy D-2). Rate/percentage and multi-dimension cubes were not tested:
+- **Reconciliation is a classified report, not a hard failure, and never an assertion that totals reconcile.** The design previously said leaves sum to the aggregate ("the quality report states they do"); that premise is withdrawn (CD-7). Verified on the 680 (indicator, year) cells of the single-dimension `People`/`Number` indicators: **486 reconcile, 141 have no aggregate, 11 are aggregate-only, and 42 do not reconcile** (7 indicators; discrepancy D-2). The "528 testable" cells are the 486 + 42 that have both an aggregate and leaves. Rate/percentage indicators were not tested. The 42 cells and their proposed `mismatch_class` (a *proposal for the load report*; the publisher has confirmed none of it):
 
-| Indicator | Years not reconciling | Nature (observed) |
-|---|---|---|
-| 3465 births by region | 33 (1977–2009) | region leaves are present with value **0.0** while the emirate aggregate is non-zero (e.g. 1977: 0/0/0 vs 9,524). A source-stated zero, preserved as `0`; not interpreted |
-| 4868 / 4869 / 4870 projections | 2024 (+10,940), 2030, 2035, 2040 | disclosure rounding (quality report A4) |
-| 3463, 3466, 3502 | 2008–2009, 2009, 2022 | small differences (12, 24, 10, 1) — unexplained |
+| Indicator | Cells | Years | Leaf sum − aggregate | Evidence | `mismatch_class` |
+|---|---|---|---|---|---|
+| 3465 births by region | **33** | 1977–2009 | −(entire aggregate) | all three region leaves are `0.0`; aggregate 9,524 (1977) to 29,068 (2009); 2010–2024 reconcile; 2025 has no aggregate. Source-stated zeros, preserved as `0`. Births cannot be zero in every region while the emirate total is non-zero, so `0` is a **placeholder for missing regional attribution** — an inference from arithmetic that SCAD should confirm (OP-S1) | `RC-ZERO-LEAVES` |
+| 3463 births by citizenship | 2 | 2008, 2009 | −12, −24 | two leaves only (Emirati, Non-Emirati); no residual member present | `RC-RESIDUAL-BELOW` |
+| 3466 births by gender | 1 | 2009 | −10 | female + male only | `RC-RESIDUAL-BELOW` |
+| 3502 post-neonatal deaths by region | 1 | 2022 | −1 | 51 + 0 + 26 = 77 vs 78 | `RC-RESIDUAL-BELOW` |
+| 4868 projection by age group | 2 | 2030, 2035 | −1,000 / +3,000 | values are multiples of 1,000; 17 leaves | `RC-PROJ-ROUNDING` |
+| 4869 projection by gender | 1 | 2040 | +1,000 | multiples of 1,000; 2 leaves | `RC-PROJ-ROUNDING` |
+| 4870 projection by region | 1 | 2030 | −1,000 | multiples of 1,000; 3 leaves | `RC-PROJ-ROUNDING` |
+| 4868 projection by age group | 1 | **2024** | **+10,940** | age bands sum to 4,146,925; stated total 4,135,985 (the same figure as the 2024 estimate in 3916/3175). All 17 bands are multiples of 5; rounding 17 values to the nearest 5 changes the sum by at most 42.5, so the gap is ~257 times what rounding can explain. 4869 and 4870 reconcile in 2024 | **`RC-UNEXPLAINED`** — cause unknown (OP-S2) |
+| **Total** | **42** | | | | 33 + 4 + 4 + 1 (none `RC-LEAVES-ABOVE`) |
 
-  Each (indicator, year, dimension) is classified `reconciles` / `no_aggregate` / `aggregate_only` / `mismatch`, written to the load report, and **never "fixed"**. `v_derived_total_additive` must exclude `mismatch` cells (**OU-16**, SCAD clarification).
-- Multi-dimension cubes (2- and 3-dimension indicators) get the same classification per dimension with the other dimensions held fixed; none is asserted to reconcile.
+  **Correction (MC-1):** the projection mismatches are **5 cells**, not a 4-year block for three indicators: 4868 (2024, 2030, 2035), 4869 (2040), 4870 (2030). "Disclosure rounding" is the class for **4 of the 5**; it does **not** explain 2024. Treat 2024 age-band values as a shape only, never as counts that add to the total. 2030–2040 age bands carry the same corrupted labels as 2024 (`pending`, D4).
+
+  Each (indicator, year, dimension) is classified `reconciles` / `no_aggregate` / `aggregate_only` / `mismatch`, every mismatch carries a `mismatch_class` (`RC-ZERO-LEAVES`, `RC-PROJ-ROUNDING`, `RC-RESIDUAL-BELOW`, `RC-LEAVES-ABOVE`, `RC-UNEXPLAINED`, `RC-HIERARCHY` — tests in design §3.3), the result is written to the load report and exposed by `v_indicator_year_shape`, and **no value is ever "fixed"** or any aggregate rewritten. `v_derived_total_additive` excludes every `mismatch` cell (**OU-16**, SCAD clarification). The tolerance `step` (1,000 for 2030+, 5 for 2024) is loader configuration inferred from the data, not publisher-stated. **Consequence:** no regional births series exists in the held data before 2010; do not build a regional child-cohort history before 2010 and do not interpret the zeros.
+- **Multi-dimension cubes — screening result (MC-2).** Previously "not tested". Screened with one dimension varied and the others held fixed (one aggregate and ≥ 1 leaf): **4,858 slices tested; 4,379 reconcile; 479 do not**; 432 are not testable (no single aggregate or no leaf). Of the 479: **299** have all leaves at `0` (297 are `3549` region slices for 1977–2009 = 33 years × 9 citizenship × gender combinations — the same placeholder pattern as 3465), **128** have leaves below the aggregate and **52** above. Cause-of-death cubes (2583–2586) and small-count mortality cubes (3422, 3424, 3505), where `Missing/Unknown` and `Abroad` members matter, account for most of the rest; some of the 128 + 52 may be `RC-HIERARCHY` (nested categories) rather than errors. This is a **screening test, not a classification**: the sentence "totals reconcile exactly" must not be read as covering the multi-dimension cubes, and none is asserted to reconcile.
 
 ### 8.3 Duplicate natural key — indicator 3422 (D5)
 
@@ -325,7 +338,7 @@ Shape (verified): 17 indicators no dimensions, 55 one, 10 two, 4 three = 86. A d
 
 ### 8.4 Observed vs projected
 
-`series_kind` lives on `indicator`. 4866/4868/4869/4870 are `projected` (years 2024, 2030, 2035, 2040, `last_update_raw = 20400101`). Their observations are ordinary rows; consumers must join `indicator.series_kind` and must not present a projection as an observation. 2024 appears in the projections *and* is therefore not an "observed 2024" figure for those indicators.
+`series_kind` lives on `indicator`. **Four** indicators are `projected`: 4866 (total), 4868 (age group), 4869 (gender), 4870 (region) — years 2024, 2030, 2035, 2040; `last_update_raw = 20400101` is a sentinel (the last projected year), not a date. The four totals agree with each other in every year (4,135,985 / 5,195,000 / 5,799,000 / 6,328,000), confirming one projection set. Their observations are ordinary rows (no key conflict: the key includes the indicator) but **every observed-data view and every derived total excludes `series_kind = 'projected'`** (design `v_observation_leaf`, `v_derived_total_additive`; LV-12), so the 2024 population cannot be double-counted across 3916/3175 and 4866. **2024 is the base-year estimate**, equal to the observed 2024 figure in 3916/3175, not a forecast: the 2024 projection row must never be presented as an observation. The series are sparse (four points; no 2025 age breakdown; do not interpolate). `OBS_DT` is 1 January; the publisher does not say what instant a projected population refers to — none is asserted. `series_kind` must be visible in any view or export that includes projections.
 
 ### 8.5 Keys, uniqueness, validation, provenance
 
@@ -346,6 +359,7 @@ Shape (verified): 17 indicators no dimensions, 55 one, 10 two, 4 three = 86. A d
 | `facility_id` | — | identity | — |
 | `source_layer` | file stem | CHECK 9 values | required |
 | `source_object_id` | `properties.OBJECTID` | `int`; unique **within** a layer only (1,715 distinct values overall — verified) | required |
+| `ch_fid` | `properties.CH_FID` | **verbatim text** (CD-10). Form `DOH_dd_mm_yyyy_n#n#n`. **Verified: present on all 5,339 features, 5,339 distinct (globally unique).** `UNIQUE`, `NOT NULL`; loader asserts both. Raw evidence only — never parsed into a date, never `source_effective_date` | required |
 | `license_no` | `FACILITYLICENSE` | verbatim | source `null` → SQL `NULL` (434, all `rehabilitation_center`). **Never `''`** (loader asserts no empty/whitespace string) |
 | `identity_status` | derived | `unidentified` iff `FACILITYLICENSE` and `FACILITYNAME` are both `null`; else `identified`. **Assertion:** a feature with exactly one of the two null fails the load (none today) | required |
 | `facility_name_en`, `facility_name_ar` | `FACILITYNAME`, `FACILITYNAMEAR` | **verbatim** — no trimming (e.g. `… DONOR UNIT  5` keeps its double space) | `NULL` for the 434 |
@@ -356,7 +370,7 @@ Shape (verified): 17 indicators no dimensions, 55 one, 10 two, 4 three = 86. A d
 | `is_public_raw` | `ISPUBLIC` | verbatim (`Yes` 907, `No` 3,995, **`N` 3**) | `NULL` for the 434 |
 | `is_public` | derived | `Yes→true`, `No→false`, `N→false` (design-approved normalisation; raw retained) | `NULL` |
 | `has_insurance` | `HASINSURANCE` | `Yes→true`, `No→false`, **`''` (965) → `NULL`** | `NULL` |
-| `inpatient_bed_capacity` | `INPATIENTBEDCAPACITY` | **a string in the source.** digits → `int`; **`''` (2,208) → `NULL`**; `null` → `NULL`; any other string fails the load. `CHECK ≥ 0`. Licensed capacity, not operational beds (R-O4) | `NULL` |
+| `inpatient_bed_capacity` | `INPATIENTBEDCAPACITY` | **a string in the source** (all 4,905 identified features) and JSON `null` for the 434. Three distinct states (CD-8): **digit string `"0"` (2,586) → `0`** (source-stated zero); **digit string `> 0` (111, all hospitals) → that integer**; **empty string `""` (2,208) → `NULL`** (not recorded — **never `0`**); **JSON `null` (434) → `NULL`** (unidentified record); any other string fails the load. `CHECK ≥ 0`. `"0"` is asserted, `""` is silence; every non-hospital layer holds only `"0"` or `""`. Of 114 hospitals, 111 have positive capacity and 3 have `"0"`. Licensed capacity, not operational beds (R-O4); `BEDS` (composite string) was not parsed or reconciled with it. Must be loaded from the **raw GeoJSON**: the processed CSV turns both `""` and `null` into an empty cell (2,642 = 2,208 + 434). Meaning of `"0"` vs `""` is a DoH question (OP-D3) | `NULL` |
 | `beds_raw`, `specialities_raw`, `professionals_raw` | `BEDS`, `SPECIALITIES`, `PROFESSIONALS` | verbatim composite strings; empty string → `NULL`. Not parsed (no MVP consumer; casting yields nothing) | `NULL` |
 | `emergency_department`, `pediatric_emergency_department`, `maternity_emergency_care`, `home_care_services` | same-named properties | `Yes→true`, `No→false`; **any other non-null value fails** | `NULL` for the 434 |
 | `source_longitude`, `source_latitude` | `geometry.coordinates[0]`, `[1]` | `DOUBLE PRECISION`, **exactly as published** (including the `(0,0)` placeholders and out-of-box values; float32 artefacts such as `54.66668701171875` are kept) | `NULL` only if the geometry is null (0 today) |
@@ -377,22 +391,25 @@ Bounding box (generous, **not** an emirate boundary): lon 51.0–56.5, lat 22.0�
 - **Do not "fix" lon 34.45** (a typo for 54.45 is speculation). The properties `Longitude`/`Latitude` carry the **same** defects (`(0,0)`, swapped, 34.453884), so they are no recovery source and are not loaded.
 - `data/processed/facilities/*.csv` **retains out-of-bounds values in `longitude`/`latitude`** (the data dictionary says non-usable rows are null) — the DB must **not** be loaded from that CSV, and the loader's equivalence test compares only `ok`/`swapped_repaired` rows against it.
 - **Prerequisite (separate task, not done here, D15):** the repair logic lives inside `build_facilities.py:main()` and is not importable. Until it is extracted, the loader re-implements it and an **equivalence test** against the committed CSV (counts per `geo_quality`, and coordinates for `ok`/`swapped_repaired`) gates the load.
-- `ok` means "inside a generous box", not "inside the emirate".
+- **`ok` means "inside a rectangle" (lon 51.0–56.5, lat 22.0–25.5) — nothing more** (CD-11): the rectangle also covers parts of Dubai, Sharjah, Oman and Saudi Arabia. It is not a test against the emirate boundary and not a check of coordinates against `REGION`; documentation must not describe `ok` as "inside Abu Dhabi".
+- **The raw properties `Longitude`/`Latitude` are not an independent source (MC-4):** they differ from the geometry by at most about 1.5 × 10⁻⁴° (≈ 17 m) and are identical for the 6 zero placeholders; they carry the same defects and cannot repair anything. The processed CSV overwrites coordinates in place, so the as-published pair for the 31 swapped rows and 6 placeholders exists only in the raw GeoJSON. All 31 `swapped_repaired` points are inside the box only when swapped (none ambiguous).
+- `VIP DOCTOR L.L.C - BRANCH OF ABU DHABI` (OBJECTID 334): lon 34.4539, lat 24.4539. The identical fractional digits suggest a typo for 54.4539 — an **inference**; the row stays `out_of_bounds`, is unplotted, and is not "fixed".
 
 ### 9.2 Identity, identifiers, licence numbers, source layers
 
 - `OBJECTID` is a layer-local counter: **`(source_layer, source_object_id)` is the key**. `license_no` is globally unique where present (4,905 distinct, 0 duplicates — verified). The **register is licence-level**: 23 groups / 48 licensed rows share name **and** coordinates with different licences (re-measured here; the design says 24 / 50 — the difference is in how the group is defined and does not affect loading) — **kept as separate rows, never de-duplicated**.
-- **Unidentified records (434, all `rehabilitation_center`):** loaded with `identity_status = 'unidentified'`, every identity/classification/region/status field `NULL`, `source_object_id` and coordinates kept. They are never counted as facilities in any default view; there is no source field that identifies them, so none is invented.
+- **Unidentified records (434, all `rehabilitation_center`):** loaded with `identity_status = 'unidentified'`, every identity/classification/region/status field `NULL`, `source_object_id` and coordinates kept. They are never counted as facilities in any default view; there is no source field that identifies them, so none is invented. The unidentified rows are **the whole `rehabilitation_center` layer** (434 of 434): there is no identified rehabilitation facility in the register and no count of rehabilitation facilities can be derived. They carry 360 distinct coordinate pairs (74 positions shared), 5 need the coordinate swap, none is `(0,0)`.
+- **`CH_FID` (MC-4).** Present and globally unique on every feature (5,339 distinct; `OBJECTID` repeats across layers). It is the **only publisher-assigned key that survives** on the 434 unidentified rows, so it gives them a stable key that does not depend on an `OBJECTID` counter a republish might reassign. The 434 rehabilitation rows carry the prefix `DOH_15_10_2026…`, the other 4,905 `DOH_28_10_2026…`; the latest `PRELIMISSUEDATE` is 2026-10-27. This is *consistent with* a DoH extract dated 28 October 2026 in two delivery batches — an **inference from an identifier string**, not a stated publication date (OP-D1); the catalogue's "modified 2025-07-25/28" is stale against content issued in 2026 and is not a vintage. `(source_layer, source_object_id)` remains the row identity and is unaffected.
 
-### 9.3 Not loaded (23 of 43 properties)
+### 9.3 Not loaded (22 of 43 properties)
 
-`FACILITYEMAIL`, `FACILITYPHONE`, `FACILITYFAX`, `FACILITYPOBOX` (the licence grants no right to use personal information; some name individuals — **excluded permanently**); `THIQA`, `BASIC`, `ENHANCED` (`N/A` in all 4,905 populated rows); `Latitude`, `Longitude` (properties; same defects; they differ from geometry by up to ~2e-4° in the rows inspected); `CH_FID`, `TYPEOFLICENSE`, `PRELIMISSUEDATE`, `EXPIRYDATE` (`dd/mm/yyyy` strings; **no column in the approved design** — relevant to D13, candidate for a design review, not loaded), `CTSCAN`, `MRI`, `SONOGRAPHY`, `XRAY`, `HIGHEND`, `MIDRANGE`, `LOWEND`, `LEVELOFEMERGENCY`, `REMOTEEMERGENCYCARE`, `URGENTCARECENTERS`. Loaded: 20 properties + geometry.
+`FACILITYEMAIL`, `FACILITYPHONE`, `FACILITYFAX`, `FACILITYPOBOX` (the licence grants no right to use personal information; some name individuals — **excluded permanently**); `THIQA`, `BASIC`, `ENHANCED` (`N/A` in all 4,905 populated rows); `Latitude`, `Longitude` (properties; same defects; not an independent source — see §9.1); `TYPEOFLICENSE`, `PRELIMISSUEDATE`, `EXPIRYDATE` (`dd/mm/yyyy` strings; **no column in the approved design** — relevant to D13, candidate for a design review, not loaded), `CTSCAN`, `MRI`, `SONOGRAPHY`, `XRAY`, `HIGHEND`, `MIDRANGE`, `LOWEND`, `LEVELOFEMERGENCY`, `REMOTEEMERGENCYCARE`, `URGENTCARECENTERS`. Loaded: 21 properties (including `CH_FID`, CD-10) + geometry.
 
 ### 9.4 Keys, uniqueness, validation, provenance
 
-- **Keys.** PK `facility_id`; FKs `region_id`, `license_status_raw`, `source_file_id`.
-- **Unique-key handling.** `UNIQUE (source_layer, source_object_id)` and `UNIQUE (license_no)` (NULLs distinct → the 434 do not collide). Re-run: `ON CONFLICT (source_layer, source_object_id)` with a **compare** step; a changed row fails. **Limitation (OU-17):** because those uniques are not vintage-aware, only **one** register vintage can exist; a re-fetched register is rejected pending a decision (D15/D9).
-- **Loader assertions:** counts 5,339 and per layer = manifest; non-empty `license_no` unique; names/licences null together; region/status vocabularies; boolean vocabularies; bed parsing; `geo_quality` counts equal the equivalence test; `geo_quality` ∈ the 4 values.
+- **Keys.** PK `facility_id`; FKs `region_id`, `license_status_raw`, `source_file_id`; `UNIQUE (ch_fid)`.
+- **Unique-key handling.** `UNIQUE (source_layer, source_object_id)`, `UNIQUE (license_no)` (NULLs distinct → the 434 do not collide) and `UNIQUE (ch_fid)`. Re-run: `ON CONFLICT (source_layer, source_object_id)` with a **compare** step; a changed row fails. **Limitation (OU-17):** because those uniques are not vintage-aware, only **one** register vintage can exist; a re-fetched register is rejected pending a decision (D15/D9).
+- **Loader assertions:** counts 5,339 and per layer = manifest; non-empty `license_no` unique; names/licences null together; region/status vocabularies; boolean vocabularies; `CH_FID` present on all and distinct; bed parsing (`"0"` never confused with `""`); the 434 unidentified are all `rehabilitation_center`; `geo_quality` counts equal the equivalence test; `geo_quality` ∈ the 4 values.
 - **DB constraints:** the CHECKs of design §3.4 (usable coordinates only when `ok`/`swapped_repaired`; bounding ranges; paired nullness; `identity_status`/identity nulls; `bed ≥ 0`; `license_no <> ''`).
 - **Application:** `v_facility_usable` returns **no operating facility** until D13 confirms mappings — by design; every capacity display labelled "licensed", never "operational"; no facility ↔ SCAD join (R-O4).
 - **Provenance:** `source_file_id` (retrieval stamp from the file's `_source.retrieved`), `transform_version`, verbatim raw columns.
@@ -422,10 +439,11 @@ Bounding box (generous, **not** an emirate boundary): lon 51.0–56.5, lat 22.0�
 | `reviewed_by`, `reviewed_on`, `note` | `NULL` |
 
 - **Raw vs normalised.** `facility.license_status_raw` is the raw string and FK; the *normalised* status is `license_status_map.status_group`/`is_operating`, which exist only after review (D13). The loader never infers `is_operating` — not even for `Active`.
+- **Why D13 matters, quantified (MC-5).** Hospitals: `Active` only = **71 hospitals / 8,828 beds**; `Active` + `About to Expire` = **74 / 9,326**; all licences = **114 / 11,721**. SCAD reports 75 hospitals / 8,082 beds. The answer to "how many hospitals" ranges from 71 to 114 depending on a status choice nobody has approved — confirming R-O4 (do not combine the sources) and that no operating-facility count may be published before D13. A whitespace/hyphen normalisation would merge the typo variant with `Preliminary - Cancelled by Law` (13 groups from 14 raw values); **no merge is applied** — the normalised grouping exists only after review.
 - **Unseen values** found on a later load are inserted `unreviewed` (so the FK holds) and reported.
 - **Idempotency.** `INSERT … ON CONFLICT (raw_value) DO NOTHING` — the loader **never updates** a reviewed row. Reviews are done by a separate, audited action outside the loader.
 - **DB constraints** (design §3.4): unreviewed ⇒ `is_operating IS NULL`; `confirmed` ⇒ reviewer, date, flag present.
-- **External:** DoH licensing clarification of the 14 meanings is advisable (**OU-7**).
+- **External:** DoH licensing clarification of the 14 meanings is advisable (**OU-7**; OP-D2: which values denote an operating facility, whether `Preliminary -Cancelled by Law` is a typo).
 
 ---
 
@@ -447,10 +465,10 @@ Bounding box (generous, **not** an emirate boundary): lon 51.0–56.5, lat 22.0�
 | **OU-10** | `unit_raw → measure_kind` mapping unreviewed | additive vs non-additive decides sums | **Later** — additive views | Data steward / owner | `unclassified`; nothing additive |
 | **OU-11** | `region_basis` cannot be confirmed from metadata (generic text) | residence vs facility location changes interpretation | Later — region comparisons | Data steward; SCAD for confirmation | explicit-title rules only; else `unspecified` |
 | **OU-12** | Roles of `Not applicable`, `Unknown`; `scheme_code` | wrong role could double-count or drop | Later — 2583–2585 sums | Data steward | `leaf` / `missing_unknown`; reconciliation report shows the effect |
-| **OU-13** | `retrieved_at` unavailable for 157 SCAD files; SDI in-file date (14th) ≠ manifest (15th) | vintage ordering | Loading of a **second** vintage only | Owner | `NULL`; second vintage refused; discrepancy reported |
+| **OU-13** | `retrieved_at` unavailable for 157 SCAD files; SDI in-file retrieval date is **2026-11-14** (manifest/README corrected; the 15th is the repository-copy date); D-P1 (`retrieved_on`) open | vintage ordering | Loading of a **second** vintage only | Owner | `NULL`; second vintage refused; discrepancy reported |
 | **OU-14** | `scad_health_tables_en.xlsx` has **no manifest entry** | `source_id` NOT NULL | Registration of 1 of 215 files | Owner (assign a source / add manifest entry) | not registered; reported as `unmapped_file`; checksum still verified |
 | **OU-15** | No manifest source for `attribution_statement`, `source.fit_for_use`, `source.contains_data` | licence conditions bind the UI | Later — attribution display | Owner / legal | `NULL`; attribution kept in `data/README.md`; file-level flags only |
-| **OU-16** | 42 leaf≠aggregate cells (3465 zeros, projection rounding, 3 small gaps) | totals/shape from leaves would be wrong | Later — derived totals | **SCAD** | report-classified; `mismatch` excluded from derived totals |
+| **OU-16** | 42 single-dimension leaf≠aggregate cells (33 `RC-ZERO-LEAVES`, 4 `RC-PROJ-ROUNDING`, 4 `RC-RESIDUAL-BELOW`, 1 `RC-UNEXPLAINED`) plus 479 of 4,858 multi-dimension slices (screening) | totals/shape from leaves would be wrong | Later — derived totals | **SCAD** | report-classified; `mismatch` excluded from derived totals |
 | **OU-17** | Observation duplicates not protected by the partial index; facility uniques are single-vintage | idempotency, re-fetch | Loading design only | Owner (design review) | per-file all-or-nothing load; second register vintage refused |
 | **OU-18** | 17 null-label rows (`INDICATOR_EN` ×14, `AGE_GROUP_EN` ×3) — what category do they denote? | could be a total or a blank category | Later | **SCAD** | `(unlabelled)`, summed as a non-aggregate, flagged |
 | **OU-19** | `Unknown` vs `Missing/Unknown`; `Abroad`↔`غير إماراتي` in 3549; Arabic spelling/bidi variants; `behavioral`/`Behavioural` | merging would be a guess | Later | **SCAD** | verbatim members, same `canonical_key` only where case-folding aligns |
@@ -465,17 +483,17 @@ Bounding box (generous, **not** an emirate boundary): lon 51.0–56.5, lat 22.0�
 
 | # | Finding | Handling |
 |---|---|---|
-| D-1 | Design says "4868 is projected"; **four** indicators are projections (4866, 4868, 4869, 4870, all `last_update_raw = 20400101`) | Rule in §5 covers all four; design text to be corrected by the owner (not edited here) |
-| D-2 | Design §3.3/§6.3 #2: leaves "sum to the aggregate"; **42 of the 528 tested cells that have both an aggregate and leaves do not** | Reconciliation is a classified report (§8.2); a hard assertion would reject valid data |
-| D-3 | Design/ERD: "15 distinct" licence statuses; **14 non-null raw values** (the 15th is `NULL`) | §10 |
+| D-1 | Design says "4868 is projected"; **four** indicators are projections (4866, 4868, 4869, 4870, all `last_update_raw = 20400101`) | Rule in §5 covers all four; **design corrected in rev 2.5** |
+| D-2 | Design §3.3/§6.3 #2: leaves "sum to the aggregate"; **42 of the 528 tested cells that have both an aggregate and leaves do not** | Reconciliation is a classified report (§8.2); **design premise withdrawn in rev 2.5**; 479 multi-dimension mismatches added |
+| D-3 | Design/ERD: "15 distinct" licence statuses; **14 non-null raw values** (the 15th is `NULL`) | §10; **design and ERD corrected in rev 2.5** |
 | D-4 | ERD `indicator` omits `statistical_population`, `geographic_coverage`, `calculation_method`, `data_sources_text` that §3.3 defines | Mapping follows §3.3 |
 | D-5 | Design: `region_basis` "confirmed against the metadata Geographic coverage"; all 71 are the same generic text | §5: cannot be confirmed; explicit-title rules only |
 | D-6 | `build_facilities.py` can emit a 5th `geo_quality` value `null_geometry`; the design CHECK allows 4 | None occurs; loader fails on it |
 | D-7 | Quality report says age-label corruption is "identical in Arabic"; true for 4868 only — 3535's Arabic is reversed/different | Detect on English label (§7) |
-| D-8 | Design (§0, B6): "retrieval date 2026-11-15"; SDI files say `2026-11-14T13:20–13:21Z`; SCAD API files carry no timestamp | §3 / OU-13 |
+| D-8 | Design (§0, B6): "retrieval date 2026-11-15"; SDI files say `2026-11-14T13:20–13:21Z`; SCAD API files carry no timestamp | §3 / OU-13; **design, manifest, README and quality report corrected in rev 2.5** |
 | D-9 | Design: facilities "24 co-located groups (50 rows)"; re-measured 23 / 48 | Informational |
 | D-10 | D9 ("new vintage = new `source_file`") vs `UNIQUE(relative_path)` + immutable `raw/` | New vintage ⇒ new path (§3) |
-| D-11 | Design says `INPATIENTBEDCAPACITY` "plain integer"; it is a **string** (`''` for 2,208 rows) | §9 conversion |
+| D-11 | Design says `INPATIENTBEDCAPACITY` "plain integer"; it is a **string** (`"0"` 2,586, `""` 2,208, `null` 434, positive 111) | §9 conversion; **design corrected in rev 2.5** |
 | D-12 | `scad_health_tables_en.xlsx` is in `raw_checksums.sha256` but has no manifest source | OU-14 |
 
 No table was added, removed or re-keyed; none of these changes the approved architecture or the table inventory. Items D-1, D-3, D-4, D-5, D-10, D-11 are wording/derivation corrections for the owner; D-2 and OU-17 are the only ones that could justify an additive design change (a reconciliation-state note and a `UNIQUE (source_file_id, source_row_ordinal)`), and **neither is made** — review requested.

@@ -3,7 +3,7 @@
 **Phase 3, Step 3 (design only).** No loader, script, SQL, model or migration was written. This document specifies *how* the two mapping documents are executed: order, transactions, validation placement, reconciliation, error handling, idempotency and audit.
 
 **Date:** 2026-11-15
-**Canonical design:** [`../phase-3-database-design.md`](../phase-3-database-design.md) revision 2.3. **Mappings:** [`official-source-to-table-mapping.md`](official-source-to-table-mapping.md) ("OFF"), [`clinical-yaml-to-database-mapping.md`](clinical-yaml-to-database-mapping.md) ("CLIN"). Item ids `OU-n` / `CU-n` refer to the unresolved registers in those documents.
+**Canonical design:** [`../phase-3-database-design.md`](../phase-3-database-design.md) revision 2.5. **Mappings:** [`official-source-to-table-mapping.md`](official-source-to-table-mapping.md) ("OFF"), [`clinical-yaml-to-database-mapping.md`](clinical-yaml-to-database-mapping.md) ("CLIN"). Item ids `OU-n` / `CU-n` refer to the unresolved registers in those documents.
 **Status:** **DRAFT for review.** No clinical, legal, governance or publisher approval is claimed. **D6, D7, D11 are recommendations awaiting owner confirmation (not approved); D2 is provisional (clinical approval required); D3–D5 and D13 need external clarification; D10, D12, D14, D15, D17 are open.** This strategy is neutral to all of them (§11).
 
 ---
@@ -187,8 +187,8 @@ A session advisory lock per schema (`official`, `clinical`) is taken at P0; a se
 
 **Content reconciliation** (classified, never "fixed"):
 
-- **Leaf vs aggregate** — per (indicator, year, dimension): `reconciles` / `no_aggregate` / `aggregate_only` / `mismatch`. Today (single-dimension counts): 486 / 141 / 11 / **42**. The 42 are *reported* (OU-16), not failures, because the design's premise that leaves always sum to the aggregate is false for 7 indicators (OFF §8.2). `mismatch` cells are excluded from derived totals.
-- **Known answers** (cross-source, verified in this step): births 2025 = **41,235** in all three cuts (3463 leaves 167 + 24,760 + 16,308; 3465 leaves 2 + 28,822 + 100 + 11,246 + 1,065; 3466 `Total` 41,235 = 21,471 + 19,762 + 2); population 2025 = **4,358,921** (3916; and 3175's emirate member = 3,008,513 + 1,003,647 + 346,761).
+- **Leaf vs aggregate** — per (indicator, year, dimension): `reconciles` / `no_aggregate` / `aggregate_only` / `mismatch`, and **every `mismatch` carries a `mismatch_class`** (`RC-ZERO-LEAVES`, `RC-PROJ-ROUNDING`, `RC-RESIDUAL-BELOW`, `RC-LEAVES-ABOVE`, `RC-UNEXPLAINED`, `RC-HIERARCHY`; tests in design §3.3). Today (single-dimension counts): 486 / 141 / 11 / **42**, the 42 being **33 `RC-ZERO-LEAVES`, 4 `RC-PROJ-ROUNDING`, 4 `RC-RESIDUAL-BELOW`, 1 `RC-UNEXPLAINED`** (a *proposal*; the publisher has confirmed none). **Multi-dimension cubes (screening, not classification):** 4,858 slices tested, 4,379 reconcile, **479 do not** (299 all-zero leaves, 128 leaves below, 52 above), 432 not testable. The mismatches are *reported* (OU-16), never failures and never corrected — the design's premise that leaves always sum to the aggregate is false (OFF §8.2). `mismatch` cells and projected series are excluded from derived totals.
+- **Known answers** (cross-source, verified in this step; these are named checks and do **not** imply that every cell reconciles — see the leaf-vs-aggregate result above): births 2025 = **41,235** in all three cuts (3463 leaves 167 + 24,760 + 16,308; 3465 leaves 2 + 28,822 + 100 + 11,246 + 1,065; 3466 `Total` 41,235 = 21,471 + 19,762 + 2); population 2025 = **4,358,921** (3916; and 3175's emirate member = 3,008,513 + 1,003,647 + 346,761).
 - **Register vs statistics — never reconciled by the database** (R-O4): SDI active-licence figures (71 hospitals / 8,828 licensed beds) and SCAD (75 / 8,082 operational) are **not** compared or merged by any loader check; they are recorded as a *documented non-reconciliation*.
 - **YAML ↔ database round trip (clinical)**: for every rule, `content_sha256` recomputed from the stored `spec`/metadata equals the stored hash; typed projections equal `spec`; `count(items) = Σ items in YAML`.
 
@@ -236,7 +236,7 @@ Legend: **DB** = database constraint (CHECK / FK / UNIQUE / generated column / t
 | Member `dimension_type` matches its observation column | optional composite FK | ✔ | | |
 | Observation `source_file` is a detail file of its indicator | | ✔ | | |
 | Aggregate/leaf classification; `row_role` derivation | | ✔ | | |
-| Leaf-sum reconciliation | | report | derived views exclude `mismatch` | SCAD (OU-16) |
+| Leaf-sum reconciliation (single- and multi-dimension) | | report with `mismatch_class` | derived views exclude `mismatch` and projected series | SCAD (OU-16; OP-S1, OP-S2, OP-S4) |
 | Duplicate-group detection and flagging (3422); unexpected duplicates | | ✔ | | SCAD (D5) |
 | Corrupted age-label detection; **applying** a correction | `correction_state` CHECK | detect → `pending` | unusable until applied | **SCAD confirmation** (D4) |
 | Missing marker semantics (`-`, `:`) | column exists | raw stored | | **SCAD** (D3) |

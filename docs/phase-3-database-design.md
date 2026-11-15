@@ -4,7 +4,7 @@
 
 **Date:** 2026-11-15
 **Status:** **DRAFT — partially approved.** Per the project owner's instruction recorded in revision 2.2: **D1, D8, D16 and D18 are APPROVED**; **D2 is PROVISIONAL — clinical approval required**; every other decision in §8 remains open. Nothing is clinically approved, and no external (clinical, legal, governance, SCAD, DoH) approval has been obtained.
-**Revision:** 2.4 (2026-11-15) — source-to-database mapping specifications linked and their completion status recorded (§9.4); **no design content changed**. Revision 2.3 (2026-11-15) — D6, D7, D11 recommendations recorded (**pending owner confirmation, not approved**); `official` and `clinical` ERDs linked (§9.4). Revision 2.2 recorded owner decisions D1, D8, D16, D18 (D2 kept provisional; consent default applied, §5.2, §5.5). Revision 2.1 (final consistency corrections) is summarised in §12.
+**Revision:** 2.5 (2026-11-15) — owner-approved reconciliation corrections applied (§13): CD-1, CD-3, CD-4, CD-5, CD-6, CD-7, CD-8, CD-9, CD-10, CD-11. **Table inventory and architecture unchanged. CD-2 (link `effect`) is documented as a proposal only; no clinical, legal, governance or publisher approval is claimed.** Revision 2.4 (2026-11-15) — source-to-database mapping specifications linked and their completion status recorded (§9.4); **no design content changed**. Revision 2.3 (2026-11-15) — D6, D7, D11 recommendations recorded (**pending owner confirmation, not approved**); `official` and `clinical` ERDs linked (§9.4). Revision 2.2 recorded owner decisions D1, D8, D16, D18 (D2 kept provisional; consent default applied, §5.2, §5.5). Revision 2.1 (final consistency corrections) is summarised in §12.
 **Input verdict:** [`phase-3-database-design-review.md`](phase-3-database-design-review.md) — *APPROVED WITH CHANGES*.
 **Canonical status:** once approved, this document supersedes the 11-table contract in [`../data/metadata/synthetic_data_spec.md`](../data/metadata/synthetic_data_spec.md) §3–4 as the database design. The spec's safety rules (§1), scenarios (§5) and generator prohibitions (§6) remain the contract the design must satisfy.
 
@@ -175,7 +175,7 @@ Consequences: what counts as valid evidence is defined in **one generated expres
 | R-O2 | A **row** is `leaf` iff **none** of its dimension members is an aggregate; otherwise `aggregate`. Derived once at load, asserted by test | F-11 |
 | R-O3 | Only `measure_kind = 'count'` is additive across leaf members. Rates, percentages, ratios and densities are never summed (e.g. 3280 under-five mortality: 2025 has only three region leaves; an emirate rate cannot be derived) | F-11 |
 | R-O4 | **No foreign key, join or view between `official.facility` and SCAD observations.** SDI counts licences (71 hospitals / 8,828 licensed beds, active only); SCAD counts facilities (75 / 8,082 operational beds). A comparison is displayed side by side with both definitions, never merged | F-23 |
-| R-O5 | The default read path is leaf-only. Totals for additive indicators are **derived in a view** and never stored as if they were source rows | F-11 |
+| R-O5 | The default read path is leaf-only **and observed-only** (projected series excluded, CD-6). Totals for additive indicators are **derived in a view**, never stored as if they were source rows, and exclude cells classified `mismatch` (CD-7) | F-11 |
 | R-O6 | A **missing cell** (cube omitted a zero or unpublished combination) is *not published* — not zero, not missing-marker, not unknown | F-11 |
 | R-O7 | `Not Stated`, `Missing/Unknown`, `Abroad`, `Other` are **dimension members that carry real numbers** and are summed with leaves. They are not null values and are never dropped or coerced | F-12 |
 | R-O8 | Only the **API** is loaded into `observation` in the MVP. The five SCAD workbooks remain provenance and cross-check sources (the births-2025 Emirati/Non-Emirati split differs by 2 between API and XLSX) | F-19, D9 |
@@ -217,8 +217,19 @@ Consequences: what counts as valid evidence is defined in **one generated expres
 | `sha256` | CHAR(64) | no | `CHECK (sha256 ~ '^[0-9a-f]{64}$')`. **Not unique** — identical bytes may legitimately appear twice |
 | `byte_size` | BIGINT | no | |
 | `file_role` | TEXT | no | `CHECK IN ('indicator_detail','indicator_metadata','publication_workbook','facility_geojson','catalogue','other')` |
-| `retrieved_at` | TIMESTAMPTZ | yes | From the file's own `_source` block or the acquisition log. **`NULL` = not recorded. Never defaulted to load time** |
-| `source_effective_note` | TEXT | yes | Free text only (e.g. the catalogue's "modified 2025-07-25/28"). Not a date column — see D15 |
+| `retrieved_at` | TIMESTAMPTZ | yes | **Retrieval** only: set from a tool-written timestamp (today: the nine SDI files' `_source.retrieved`, 2026-11-14 UTC). **`NULL` = not recorded** (the 157 SCAD API files; date-only manifest value). **Never defaulted to load time, repository-copy time, file mtime or commit time, and a date is never widened to a timestamp.** Whether to add a nullable `retrieved_on DATE` instead is **open — D-P1** (§13.3); no column has been added |
+| `source_effective_note` | TEXT | yes | Free text only (e.g. the catalogue's "modified 2025-07-25/28"; a publisher `Metadata.updated`; an HTTP `Last-Modified`). Not a date column — see D15 |
+
+**Four time concepts — never substituted for one another (CD-9).**
+
+| Concept | Meaning | Where it lives | Rule |
+|---|---|---|---|
+| Publication / effective | When the *publisher* states the data or standard is valid or issued | `source_effective_note` (text); `facility.source_effective_date` only if explicitly stated | Verbatim; never parsed from a sentinel (`20400101`), a catalogue "modified" field, or `CH_FID` |
+| Publisher update | A publisher-stated update time (e.g. `Metadata.updated`) | `source_effective_note` | Verbatim; where two publisher signals disagree, keep both labelled |
+| Retrieval | When *our tool* fetched the bytes | `source_file.retrieved_at` | `NULL` if not tool-recorded |
+| Processing / load | When *we* transformed or loaded | `source_file.registered_at`, `rule_load.loaded_at`, load-report run time, `transform_version` | Always ours; never labelled as source time |
+
+A fifth, non-source date also exists and is **not a column**: the date the files were **copied into the repository** (2026-11-15). It is neither retrieval nor publication (see §3.4 `facility` and §13.2).
 | `contains_data` | BOOLEAN | no | |
 | `fit_for_use` | BOOLEAN | yes | |
 | `loader_version` | TEXT | no | Version of the loader that registered it |
@@ -256,12 +267,12 @@ Consequences: what counts as valid evidence is defined in **one generated expres
 | `unit_raw` | TEXT | no | Verbatim (13 distinct strings). **Never assumed** |
 | `measure_kind` | TEXT | no | `CHECK IN ('count','rate','percentage','ratio','density','unclassified')`. Derived from `unit_raw` by a **reviewed mapping**; `unclassified` until reviewed. Anything not `count` is non-additive |
 | `is_additive` | BOOLEAN | no | `GENERATED ALWAYS AS (measure_kind = 'count') STORED`. Additive **across leaf members at one period only** — never across periods (stock series such as population) |
-| `series_kind` | TEXT | no | `CHECK IN ('observed','projected')`. 4868 is `projected` |
+| `series_kind` | TEXT | no | `CHECK IN ('observed','projected')`. **Four** held indicators are `projected`: **4866, 4868, 4869, 4870** (title matches `(?i)projection`; the loader asserts the set equals exactly these four and reports any other match). A fifth SCAD projection indicator, 4867 (by citizenship), is referenced by the publisher but **not held** (OP-S3). **Default observed-data views exclude `projected` rows** (see `v_observation_leaf`); `series_kind` must be visible in any view or export that includes them |
 | `periodicity` | TEXT | no | `CHECK IN ('annual')` for the 86 acquired; widen only when a non-annual indicator is loaded |
 | `region_basis` | TEXT | no | `CHECK IN ('residence','facility_location','unspecified')`. Derived from title, confirmed against the metadata "Geographic coverage" |
 | `metadata_source_file_id` | BIGINT | yes | FK → `source_file` (current metadata workbook; `NULL` = none). There is deliberately **no** `detail_source_file_id`: several vintages of one indicator can coexist (D9), so the detail file is a property of each `observation` row. That an observation's `source_file_id` is a detail file *of the same indicator* is a loader assertion (§6.3) |
 | `statistical_population`, `geographic_coverage`, `calculation_method`, `data_sources_text` | TEXT | yes | Metadata workbook; `NULL` = no workbook |
-| `last_update_raw` | TEXT | yes | **Verbatim.** 4868 holds the sentinel `20400101`, which is not a date and must not be parsed |
+| `last_update_raw` | TEXT | yes | **Verbatim.** All four projection indicators (4866, 4868, 4869, 4870) hold the sentinel `20400101` (the last projected year), which is not a date and must not be parsed |
 
 **Indexes.** PK; `UNIQUE(slug)`; `(measure_kind)`.
 **Relationships.** 1 ─ N `indicator_dimension`, `observation`.
@@ -326,14 +337,27 @@ Consequences: what counts as valid evidence is defined in **one generated expres
 - `CHECK ((value IS NULL) = (value_marker_raw IS NOT NULL))` (F-12). Never coerce a marker to 0.
 - No value-range `CHECK` is defined — units differ per indicator and none is invented.
 - **Partial unique index:** `UNIQUE NULLS NOT DISTINCT (indicator_id, source_file_id, period_year, <10 member columns>) WHERE quality_flag IS NULL` (F-14, D5). Both 3422 rows load with `duplicate_key_conflict`, are excluded from every default view, and are listed for SCAD. **Neither is guessed correct.**
-- Loader reconciliation test (not a DB constraint): wherever a row-set contains both an aggregate and its leaves, leaves sum to the aggregate (the quality report states they do).
+- **Reconciliation is a report, never an assertion (CD-7).** Wherever a row-set contains both an aggregate and its leaves, the loader *classifies* the cell (`reconciles` / `no_aggregate` / `aggregate_only` / `mismatch`) and every `mismatch` with a `mismatch_class`; it never fails the load, never modifies a value and never rewrites an aggregate to equal its leaf sum. Leaves are **not** guaranteed to sum to the aggregate: 42 of the 528 testable single-dimension cells do not, and a screening of the multi-dimension cubes finds 479 of 4,858 slices that do not (see *Reconciliation classification* below). The earlier premise "leaves sum to the aggregate (the quality report states they do)" is withdrawn.
 
 **Indexes.** `(indicator_id, period_year)`; every member FK column; the partial unique index above.
 **Views.**
-- `v_observation_current` — latest `source_file` per indicator (by `retrieved_at`).
-- `v_observation_leaf` — **default read path**: `row_role = 'leaf'` AND `quality_flag IS NULL`, current vintage.
-- `v_derived_total_additive` — totals computed from leaves for `is_additive` indicators only, labelled *derived*.
-- `v_indicator_year_shape` — per `(indicator, year)`: has-aggregate, leaf count, whether leaves reconcile. Makes year-dependent shape visible.
+- `v_observation_current` — latest `source_file` per indicator (by `retrieved_at`). A vintage selector only: it does **not** filter `series_kind` and is not an observed-data view.
+- `v_observation_leaf` — **default read path for observed data**: `row_role = 'leaf'` AND `quality_flag IS NULL` AND `indicator.series_kind = 'observed'`, current vintage. **Projected rows (4866, 4868, 4869, 4870) are excluded** so a base-year figure (e.g. the 2024 population, present both as an observation in 3916/3175 and as the 2024 point of 4866) cannot be double-counted or presented as an observation. Projections are read only through an explicit, labelled path that exposes `series_kind`.
+- `v_derived_total_additive` — totals computed from leaves for `is_additive`, **`observed`** indicators only, labelled *derived*; **excludes every cell classified `mismatch`** and every projected series.
+- `v_indicator_year_shape` — per `(indicator, year[, dimension])`: has-aggregate, leaf count, reconciliation state and, for a mismatch, `mismatch_class` with the leaf sum, aggregate and difference. Makes year-dependent shape and reconciliation visible. This is a **view / load-report output**; no column is added to `observation`.
+
+**Reconciliation classification (CD-7) — a report, not a correction.** `mismatch_class` values and their deterministic tests:
+
+| `mismatch_class` | Test | Meaning | May a consumer use leaf sums? |
+|---|---|---|---|
+| `RC-ZERO-LEAVES` | every leaf is `0` and aggregate `> 0` | Leaf level is a placeholder, not an observation (zeros stored as `0`) | **No** |
+| `RC-PROJ-ROUNDING` | projection indicator and `abs(diff) ≤ n_leaves × step / 2` (step 1,000 for 2030+; 5 for 2024) | Consistent with publisher rounding | Leaves only as shape; the aggregate is the figure |
+| `RC-RESIDUAL-BELOW` | `leaf_sum < aggregate`, no residual member (`Missing/Unknown`, `Not stated`, `Abroad`) among the leaves | A category is probably unlisted (inferred) | No — use the aggregate |
+| `RC-LEAVES-ABOVE` | `leaf_sum > aggregate`, not a projection within tolerance | Inconsistent aggregate classification, revision or error | No |
+| `RC-UNEXPLAINED` | exceeds the tolerance for its class | Cause unknown | No |
+| `RC-HIERARCHY` | one aggregate member nested in another (e.g. cause-of-death `Total`) | Aggregate semantics unclear | No |
+
+The `step` tolerance is loader configuration **inferred from the data**, not publisher-stated. **The 42 single-dimension mismatches** classify as 33 `RC-ZERO-LEAVES` (indicator 3465, 1977–2009), 4 `RC-PROJ-ROUNDING` (4868 in 2030 and 2035; 4869 in 2040; 4870 in 2030), 4 `RC-RESIDUAL-BELOW` (3463 in 2008 and 2009; 3466 in 2009; 3502 in 2022) and **1 `RC-UNEXPLAINED`** (4868, 2024: age bands sum to 4,146,925 against a total of 4,135,985, +10,940 — not explained by rounding to the nearest 5, which can account for at most ±42.5; cause unknown, publisher question OP-S2). None is `RC-LEAVES-ABOVE`. The classification is a *proposal for the loader report*; the publisher has confirmed none of it. **The 479 multi-dimension mismatches** (of 4,858 tested slices; 4,379 reconcile; 432 not testable) are a *screening* result, not a classification: 299 have all leaves at `0` (297 of them `3549` region slices for 1977–2009, the same placeholder pattern as 3465), 128 have leaves below the aggregate and 52 above; some of the 128 + 52 may be `RC-HIERARCHY` (cause-of-death cubes). **Consequence:** no regional births series exists in the held data before 2010 (`3465` and `3549`); do not build a regional child-cohort history before 2010 and do not interpret the zeros (OP-S1).
 
 ### 3.4 Facility register
 
@@ -345,37 +369,40 @@ Consequences: what counts as valid evidence is defined in **one generated expres
 | Column | Type | Null | Notes |
 |---|---|---|---|
 | `source_layer` | TEXT | no | `CHECK IN ('hospitals','health_centres','clinics','pharmacy','rehabilitation_center','provision_health_service','diagnostic_centers','mobile_health_unit','dialysis_centre')` |
-| `source_object_id` | INTEGER | no | `OBJECTID`; unique **only within** a layer (1,715 distinct in 5,339). `UNIQUE (source_layer, source_object_id)` |
+| `source_object_id` | INTEGER | no | `OBJECTID`; unique **only within** a layer (1,715 distinct in 5,339). `UNIQUE (source_layer, source_object_id)` — **remains the row identity** |
+| `ch_fid` | TEXT | no | **Raw, verbatim** publisher-assigned feature identifier `CH_FID` (form `DOH_dd_mm_yyyy_n#n#n`, e.g. `DOH_28_10_2026_9236#325#89`). Present on all 5,339 features and **globally unique** (5,339 distinct) — verified; `UNIQUE (ch_fid)`; loader asserts presence and uniqueness. It is the only publisher-assigned key that survives on the 434 unidentified rows. **Raw evidence only:** never parsed into a date, never `source_effective_date`, never a substitute for `(source_layer, source_object_id)` or `license_no`. Its date-like prefix is *consistent with* a Department of Health extract batch (434 rehabilitation rows `DOH_15_10_2026…`, the other 4,905 `DOH_28_10_2026…`); that reading is an **inference** needing publisher confirmation (OP-D1). **New column (CD-10); not a new table** |
 | `license_no` | TEXT | yes | `UNIQUE` (NULLs distinct); `CHECK (license_no <> '')`. Globally unique where present (4,905). The 434 blanks are `NULL`, never `''` |
 | `identity_status` | TEXT | no | `CHECK IN ('identified','unidentified')`. The 434 `rehabilitation_center` rows carry **no** name, licence, status, region, city or type → `unidentified`. They can never be a registered facility or appear on a default view |
 | `facility_name_en`, `facility_name_ar` | TEXT | yes | |
 | `type`, `category`, `subtype` | TEXT | yes | As published |
 | `region_id` | SMALLINT | yes | FK → `region` (`NULL` for the 434) |
 | `city` | TEXT | yes | |
-| `license_status_raw` | TEXT | yes | FK → `license_status_map(raw_value)`. 15 distinct values incl. the typo variant `Preliminary -Cancelled by Law` (×24) |
+| `license_status_raw` | TEXT | yes | FK → `license_status_map(raw_value)`. **14 distinct non-null raw values** (15 keys if the `NULL` of the 434 unidentified records is counted; `NULL` is not a map row), including the typo variant `Preliminary -Cancelled by Law` (×24), which is its own raw value and is **not** merged with `Preliminary - Cancelled by Law` |
 | `is_public_raw` | TEXT | yes | Verbatim (contains a stray `N` ×3) |
 | `is_public` | BOOLEAN | yes | Normalised (`N` → false); derived |
 | `has_insurance` | BOOLEAN | yes | `thiqa/basic/enhanced` are **not loaded** (constant `N/A` in all 4,905 rows; they look like data and are not) |
-| `inpatient_bed_capacity` | INTEGER | yes | `CHECK (>= 0)`. The bed field. **Licensed capacity — not operational beds** |
+| `inpatient_bed_capacity` | INTEGER | yes | `CHECK (>= 0)`. The bed field. **Licensed capacity — not operational beds.** The source `INPATIENTBEDCAPACITY` is a **string** (not an integer) for all 4,905 identified features and JSON `null` for the 434. Typed projection (CD-8): digit string `"0"` (2,586) → `0` — a **source-stated zero**; digit string `> 0` (111, all hospitals) → that integer; empty string `""` (2,208) → `NULL` — **not recorded, never `0`**; JSON `null` (434) → `NULL` — unidentified record; anything else fails the load. The three states are distinct in the source; `NULL` in this column does not distinguish `""` from `null` (the distinction is recoverable only from the raw GeoJSON, and the processed CSV already collapses both to an empty cell). Meaning of `"0"` versus `""` is a publisher question (OP-D3) |
 | `beds_raw`, `specialities_raw`, `professionals_raw` | TEXT | yes | Verbatim composite strings. No child tables (no MVP consumer) |
 | `emergency_department`, `pediatric_emergency_department`, `maternity_emergency_care`, `home_care_services` | BOOLEAN | yes | Loader fails on any value other than Yes/No |
 | `source_longitude`, `source_latitude` | DOUBLE PRECISION | yes | **As published.** The `(0,0)` placeholders and out-of-bounds points are stored here exactly as given |
 | `longitude`, `latitude` | DOUBLE PRECISION | yes | **Usable** coordinates; `NULL` unless `geo_quality IN ('ok','swapped_repaired')` |
-| `geo_quality` | TEXT | no | `CHECK IN ('ok','swapped_repaired','missing_placeholder','out_of_bounds')` |
-| `source_file_id` | BIGINT | no | FK → `source_file` (its `retrieved_at` is the **retrieval** timestamp) |
-| `source_effective_date` | DATE | yes | **`NULL`** — the register has no publication date (quality report B6). Populated only if the publisher states one. Never the retrieval date and never the catalogue's modified date |
+| `geo_quality` | TEXT | no | `CHECK IN ('ok','swapped_repaired','missing_placeholder','out_of_bounds')`. **`ok` means only "inside the bounding rectangle" (lon 51.0–56.5, lat 22.0–25.5)** — a rectangle that also covers parts of Dubai, Sharjah, Oman and Saudi Arabia. It is not "inside Abu Dhabi", not a test against the emirate boundary and not a check of coordinates against `REGION` (CD-11) |
+| `source_file_id` | BIGINT | no | FK → `source_file` (its `retrieved_at` is the **retrieval** timestamp: 2026-11-14 UTC for the SDI files; the repository-copy date 2026-11-15 is neither retrieval nor effective) |
+| `source_effective_date` | DATE | yes | **`NULL`** — the register has no publication date (quality report B6). Populated only if the publisher states one. Never the retrieval date, never the repository-copy date, never the catalogue's modified date and never derived from `CH_FID` |
 | `transform_version` | TEXT | no | Version of the repair/classification code |
 
 **Checks.**
 - `CHECK (geo_quality IN ('ok','swapped_repaired') OR (longitude IS NULL AND latitude IS NULL))` — the 3 `out_of_bounds` rows (one at 26.75 N / 37.76 E, another 18.10 N / 42.19 E, a third lon 34.45) keep their bad values **only** in `source_*`.
+- **Original versus corrected coordinates.** The raw properties `Longitude`/`Latitude` are **not** an independent correction source: they differ from the geometry by at most about 1.5 × 10⁻⁴° (≈ 17 m) and carry the same defects (identical for the 6 `(0,0)` placeholders). The processed CSV overwrites coordinates in place, so the as-published pair for the 31 swapped rows and 6 placeholders exists **only** in the raw GeoJSON geometry; `source_longitude/latitude` are loaded from there.
 - `CHECK (longitude IS NULL OR longitude BETWEEN 51.0 AND 56.5)` and `CHECK (latitude IS NULL OR latitude BETWEEN 22.0 AND 25.5)`. **`ok` means "inside a deliberately generous box", not "inside the emirate"** (the box includes parts of neighbouring states).
 - `CHECK ((longitude IS NULL) = (latitude IS NULL))`.
 - `CHECK (identity_status = 'identified' OR (license_no IS NULL AND facility_name_en IS NULL))`.
+- `UNIQUE (ch_fid)` and `NOT NULL` (CD-10); `(source_layer, source_object_id)` remains unique and is unaffected (verified on disk: 5,339 distinct pairs and 5,339 distinct `CH_FID`).
 
 **Do not load:** `FACILITYEMAIL/PHONE/FAX/POBOX` (the licence grants no right to use personal information; some name individuals).
-**Do not "fix":** the lon 34.45 outlier (a typo for 54.45 is speculation).
+**Do not "fix":** the lon 34.45 outlier (`VIP DOCTOR L.L.C - BRANCH OF ABU DHABI`: identical fractional digits suggest 54.4539, but that is an **inference**; the row stays `out_of_bounds` and unplotted).
 **Prerequisite (separate task, not done here).** `processed/facilities/` cannot supply `source_*` for the 31 repaired rows. The loader must read the raw GeoJSON through the same repair function, or the transformation must emit the as-published pair — **D15**.
-**Indexes.** `(source_layer)`; `(region_id)`; `(license_status_raw)`; `(latitude, longitude) WHERE latitude IS NOT NULL`.
+**Indexes.** `(source_layer)`; `(region_id)`; `(license_status_raw)`; `(latitude, longitude) WHERE latitude IS NOT NULL`; `UNIQUE (ch_fid)`.
 **Views.** `v_facility_usable`: `identity_status = 'identified'` AND usable coordinates AND `license_status_map.is_operating IS TRUE` (so it returns **nothing operating** until D13 confirms any mapping — by design).
 **Relationships.** N ─ 1 `region`, `source_file`, `license_status_map`; 1 ─ N `synthetic.facility_service_profile` (the only inbound reference, from `synthetic`).
 
@@ -385,13 +412,13 @@ Consequences: what counts as valid evidence is defined in **one generated expres
 
 | Column | Type | Null | Notes |
 |---|---|---|---|
-| `raw_value` | TEXT | no | One row per distinct source string (15 today). The loader **inserts any unseen value as `unreviewed`** so the FK holds |
+| `raw_value` | TEXT | no | One row per distinct non-null source string (**14 today**; the 15th key in the processed report is the `NULL` of the 434 unidentified records and is not a row). The loader **inserts any unseen value as `unreviewed`** so the FK holds |
 | `status_group` | TEXT | yes | e.g. active / cancelled / expired / preliminary / suspended — proposed, not yet reviewed |
 | `is_operating` | BOOLEAN | yes | **`NULL` until confirmed** |
 | `review_state` | TEXT | no | `CHECK IN ('unreviewed','proposed','confirmed')` |
 | `reviewed_by`, `reviewed_on`, `note` | TEXT/DATE/TEXT | yes | Required when `confirmed` |
 
-**Checks.** `CHECK (review_state = 'confirmed' OR is_operating IS NULL)` — an unreviewed value cannot carry an operating flag. `CHECK (review_state <> 'confirmed' OR (reviewed_by IS NOT NULL AND reviewed_on IS NOT NULL AND is_operating IS NOT NULL))`. Note: even `Active` stays `proposed` until reviewed — only 3,005 of 5,339 rows are `Active`, and the meaning of `About to Expire`, `Temporary Closed` etc. is not stated by the publisher.
+**Checks.** `CHECK (review_state = 'confirmed' OR is_operating IS NULL)` — an unreviewed value cannot carry an operating flag. `CHECK (review_state <> 'confirmed' OR (reviewed_by IS NOT NULL AND reviewed_on IS NOT NULL AND is_operating IS NOT NULL))`. Note: even `Active` stays `proposed` until reviewed — only 3,005 of 5,339 rows are `Active`, and the meaning of `About to Expire`, `Temporary Closed` etc. is not stated by the publisher. **Why it matters:** for hospitals, `Active` only = 71 hospitals / 8,828 beds; `Active` + `About to Expire` = 74 / 9,326; all licences = 114 / 11,721 (SCAD reports 75 / 8,082). The count depends on a status choice nobody has approved (D13).
 
 #### `official.working_calendar`  — **CONDITIONAL on D12**
 `(calendar_date DATE PK, is_working_day BOOLEAN NOT NULL, note TEXT, source TEXT NOT NULL)`. Needed by `IFHAS-WF-REFERRAL-15WD` ("15 **working** days"). No weekend or holiday assumption exists anywhere in the repository, so none is hard-coded. Not in the table count until D12 chooses a table over an engine setting.
@@ -406,11 +433,12 @@ Consequences: what counts as valid evidence is defined in **one generated expres
 |---|---|---|
 | R-C1 | **YAML is the single source of truth.** The database is a loaded, hash-verified copy. There is no authoring path in the database, no admin screen, no UPDATE on a rule. A change is: edit YAML → bump `rule_version` → load. Two authoring systems would diverge | — |
 | R-C2 | `(rule_id, rule_version)` is the primary key and rows are **append-only** (§4.2 `rule`). The YAML `history` block keeps no old `spec`, so the database must keep every version it has ever loaded | F-25 |
-| R-C3 | **Authority is derived, never configured.** `is_authoritative = (verification_status = 'verified' AND NOT requires_clinical_review)`, a generated column. There is no column that can be set to make a rule authoritative; the loader rejects an `authoritative:` key and so does the schema | F-26 |
+| R-C3 | **Authority is derived, never configured.** `is_authoritative = (verification_status = 'verified' AND NOT requires_clinical_review)`, a generated column. There is no column that can be set to make a rule authoritative; the loader rejects an `authoritative:` key and so does the schema. **"Authoritative" has a limited meaning — see R-C8.** A third condition (no open `blocks_rule` question link) is **proposed only** (CD-2/CD-3, pending the clinical/rules owner, OC-1) and is **not** part of the formula | F-26 |
 | R-C4 | The original YAML mapping is retained verbatim (`spec` JSONB, `history` JSONB, `content_sha256`). Typed projection columns are convenience copies, asserted equal to the JSONB by a load test | — |
 | R-C5 | **Nothing clinical is invented to fit a column.** Unresolved rules and items load with their open questions; a `NOT NULL` is never satisfied with a made-up threshold. The three unresolved rules carry no threshold and cannot be evaluated | — |
 | R-C6 | No `CHECK` bakes in the outcome of an open question. In particular "no `overdue` for Well-Child" is **not** a constraint (it would hard-code `OQ-WCV-DUE-WINDOW`); the engine enforces it and a test proves it | F-28 |
 | R-C7 | The `clinical` schema states plainly that **nothing in it is clinically validated** (`clinical_review_status = 'not_reviewed'` in both YAML configs). The standards' PDFs are **not held** | — |
+| R-C8 | **Authority glossary (CD-3; applies to every document, ERD and UI string).** Four things are kept apart: **(a) source-verified** — `verification_status = 'verified'`: a transcription checked against the published standard; *not* clinical validation. **(b) authoritative** — `is_authoritative`: source-verified **and** not flagged `requires_clinical_review`, i.e. a faithful, source-checked transcription of a published standard that is not flagged for review. **It is not clinical approval and not confirmation that the standard is in force.** **(c) clinically approved** — *no rule is*; every YAML config says `clinical_review_status = not_reviewed` and `OQ-GOV-CLINICAL-VALIDATION` is open. **(d) effective / in force** — a property of the standard (`effective_date_*`): 23 of the 47 authoritative rules (every authoritative Well-Child rule) have no effective date ("TBD"), so none may be shown as in force. Also: 30 of the 47 authoritative rules cite at least one open question, and open-question citations are not exhaustive (`affects` scope is wider than the citations), so "authoritative" must never be described as "clean", and consumers must show the cited open questions beside the rule. Which open questions would make a rule non-authoritative is **not decided** (CD-2 / OC-1) | CA-1, CA-4, CA-5 |
 
 ### 4.2 Tables
 
@@ -489,7 +517,7 @@ Upserted per load (this is current state, not evaluation evidence — evaluation
 | `source_reference` | TEXT | no | Document, section/appendix, PDF page |
 | `verification_status` | TEXT | no | FK → `verification_status` |
 | `requires_clinical_review` | BOOLEAN | no | DEFAULT false |
-| `is_authoritative` | BOOLEAN | no | **`GENERATED ALWAYS AS (verification_status = 'verified' AND NOT requires_clinical_review) STORED`** (R-C3). Today 47 true / 7 false |
+| `is_authoritative` | BOOLEAN | no | **`GENERATED ALWAYS AS (verification_status = 'verified' AND NOT requires_clinical_review) STORED`** (R-C3). Today 47 true / 7 false. **Meaning (R-C8): source-verified and not flagged — not clinical approval, not confirmation the standard is in force** |
 | `effective_date_*`, `effective_date_note` | partial-date triple + TEXT | — | IFHAS `2025-07`; **all 25 WCV `NULL` with a mandatory note** |
 | `last_reviewed` | DATE | no | |
 | `description`, `notes` | TEXT | no / yes | |
@@ -521,18 +549,20 @@ Upserted per load (this is current state, not evaluation evidence — evaluation
 **Relationships.** N ─ 1 `standard`, `rule_load`, `verification_status`; 1 ─ N `rule_condition`, `rule_item`, `rule_open_question`; 1 ─ N (from `synthetic`) evaluations, referrals, consent scope, assessments.
 
 #### `clinical.rule_condition`  — **[FINAL]**
-**Purpose.** Eligibility conditions (8 today, **7 not machine-evaluable**). Needed because `machine_evaluable = false` must force `requires_clinical_review`.
+**Purpose.** Eligibility conditions (8 today: **5 `inclusion`, 3 `exclusion`**; **7 not machine-evaluable**). Needed because `machine_evaluable = false` must force `requires_clinical_review`. All 3 exclusions sit in one rule (`IFHAS-PKG-LIQUID-BIOPSY-40-75`: verified, flagged, all `machine_evaluable: false`); the only `machine_evaluable: true` condition is the AAA `inclusion` (`ever_smoked`).
 **PK.** `(rule_id, rule_version, condition_ordinal)`.
 
 | Column | Type | Null | Notes |
 |---|---|---|---|
-| `kind` | TEXT | no | Verbatim (`inclusion` observed) |
+| `kind` | TEXT | no | Verbatim. **`CHECK (kind IN ('inclusion','exclusion'))`** (CD-4) — both kinds are stored and validated; a typo (`exclude`, `Exclusion`) is rejected by the loader, not warned. Observed: `inclusion` ×5, `exclusion` ×3 |
 | `as_printed` | TEXT | no | |
 | `machine_evaluable` | BOOLEAN | no | |
 | `attribute` | TEXT | yes | e.g. `smoking_history.ever_smoked` |
 | `required_value` | JSONB | yes | |
 
 `CHECK (NOT machine_evaluable OR (attribute IS NOT NULL AND required_value IS NOT NULL))`. "A rule with a non-machine-evaluable condition has `requires_clinical_review`" is a **loader validation + test** (it spans two tables), with an optional deferred constraint trigger. Lung (`OQ-IFHAS-LUNG-CRITERIA`) and liquid-biopsy criteria stay free text and are never machine-flagged.
+
+**Exclusion semantics are pending clinical approval (CD-4; OC-4) — storage and validation support both kinds, evaluation does not yet.** Not defined anywhere, and not to be assumed by any implementation: (1) whether `attribute` + `required_value` on an `exclusion` means the value that *triggers* exclusion or the value *required to avoid* it; (2) how conditions combine (liquid biopsy reads *inclusion AND NOT any exclusion*; lung uses `and/or` inside printed text) — **`condition_ordinal` is a position, not logic**; (3) **an empty `conditions: []` means "none printed in Appendix 7", not "no exclusions apply"** (the later Cervical Cancer Screening Standard states exclusions that Appendix 7 omits). Until approved, the loader **rejects `machine_evaluable: true` on an `exclusion`** and rejects `machine_evaluable: true` without non-null `attribute` and `required_value` (tested with `is not None`, never truthiness), so no machine-evaluable exclusion can enter the database.
 
 #### `clinical.rule_item`  — **[FINAL]**; IFHAS codes **[PROVISIONAL: D10]**
 **Purpose.** Assessment/follow-up items inside a rule (**174** across 14 WCV visits, 21 distinct codes; **9 unresolved**) **and the IFHAS package components** (75 strings, 37 distinct) — so results can be recorded per item and an unresolved item blocks *one item*, not the visit (scenario 25).
@@ -547,22 +577,35 @@ Upserted per load (this is current state, not evaluation evidence — evaluation
 | `ordinal` | SMALLINT | no | Position in the YAML list |
 | `description` | TEXT | no | |
 | `source_reference` | TEXT | no | IFHAS components inherit the package's; `inherited_from_rule BOOLEAN` records that |
-| `verification_status` | TEXT | no | FK → `verification_status`. **Item-level authority is the item's own status.** IFHAS components inherit the rule's |
-| `is_authoritative` | BOOLEAN | no | `GENERATED ALWAYS AS (verification_status = 'verified') STORED` |
+| `verification_status` | TEXT | no | FK → `verification_status`. The **item's own** source-verification status. IFHAS components inherit the **rule's status only — not its `requires_clinical_review` flag**; an inherited component adds nothing to its parent's authority |
+| `status_is_verified` | BOOLEAN | no | `GENERATED ALWAYS AS (verification_status = 'verified') STORED`. Records the item's **own status only. It is not authority** — a generated column cannot see the parent rule, so it must never be read as "authoritative". **Renamed from `is_authoritative` (CD-1)** because as designed it was `true` for the 6 `package_component` rows under the 4 verified-but-flagged packages (cervical Pap ×2, cervical HPV ×2, liquid biopsy ×1, lung LDCT ×1) |
 | `condition_text` | TEXT | yes | |
 | `components_text` | TEXT[] | yes | WCV nested `components`, verbatim |
 | `rule_refs` | TEXT[] | yes | Verbatim |
 | `notes` | TEXT | yes | |
 
+**Effective authority (CD-1).** Authority of an item is parent-aware and lives in a **view**, `clinical.v_rule_item_effective_authority`, which joins `rule_item` to its parent `rule` on `(rule_id, rule_version)`:
+
+```
+item.effective_authority =
+      item.status_is_verified
+  AND parent_rule.is_authoritative
+```
+
+An item **never** becomes authoritative on its own when its parent is not. The view exposes `item_status_is_verified`, `parent_is_authoritative` and `effective_authority` side by side. (A generated column cannot reference another table; a load-time copy is the only alternative and is not chosen.) A third term — no open `blocks_rule` link at item level — is **proposed only** and applies if and when CD-2 is approved. Loader assertion (LV-2): after load, recompute every rule's authority and every item's `effective_authority` and compare with the database; assert `effective_authority ⇒ parent.is_authoritative`. Today no *visit* item sits under a non-authoritative rule (all 174 under authoritative parents; the 9 unresolved items are correctly not verified); the defect was latent in the *package-component* rows only.
+
 **Checks.** "Unresolved items must reference ≥ 1 open question" spans two tables, so it is a loader rule plus a deferred constraint trigger against `rule_item_open_question`, not a `CHECK`.
 **Unique.** Verified on disk: no duplicate `(rule, code)`, no code in two categories within a visit, no slug collision inside any one IFHAS package.
 **Indexes.** `(rule_id, rule_version)`; `(verification_status)`.
+**Views.** `v_rule_item_effective_authority` (above).
 
 #### `clinical.rule_open_question` and `clinical.rule_item_open_question`  — **[FINAL]**
 **Purpose.** Rule-to-question relationships, derived from each rule's / item's `open_question_ids` (validated by the loader). **Not** derived from the YAML `affects` field.
 - `rule_open_question`: PK `(rule_id, rule_version, oq_id)`; FKs → `rule`, `open_question`.
 - `rule_item_open_question`: PK `(rule_id, rule_version, category, code, oq_id)`; FKs → `rule_item`, `open_question`.
 **Indexes.** `(oq_id)` — "what does this question block?" is the main query.
+
+**PROPOSED, not adopted — link `effect` (CD-2; requires the clinical/rules owner, OC-1).** Blocking is a property of the **(rule, question) link** (and item–question link), not of the question: `OQ-IFHAS-AGE-CEILING` blocks `IFHAS-PROG-AGE-CEILING` but is informational on `IFHAS-PROG-ELIG-MIN-AGE`. The proposal is an `effect` on each link with three values — `blocks_rule` (the rule's content is contested, conflicting or incomplete; non-authoritative while open), `gates_outputs` (a faithful transcription, but named evaluation outputs cannot be produced until answered), `informational` (shown with the rule, blocks nothing) — plus a *cited / derived* marker so that links expanded from pathway-level `affects` (which are wider than the citations: e.g. `OQ-COMMON-AGE-CALC` is declared for 54 rules but cited by 16) stay distinguishable from cited links. A per-question classification exists in the reconciliation report (§2, CA-1) as a *proposal*; it would leave 0 rules demoted automatically, 28 with a `gates_outputs` link and 2 with `informational` links only, and leaves three decisions to the owner (AAA smoking definition, FIT/colonoscopy flagging, the sex gate). **None of this is in the column lists above, the ERD or the table counts, no `effect` value is recorded for any link, and the authority formula is unchanged.** No new table is proposed.
 
 ### 4.3 Attribute contract (what the engine may read from a patient)
 
@@ -1089,8 +1132,8 @@ These need a loader validation, constraint trigger or engine test — stated so 
 | # | Rule | Mechanism |
 |---|---|---|
 | 1 | A member's `dimension_type` matches its observation column; an observation's `source_file` is a detail file of its indicator | Loader assertion + test |
-| 2 | Leaves reconcile to aggregates (R-O2) | Loader test |
-| 3 | `machine_evaluable = false` ⇒ parent rule `requires_clinical_review`; unresolved rules/items cite ≥ 1 open question | Loader validation + deferred trigger |
+| 2 | Leaf/aggregate **classification** (not a guarantee that leaves sum to aggregates): every (indicator, year, dimension) cell is classified and every mismatch carries a `mismatch_class`; the load never fails on a mismatch and never modifies a value (CD-7). Projection set equals `{4866, 4868, 4869, 4870}`; projected rows excluded from observed views and derived totals (CD-6) | Loader report + test |
+| 3 | `machine_evaluable = false` ⇒ parent rule `requires_clinical_review`; unresolved rules/items cite ≥ 1 open question; `unresolved ⇒ requires_clinical_review`; `requires_clinical_review` (and the other flags) are present and real booleans — `null`, `""`, `0`, strings and an absent key are rejected, never coerced; condition `kind ∈ {inclusion, exclusion}`; no `machine_evaluable: true` on an `exclusion`; every item's `effective_authority` implies its parent is authoritative (recomputed after load, CD-1) | Loader validation + deferred trigger |
 | 4 | `ifhas_screening.rule` is a `screening_package`; `well_child_visit.rule` is a `visit_schedule`; the appointment's `appointment_type` matches the event | Constraint trigger |
 | 5 | Facility-profile eligibility (identified, usable coordinates, **operating licence — unavailable until D13**, plausible kind) | Constraint trigger against `official.v_facility_usable` |
 | 6 | Consent scope covers a refusal-closed gap's rule (`scope_rule` = gap rule, else `scope_pathway` = rule's pathway); a consent's `scope_pathway` equals its rule's pathway | Constraint trigger |
@@ -1310,7 +1353,7 @@ Blocking classification: **Blocks ERD** means the entity-relationship diagram ca
 ### D13 — Licence-status mapping ◆ (additional review point)
 | | |
 |---|---|
-| **Question** | Which of the 15 raw licence-status strings mean "operating"? |
+| **Question** | Which of the 14 raw (non-null) licence-status strings mean "operating"? |
 | **Why it matters** | Only 3,005 of 5,339 are `Active`; `About to Expire`, `Temporary Closed`, `Preliminary – …` are not self-explanatory. Operating status must **not** be inferred from unreviewed values |
 | **Recommended** | `license_status_map` with `review_state`; `is_operating` stays `NULL` until `confirmed`; `v_facility_usable` returns no operating facility until some mapping is confirmed |
 | **Alternatives** | Treat `Active` as operating by convention; show raw status only |
@@ -1334,7 +1377,7 @@ Blocking classification: **Blocks ERD** means the entity-relationship diagram ca
 |---|---|
 | **Question** | How is the facility register's date represented, and how are as-published coordinates obtained? |
 | **Why it matters** | The register has **no publication date**; the retrieval timestamp is not the effective date, and the catalogue's "modified 2025-07-25/28" is catalogue metadata. And `processed/` keeps only repaired coordinates |
-| **Recommended** | Keep `retrieved_at` (on `source_file`) separate from `source_effective_date` (`NULL` unless stated). Load from the raw GeoJSON through the repair function (or extend the transformation to emit the as-published pair) — **separate task, not done here** |
+| **Recommended** | Keep `retrieved_at` (on `source_file`) separate from `source_effective_date` (`NULL` unless stated); keep the four time concepts of §3.2 distinct. Whether a date-only retrieval claim (SCAD files) is represented by a nullable `retrieved_on` is **D-P1, open** (§13.3). Load from the raw GeoJSON through the repair function (or extend the transformation to emit the as-published pair) — **separate task, not done here** |
 | **Alternatives** | Use the retrieval date as `as_of_date` (the review's wording); use `processed/` and lose `source_*` |
 | **Consequences** | Recommended: honest vintage; a loader task exists. Alternatives conflate retrieval with validity or lose provenance |
 | **Blocks ERD?** | No |
@@ -1452,7 +1495,7 @@ These were found while consolidating. None has been silently resolved; each poin
 | 5 | `history_availability.partial` has no defined evaluation behaviour | **D17** |
 | 6 | The review says `appointments.slot_type` is derivable from datetime + facility hours; **facility hours are not modelled** (only two booleans) and "weekend" is undefined | `slot_type` kept stored; revisit with **D12** |
 | 7 | The review proposes `spec_sha256`; a hash of `spec` alone does not detect a metadata edit (e.g. `verification_status` flipped) without a version bump | Design uses `content_sha256` over the whole rule mapping. **Deviation from the review**, to be confirmed with D16 |
-| 8 | The review says to record the facility register's `as_of_date = 2026-11-15`; that is the **retrieval** date, not an effective date | Separated — **D15** |
+| 8 | The review says to record the facility register's `as_of_date = 2026-11-15`; that is neither a retrieval date (the SDI files record **2026-11-14** UTC) nor an effective date (it is the date the files were copied into the repository) | Separated — **D15**; corrected in rev 2.5 (§13.2) |
 | 9 | The review's `facility` design says the loader should prefer raw GeoJSON, but `data/processed/facilities/` (and the data dictionary) is what exists; dictionary also says non-usable rows "have no usable coordinates" while the CSV retains `out_of_bounds` values | Follow-up task (not performed); consumers must test `geo_quality` |
 | 10 | `synthetic_data_spec.md` §1.1 (per-row provenance), §2 (2022 anchors), §3.3 (invented facilities), §3.2 (`consent_to_contact`), §3.8 (`never_screened`), §8 are stale or superseded by this design | Spec **not modified** (out of scope for this step). Follow-up: refresh it after approval |
 | 11 | Existing-document discrepancies listed in review §9 (age-label scope, aggregate rule, 3280 headline, 2677 headline, C7, B3, births split, `acquisition_log.json` paths, out-of-bounds coordinates) | Carried, **not corrected here** |
@@ -1540,6 +1583,48 @@ Revisions 2.1 and 2.2 edited **only** `docs/phase-3-database-design.md`. No SQLA
 | U8 | Generated-column composite FKs are used for evidence (§2.5). They are valid PostgreSQL but unusual; SQLAlchemy 2.0 must model them with `Computed(persisted=True)` | Implementation detail | Verify in the first migration (D7) |
 
 ---
+
+## 13. Revision 2.5 — owner-approved reconciliation corrections applied
+
+**Source:** [`mappings/phase-3-reconciliation-report.md`](mappings/phase-3-reconciliation-report.md) §§4–9. **Scope:** documentation and design text only. No table was added, removed or re-keyed; the architecture is unchanged (official 9 + 1 conditional, clinical 12, synthetic 18). No SQL, model, migration, loader, YAML or data was created or changed. Nothing here is a clinical, legal, governance or publisher approval.
+
+### 13.1 What was applied
+
+| ID | Applied as | Where |
+|---|---|---|
+| CD-1 | Item column renamed `is_authoritative` → `status_is_verified` (own status only); parent-aware `effective_authority` in view `clinical.v_rule_item_effective_authority` | §4.2 `rule_item` |
+| CD-2 | **Not applied.** Link `effect` documented as a *proposal*; no column, no value | §4.2 association tables |
+| CD-3 | Authority glossary R-C8: source-verified ≠ authoritative ≠ clinically approved ≠ in force. The proposed third condition is *not* in the formula | §4.1 |
+| CD-4 | `CHECK (kind IN ('inclusion','exclusion'))`; 5 + 3 recorded; exclusion semantics pending | §4.2 `rule_condition` |
+| CD-5 | Licence statuses: 14 non-null raw values | §3.4 |
+| CD-6 | Projection set `{4866, 4868, 4869, 4870}`; projections excluded from observed views | §3.3 |
+| CD-7 | Reconciliation is classified (`mismatch_class`), never asserted; 42 single-dimension and 479 multi-dimension mismatches recorded | §3.3, §6.3 |
+| CD-8 | `INPATIENTBEDCAPACITY` is a string; `"0"` / `""` / `null` distinguished | §3.4 |
+| CD-9 | Four time concepts; retrieval versus repository-copy date | §3.2, §13.2 |
+| CD-10 | `facility.ch_fid` (raw TEXT, unique, not NULL); existing identity keys unchanged | §3.4 |
+| CD-11 | `geo_quality = ok` means inside the bounding rectangle only | §3.4 |
+
+### 13.2 Retrieval versus repository-copy dates
+
+| Group | Retrieval | Repository copy | Note |
+|---|---|---|---|
+| SDI GeoJSON (9 files) | **2026-11-14**, 13:20:17Z–13:20:58Z (tool-written `_source.retrieved`) | 2026-11-15 | Earlier text giving 2026-11-15 as the SDI retrieval date was wrong |
+| SCAD API (157 files) | **Not recorded.** The manifest's `2026-11-15` is a date-only claim, not a timestamp; the files cannot show it | 2026-11-15 | `retrieved_at = NULL`; bounds are not values |
+| SCAD workbooks | Not recorded (HTTP `Last-Modified` is publisher-side) | 2026-11-14 / 2026-11-15 | |
+| `scad_health_tables_en.xlsx` | Unknown; **no source, URL or timestamp on record** | — | Unregistered (OU-14) |
+
+### 13.3 Decisions still open (none closed by this revision)
+
+- **CD-2 and OC-1 … OC-5** — clinical/rules owner: effect classes and per-link classification; AAA smoking definition; FIT/colonoscopy flagging; exclusion semantics and combination logic; the sex gate. (OC-6, the glossary wording, is applied as the proposed text and is open for confirmation.)
+- **D-P1** — `retrieved_on` (nullable DATE) versus leaving `retrieved_at` `NULL`. Not decided; no column added.
+- **D13** — DoH licence-status clarification (OP-D2). No operating-facility count may be published.
+- **SCAD publisher questions OP-S1 … OP-S6**; DoH questions OP-D1 … OP-D4; ADPHC OP-A1.
+- **D2** — refusal semantics remain **PROVISIONAL**.
+- **D6, D7, D11** — recommendations recorded in rev 2.3 remain awaiting owner confirmation.
+
+### 13.4 Design changes in this revision that the owner should confirm by name
+
+Applied under the in-principle approvals; the exact names are mine: the item column name `status_is_verified`; the view name `v_rule_item_effective_authority`; the column name `facility.ch_fid` and its `UNIQUE`/`NOT NULL`; `CHECK (kind IN ('inclusion','exclusion'))`; the `mismatch_class` vocabulary as view/report output (stored nowhere). None adds a table.
 
 
 *Suggested next step: obtain clinical approval for D2 (S2–S5), settle D6 and D7, then draw the `official` and `clinical` ERDs (ready now) and the `synthetic` ERD once D2 is decided; start from a fresh conversation.*

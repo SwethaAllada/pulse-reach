@@ -30,7 +30,7 @@ facility register — **none is individual-level data**. Every file is SHA-256-c
 |---|---|---|---|
 | `raw/scad/` (5 files, 4.8 MB) | Statistics Centre – Abu Dhabi | Health Statistics 2022; Birth Statistics 2024 **and 2025**; Death Statistics 2025; historical health tables | 2022 · 2024 · 2025 |
 | `raw/statad_api/` (158 files, 6.5 MB) | SCAD Statistics API | **86 Abu Dhabi indicators** (population, capacity, workforce, utilisation, vital statistics, child mortality, insurance) + 71 official metadata workbooks | mostly 2025; series from 1960/1977 |
-| `raw/abudhabi_sdi/` (10 files, 8.4 MB) | Abu Dhabi SDI (ArcGIS) | **5,339 geocoded licensed health facilities**, WGS84 | live register, retrieved 2026-11-15 |
+| `raw/abudhabi_sdi/` (10 files, 8.4 MB) | Abu Dhabi SDI (ArcGIS) | **5,339 geocoded licensed health facilities**, WGS84 | live register, retrieved 2026-11-14 (copied into the repository 2026-11-15) |
 | `raw/abudhabi_opendata/` (42 files, 0.5 MB) | Abu Dhabi Open Data Platform | 614-dataset catalogue snapshot, 33 DCAT metadata records, 7 files | mixed (incl. 2008) |
 
 `processed/facilities/` holds the one validated transformation — the cleaned facility table.

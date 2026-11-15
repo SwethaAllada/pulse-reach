@@ -3,13 +3,14 @@
 **Phase 3, Step 3 (design only).** No SQL, SQLAlchemy model, migration, YAML rule, rule-loader code or synthetic data was created or changed. This document specifies how the twelve `clinical` tables are populated from the YAML that is actually in `data-pipeline/rules/`.
 
 **Date:** 2026-11-15
-**Canonical design:** [`../phase-3-database-design.md`](../phase-3-database-design.md) revision 2.3 (§4, §2.3, §6.3, §8). **ERD:** [`../erd/clinical-schema-erd.md`](../erd/clinical-schema-erd.md).
+**Canonical design:** [`../phase-3-database-design.md`](../phase-3-database-design.md) revision 2.5 (§4, §2.3, §6.3, §8, §13). **ERD:** [`../erd/clinical-schema-erd.md`](../erd/clinical-schema-erd.md).
 **Companions:** [`official-source-to-table-mapping.md`](official-source-to-table-mapping.md), [`data-loading-and-validation-strategy.md`](data-loading-and-validation-strategy.md).
 **Status:** **DRAFT for review.** **Nothing in the `clinical` schema is clinically validated** (`clinical_review_status = 'not_reviewed'` in both rule files). No clinical, legal, governance or publisher approval is claimed. **D2 is provisional (clinical approval required); D6, D7, D11 are recommendations awaiting owner confirmation (not approved); D10, D14, D17 are open.** The standards' PDFs are **not held** locally (manifest: `blocked` for SRC-02 and SRC-03), so no `source_reference` page number can be re-checked from this repository.
+**Revision (Phase 3, Step 4):** corrected per the reconciliation report (MC-6, MC-7, MC-8 and the owner-approved CD-1, CD-3, CD-4): parent-aware item authority, exclusion-condition gaps, the fail-open `bool()` table, the `affects` coverage gap and the proposed per-link effect model. **CD-2 and OC-1 … OC-5 are not approved and nothing here records a clinical approval; no YAML, loader or test was changed.**
 
 > **Governing rules (restated from the task and design R-C1…R-C7).**
 > 1. **YAML is the single source of truth.** The database is a loaded, hash-verified, append-only *copy*. This mapping defines **no** rule content: every value below is copied or mechanically derived from YAML. There is no database authoring path.
-> 2. **`is_authoritative` is derived, never configured.** `rule.is_authoritative = (verification_status = 'verified' AND NOT requires_clinical_review)`; `rule_item.is_authoritative = (verification_status = 'verified')`. Both are generated columns; the loader never names them in an `INSERT`, and rejects an `authoritative:` key in YAML.
+> 2. **`is_authoritative` is derived, never configured.** `rule.is_authoritative = (verification_status = 'verified' AND NOT requires_clinical_review)`; `rule_item.status_is_verified = (verification_status = 'verified')` records the item's **own status only and is not authority**; an item's **effective authority** is `status_is_verified AND parent rule.is_authoritative`, exposed by the view `v_rule_item_effective_authority` (CD-1, MC-6). Both columns are generated; the loader never names them in an `INSERT`, and rejects an `authoritative:` key in YAML. **"Authoritative" means a faithful, source-checked transcription of a published standard that is not flagged for review — not clinical approval and not confirmation that the standard is in force** (design R-C8).
 > 3. **Nothing is invented to fit a column**: no effective date, no threshold, no due window, no score range, no code. Absence stays `NULL`/empty and is explained.
 
 ---
@@ -168,7 +169,7 @@ One row per **successful** execution of the loader (a failed load writes nothing
 | `standard_id` | `source_name` + `source_version` | resolve to `standard`; unresolved ⇒ reject | required |
 | `source_reference` | `source_reference` | verbatim (document, section/appendix, PDF page) | required |
 | `verification_status` | `verification_status` | FK; `verified`/`reported`/`unresolved` | required |
-| `requires_clinical_review` | `requires_clinical_review` | **must be a real YAML boolean.** The existing loader does `bool(raw.get(...))`, so the string `"false"` would become `True` — the database loader must reject non-booleans (CU-15) | default `false` only if the key is absent (it is present on all 54) |
+| `requires_clinical_review` | `requires_clinical_review` | **must be a real YAML boolean.** The existing loader does `bool(raw.get(...))`, so the string `"false"` would become `True` — the database loader must reject every non-boolean (CU-15): `"false"`/`"no"`/`"0"` become `True` (over-flags, safe), but **`null`, empty, `0`, `""` and an absent key become `False` — fail-open, the rule silently becomes authoritative** | **mandatory, no default** (the existing loader defaults an absent key to `false`; the database loader must not) | only if the key is absent (it is present on all 54) |
 | `is_authoritative` | — | **generated** `verification_status = 'verified' AND NOT requires_clinical_review` | never written |
 | `effective_date_text` / `_precision` / `_from` / `_note` | `effective_date`, `effective_date_note` | §3.1 triple. **IFHAS: `2025-07` → `month` (all 29). Well-Child: `null` ×25 → `unknown` with the mandatory note** (the same text on all 25) | note mandatory when `unknown` |
 | `last_reviewed` | `last_reviewed` | `DATE`, strict `YYYY-MM-DD` (`2026-11-14`) | required |
@@ -204,13 +205,17 @@ Each projection is **asserted equal to `spec`** by a load test, and **must be `N
 |---|---|---|
 | `rule_id`, `rule_version` | parent | composite FK |
 | `condition_ordinal` | position | **1-based** position in the list |
-| `kind` | `kind` | verbatim. **Observed: `inclusion` ×5 and `exclusion` ×3** (the design says "`inclusion` observed" — discrepancy C-1). Not CHECKed; loader warns on a value outside those two |
+| `kind` | `kind` | verbatim. **Observed: `inclusion` ×5 and `exclusion` ×3** (design wording corrected in rev 2.5, C-1). **`CHECK (kind IN ('inclusion','exclusion'))`** (CD-4); the loader **rejects** (not warns) any other value, e.g. `exclude`, `Exclusion` |
 | `as_printed` | `as_printed` | verbatim (including stray spacing, e.g. `"…one additional risk factor ."`) |
 | `machine_evaluable` | `machine_evaluable` | **real boolean required**. 7 `false`, 1 `true` |
 | `attribute` | `attribute` | `NULL` when absent; e.g. `smoking_history.ever_smoked` (AAA only) |
 | `required_value` | `required_value` | JSONB; `true` for AAA; `NULL` when absent |
 
 **Checks.** `CHECK (NOT machine_evaluable OR (attribute IS NOT NULL AND required_value IS NOT NULL))` — **test `is not None`, never truthiness** (`required_value: false` is a valid value). **Cross-table loader validation (and deferred trigger, design §6.3 #3):** a rule with any `machine_evaluable = false` condition has `requires_clinical_review = true` (holds today: LIQUID-BIOPSY and LUNG-LDCT are flagged). Lung (`OQ-IFHAS-LUNG-CRITERIA`: pack-years, cessation, shisha/dokha) and liquid-biopsy criteria stay free text, **never machine-flagged**. Smoking/risk criteria here are **inclusion/exclusion conditions of a package**, not risk scores.
+
+**Counts and where the exclusions are (CT-1).** `IFHAS-PKG-LIQUID-BIOPSY-40-75` (verified, **flagged**): 1 `inclusion` (`Unwilling to have a colonoscopy or FIT`) + **3 `exclusion`** (`Personal history of colorectal cancer.`; `Genetic disorders: Known hereditary / germline risk…`; `Inflammatory Bowel Diseases Diagnosis.`), all `machine_evaluable: false`. `IFHAS-PKG-LUNG-LDCT-55-75` (verified, flagged): 3 `inclusion`, all `false`. `IFHAS-PKG-AAA-M-65-75` (verified, not flagged): 1 `inclusion` (`ever_smoked`), `machine_evaluable: true`. All 3 exclusions sit in one rule that is not authoritative. All 8 load as rows; nothing is discarded.
+
+**Exclusion semantics are not defined and are pending clinical approval (MC-7; OC-4).** Storage and validation support both kinds; **evaluation semantics are not approved and must not be assumed:** (1) for an `exclusion`, whether `attribute` + `required_value` means the value that *triggers* exclusion or the value *required to avoid* it is undefined (irrelevant today — no exclusion is machine-evaluable); (2) how conditions combine is undefined — liquid biopsy reads *inclusion AND NOT (any exclusion)*, lung uses `and/or` inside the printed text, and **`condition_ordinal` is a position, not logic**; (3) **absence is not "no exclusions"**: 17 packages have `conditions: []`, but the later Cervical Cancer Screening Standard states exclusions (hysterectomy; over 65 with three negative tests) that Appendix 7 omits, so an empty list means *none printed in Appendix 7*. Until approved the loader **rejects `machine_evaluable: true` on an `exclusion`** (LV-6), so no machine-evaluable exclusion can be loaded.
 
 ### 2.10 `clinical.rule_item`
 
@@ -228,8 +233,8 @@ Two sources feed one table, distinguished by `category`. Verified total: **249 r
 | `description` | `description` | verbatim |
 | `source_reference` | `source_reference` | verbatim |
 | `inherited_from_rule` | — | `false` |
-| `verification_status` | `verification_status` | FK. **Item authority is the item's own status** |
-| `is_authoritative` | — | generated `verification_status = 'verified'` |
+| `verification_status` | `verification_status` | FK. The item's **own** status; it does **not** by itself make the item authoritative |
+| `status_is_verified` | — | generated `verification_status = 'verified'`. **Own status only — not authority** (renamed from `is_authoritative`, CD-1). Effective authority is in the view (below) |
 | `condition_text` | `condition` | verbatim (7 items) |
 | `components_text` | `components` | `TEXT[]` verbatim (28 items) |
 | `rule_refs` | `rule_refs` | `TEXT[]` verbatim (17 items, e.g. `WCV-FU-REFERRAL-INITIATION-7D`). **Soft reference** to a `rule_id`; validated against the bundle, **no FK** (it names no version) |
@@ -253,11 +258,19 @@ The 9 unresolved items: `oral_examination` @15M (`OQ-WCV-ORAL-15M`); `head_circu
 
 **Slug function (proposed; D10 is not approved).** NFKD-normalise → drop combining marks → lower-case → replace every run of characters outside `[a-z0-9]` with `_` → strip leading/trailing `_`. Examples: `Body Mass Index (BMI)` → `body_mass_index_bmi`; **`Anti- Müllerian testing (AMH Testing)` → `anti_mullerian_testing_amh_testing`** (a naive ASCII-only regex would give `anti_m_llerian…` — the `ü` case is why NFKD is specified). **Verified: 75 strings → 37 distinct slugs, 0 collisions inside any package.** A collision inside a package **rejects** the load; the loader never appends `_2`-style suffixes (that would invent identifiers). A later move to explicit YAML codes is a data migration of `code`, which also sits in the `rule_item_open_question` key (CU-2).
 
-**Authority caution (CU-11).** Because a component inherits only the *verification status*, components of a **verified-but-flagged** package (cervical ×2, liquid biopsy, lung — 4 packages) show `is_authoritative = true` while their rule is not authoritative. Any consumer must **AND the item's authority with the parent rule's**; the design's "item-level authority is the item's own status" is not sufficient on its own.
+**Item authority is parent-aware (CU-11; MC-6; CD-1).** An item inherited from a package carries **no independent authority**: a component copies only the parent's *verification status*, not its `requires_clinical_review` flag. As previously designed, the 6 `package_component` rows under the 4 verified-but-flagged packages (cervical Pap ×2, cervical HPV ×2, liquid biopsy ×1, lung LDCT ×1) would have been `is_authoritative = true` while their rule is not authoritative. The earlier remedy — "consumers AND the two values" — is **withdrawn**: a column named `is_authoritative` that is wrong by construction invites misuse. Replaced by:
+
+```
+item.effective_authority =
+      item.status_is_verified
+  AND parent_rule.is_authoritative
+```
+
+exposed by view `clinical.v_rule_item_effective_authority` (a generated column cannot reference another table). **Loader assertion (LV-2):** after load, recompute every rule's authority and every item's effective authority, compare with the database, and assert `effective_authority ⇒ parent.is_authoritative`. An item never becomes authoritative on its own when its parent is not. In the *existing* loader the defect is **not reproducible**: `RuleItem.is_authoritative` has no parent reference, but items are produced only from the 14 Well-Child `visit_schedule` rules (all authoritative), so **0 authoritative items sit under a non-authoritative rule** across the 174 visit items; the 4 flagged packages' `spec.components` are not turned into items by the existing loader. The defect appears only with the database design's 75 `package_component` rows, and "the day one of the 14 visit rules is flagged".
 
 **Content in `spec` that is *not* an item (CU-17).** Each visit also carries `history_components` and `counselling_elements` (`{source_reference, items[], notes}`), present on all 14 visits. They have no code and no per-item verification status, so they stay in `spec` JSONB only.
 
-**Keys.** PK `(rule_id, rule_version, category, code)`; composite FK to `rule`. **Validation.** *Loader:* existing item checks (code, description, source_reference, valid status, unknown OQ id, unresolved ⇒ ≥ 1 OQ, `rule_refs` exist); duplicate `(rule, category, code)`; slug collisions; `components` is a list of strings. *DB:* PK, FK, `code_origin`/`text_verbatim` CHECK, generated authority.
+**Keys.** PK `(rule_id, rule_version, category, code)`; composite FK to `rule`. **Validation.** *Loader:* existing item checks (code, description, source_reference, valid status, unknown OQ id, unresolved ⇒ ≥ 1 OQ, `rule_refs` exist); duplicate `(rule, category, code)`; slug collisions; `components` is a list of strings. *DB:* PK, FK, `code_origin`/`text_verbatim` CHECK, generated `status_is_verified`; the effective-authority view.
 
 ### 2.11 `clinical.rule_open_question`
 
@@ -304,10 +317,16 @@ SHA-256 (hex, lower-case) of the UTF-8 bytes of `json.dumps(obj, sort_keys=True,
 | Which rules may drive an authoritative decision? | **47** = `verified` **and** not flagged (IFHAS 24, WCV 23) |
 | Which may not? | **7**: `IFHAS-PROG-AGE-CEILING` (unresolved, flagged); `IFHAS-PKG-CERVICAL-PAP-25-29`, `IFHAS-PKG-CERVICAL-HPV-30-65`, `IFHAS-PKG-LIQUID-BIOPSY-40-75`, `IFHAS-PKG-LUNG-LDCT-55-75` (verified **but flagged**); `WCV-PROG-EFFECTIVE-DATE-TBD`, `WCV-TIMING-DUE-WINDOW` (unresolved, flagged) |
 | Is `verified` clinical validation? | **No.** `verification_status` means "transcribed from the standard and checked against its text"; `clinical_review_status` is `not_reviewed` for the whole bundle |
+| Is `authoritative` approval, or "in force"? | **No to both** (design R-C8). Authoritative = source-verified and not flagged. `OQ-GOV-CLINICAL-VALIDATION` states no rule is clinically validated; **23 of the 47 authoritative rules (every authoritative Well-Child rule) have `effective_date = null`** ("TBD"), so none may be shown as in force |
 | Can `is_authoritative` be set? | **No** — generated; the loader never writes it; `authoritative:` in YAML is rejected |
+| Is an item authoritative? | Only if the item's own status is verified **and** its parent rule is authoritative (view `v_rule_item_effective_authority`) |
 | Must unresolved items/rules carry questions? | Yes — `unresolved` ⇒ ≥ 1 OQ; flagged ⇒ ≥ 1 OQ; unresolved item ⇒ ≥ 1 OQ (loader + `CHECK (verification_status <> 'unresolved' OR requires_clinical_review)`) |
 
 **Caution (CU-10).** "Authoritative" is a transcription-and-flag status, not "free of open questions": **30 of the 47 authoritative rules still cite ≥ 1 open question** (e.g. all 14 visit rules cite `OQ-WCV-DUE-WINDOW`; several packages cite `OQ-COMMON-AGE-CALC`; `IFHAS-PKG-AAA-M-65-75` cites `OQ-IFHAS-AAA-SMOKING-DEFINITION`). The mapping follows the derived formula exactly as instructed; the open questions are loaded and exposed so the application can show them. Whether any should demote a rule is a clinical/rules-owner decision.
+
+**Open-question citations are not exhaustive (CA-4; MC-8).** For each question the YAML `affects` names a wider scope than the rules that cite it: `OQ-COMMON-AGE-CALC` is declared for 54 rules but cited by 16 (38 in scope, not cited); `OQ-COMMON-SEX-ATTRIBUTE` 29 / 1; `OQ-IFHAS-FREQUENCY-ANCHOR` 29 / 2; `OQ-IFHAS-AGE-CEILING` 29 / 2; `OQ-IFHAS-KPI-TARGET` 29 / 1; `OQ-WCV-EFFECTIVE-DATE` 25 / 15; `OQ-WCV-DUE-WINDOW` 25 / 16; `OQ-GOV-CLINICAL-VALIDATION` 54 / **0**. 17 authoritative rules cite no question although most are IFHAS packages to which the age, sex and frequency questions plainly apply. **"Cites no open question" therefore does not mean "has no applicable open question"**, and authority must never be computed from citations alone. Mechanical remedy: expand pathway-level `affects` into per-rule links at load time, recorded as **derived** links distinct from **cited** links (LV-4; needs no clinical judgement — which questions should apply to which rules does).
+
+**Proposed per-link effect model — NOT approved (CD-2; OC-1).** Blocking is a property of the *(rule, question) link*, not of the question: `OQ-IFHAS-AGE-CEILING` blocks `IFHAS-PROG-AGE-CEILING` but is informational on `IFHAS-PROG-ELIG-MIN-AGE`. Proposed classes: `blocks_rule` (rule content contested or incomplete → non-authoritative while open), `gates_outputs` (faithful transcription; named outputs cannot be produced until answered), `informational` (shown, blocks nothing). Under the proposal 0 of the 30 would be demoted automatically, 28 carry a `gates_outputs` link, 2 only `informational` links; three rule decisions are left to the owner (`IFHAS-PKG-AAA-M-65-75`'s undefined "ever smoked", FIT/colonoscopy flagging consistent with liquid biopsy, `IFHAS-PROG-ELIG-SEX-BY-PACKAGE`). **Interim representation until decided:** the formula is unchanged (conservative — it never promotes anything); every citation is loaded; "authoritative" is read as "verified transcription, not flagged"; every consumer surfaces the cited open questions beside the rule; the 30 are not described as "clean". No `effect` column exists and no table is added.
 
 ---
 
@@ -335,16 +354,19 @@ These are **data contracts for the future engine**; none is enforced by a foreig
 
 | # | Assertion | Why |
 |---|---|---|
-| 1 | `requires_clinical_review`, `machine_evaluable`, `may_drive_decisions` are real booleans | the existing `bool()` coerces strings |
+| 1 | `requires_clinical_review` is **mandatory** on every rule and `machine_evaluable`, `one_time`, `is_diagnosis`, `is_screening_result_only`, `may_drive_decisions` are present where defined; each must satisfy `isinstance(v, bool)` — reject `null`, `""`, `0`, strings and an absent key; never coerce (LV-1) | the existing `bool(raw.get(..., False))` fails **open** for `null`, `""`, `0` and an absent key |
 | 2 | Both rule files' `clinical_review_status` equal; `config.pathway` consistent | single `rule_load` column |
 | 3 | `sources.yaml` ↔ manifest by `document_reference`; manifest state ∈ {`blocked`,`document_obtained`} | `standard.acquisition_state` CHECK |
 | 4 | Every guard's `result`/`reason_code` exists; evaluation/verification vocabularies equal the loader's constants | FK resolution |
-| 5 | Conditions: required keys/types; `machine_evaluable = false` ⇒ parent flagged; `true` ⇒ `attribute` and `required_value` not `None` | cross-table rule |
+| 5 | Conditions: required keys/types; **`kind ∈ {inclusion, exclusion}`**; **`machine_evaluable: true` rejected on an `exclusion`**; `machine_evaluable = false` ⇒ parent flagged; `true` ⇒ `attribute` and `required_value` not `None` (LV-6, LV-7) | cross-table rule; CT-1 |
 | 6 | Projections equal `spec`; stray projections `NULL`; `recommended_age.unit == months`; `one_time` ↔ `frequency_type`; tier invariants; `score_min NULL ⇒ score_max NULL` | R-C4 |
 | 7 | Item uniqueness and slug-collision rejection; `spec.timing.open_question_ids ⊆ rule-level` | keys |
 | 8 | Well-Child non-null `due_window` only with a verified, unflagged `WCV-TIMING-DUE-WINDOW` | no authoritative `overdue` |
 | 9 | Hash guard; no version downgrade; no rule vanishing from YAML | append-only |
-| 10 | Exact counts reported (54 rules, 8 conditions, 249 items, 69 + 15 association rows, 23 OQs, 2 standards, 3/9/9/7 vocabulary rows) and compared to the previous load | reconciliation |
+| 10 | `verification_status = 'unresolved'` ⇒ `requires_clinical_review` reported by the loader (not only by the insert-time `CHECK`) (LV-3) | the existing loader enforces only `unresolved ⇒ ≥ 1 question` |
+| 11 | After load, every rule's authority and every item's `effective_authority` is recomputed and compared with the database; `effective_authority ⇒ parent.is_authoritative` (LV-2) | CD-1 |
+| 12 | Pathway-level `affects` expanded into derived per-rule links stored apart from cited links; rules in scope of an open question but citing none are reported (LV-4). Once CD-2 is approved: reject a link without an `effect` (LV-5) | CA-4, CA-1 |
+| 13 | Exact counts reported (54 rules, 47/7 authority, 8 conditions of which 5 `inclusion` / 3 `exclusion`, 249 items, 69 + 15 association rows, 23 OQs, 2 standards, 3/9/9/7 vocabulary rows) and compared to the previous load | reconciliation |
 
 **What belongs where.** *Database constraints:* PKs, composite FKs, lookups, partial-date CHECKs, `NOT machine_evaluable OR (...)`, `verification_status <> 'unresolved' OR requires_clinical_review`, `code_origin` ↔ `text_verbatim`, generated authority, semver, append-only trigger. *Loader assertions:* everything in the two tables above. *Deferred constraint triggers (optional):* "non-machine-evaluable condition ⇒ rule flagged", "unresolved ⇒ ≥ 1 OQ". *Application:* surfacing open questions beside authoritative rules; engine tests for §5. *Manual/external:* the PDFs' content, the "TBD" status, due window, every open question, clinical review.
 
@@ -363,12 +385,12 @@ These are **data contracts for the future engine**; none is enforced by a foreig
 | **CU-7** | YAML content with no column: `evaluation_status.note` (`overdue`, `unknown`, `insufficient_information`), `deterministic_evaluation_policy`, status/OQ-file `last_reviewed`, `open_question.sources_in_conflict`, rule files' `config.disclaimer`/`publication_status`/`effective_date_as_printed` | the **`overdue` note carries a safety rule** that is absent from the relational copy | Later — any consumer reading only the DB | Owner (design review: e.g. a `note` column) | content stays in YAML, bound to the load by `file_hashes`; the loader report echoes it; engine tests read the YAML |
 | **CU-8** | `WCV-FU-SPECIALIST-EVALUATION-2-4W` is a 2–4 **week range**; `timing_value` is single-valued | a one-sided projection would mislead | Later — referral deadlines | Owner / **clinical** | `timing_*` all `NULL`; range in `spec` only |
 | **CU-9** | `WCV-IDAQ-REFERRAL` has no score; `score_max NULL` also means "open" | ambiguity | None | Owner | `score_min NULL ⇒ no range`, asserted |
-| **CU-10** | 30 authoritative rules cite open questions; `OQ-IFHAS-AAA-SMOKING-DEFINITION` sits on a verified, unflagged rule | "authoritative" may overstate | Later — UI/engine | **Clinical / rules owner** | formula applied exactly; questions exposed |
-| **CU-11** | Items of verified-but-flagged packages show `is_authoritative = true` | wrong if read alone | Later | Owner | consumers AND item and rule authority |
+| **CU-10** | 30 authoritative rules cite open questions; `OQ-IFHAS-AAA-SMOKING-DEFINITION` sits on a verified, unflagged rule; citations are not exhaustive versus `affects` (§4); per-link `effect` model proposed, **not approved** (CD-2, OC-1 … OC-5) | "authoritative" may overstate | Later — UI/engine; **authoritative evaluation** | **Clinical / rules owner** | formula applied exactly; questions exposed; authoritative = verified transcription, not approval, not in force (R-C8) |
+| **CU-11** | Items inherited from a verified-but-flagged package (6 rows) would show authority from their own status alone | wrong by construction | **Models/migrations on `rule_item`** | Owner (names to confirm) | **design corrected (CD-1):** `status_is_verified` + parent-aware view + LV-2 assertion; implementation not started |
 | **CU-12** | No way to retire a rule / OQ in YAML or DB | a vanished rule would still be "current" | Loading edge case | Owner | load fails; nothing deleted |
 | **CU-13** | A no-op re-run still writes a `rule_load` row; failed loads leave **no** database trace | audit of failures | None | Owner | failures logged to the loader report/quarantine file (strategy §9) |
 | **CU-14** | Standards PDFs not held; clinical review `not_reviewed`; `source_reference` pages unverifiable here | every rule is a transcription | **Later** — any clinical claim | **Clinical reviewer**; owner to fetch PDFs from a UAE network | `acquisition_state = blocked`; no validation claimed |
-| **CU-15** | Existing loader coerces `requires_clinical_review` with `bool()` | silent mis-parse | Loading | Owner | database loader requires real booleans |
+| **CU-15** | Existing loader coerces `requires_clinical_review` with `bool()`; `null`, `""`, `0` and an absent key give `False` (**fail-open**); the key is in `OPTIONAL_RULE_KEYS`; no test covers a non-boolean | silent mis-parse; a rule silently becomes authoritative | Loading | Owner | database loader requires a mandatory, real boolean (LV-1); all 54 current values are real booleans |
 | **CU-16** | WCV effective date TBD (`OQ-WCV-EFFECTIVE-DATE`); no due/overdue window (`OQ-WCV-DUE-WINDOW`) | Well-Child outputs cannot be called in force or overdue | Later | **ADPHC** (`WCV.Support@adphc.gov.ae`) | `unknown` precision + note; `due_window` null; `overdue` unproducible |
 | **CU-17** | `history_components`, `counselling_elements` not mapped to items | no per-item verification exists | None | Owner | kept in `spec` |
 | **CU-18** | `guard.result_status`/`reason_code` nullability not stated (ERD §9 #2) | FK strictness | None | Owner | `NOT NULL` (all 7 guards supply both) |
@@ -379,15 +401,15 @@ These are **data contracts for the future engine**; none is enforced by a foreig
 
 | # | Finding | Handling |
 |---|---|---|
-| C-1 | Design §4.2: condition `kind` "`inclusion` observed"; data has **`inclusion` ×5 and `exclusion` ×3** | `kind` is verbatim text; no CHECK. Wording to be corrected by the owner |
+| C-1 | Design §4.2: condition `kind` "`inclusion` observed"; data has **`inclusion` ×5 and `exclusion` ×3** | design wording corrected in rev 2.5 (`inclusion` and `exclusion`); `CHECK (kind IN ('inclusion','exclusion'))` added to the design (CD-4) |
 | C-2 | ERD/design: `rule_load.config_versions` "of IFHAS, WCV, status, open-question files"; **`sources.yaml` has no `config_version`** | 4 keys only; sources hashed in `file_hashes` |
 | C-3 | Design says `evaluation_status` carries `definition, requires_text, never_inferred_from, sort_order`; YAML also has `note`, plus file-level policy/`last_reviewed` | CU-7 (design review requested; **not** changed here) |
 | C-4 | `open_question` has no column for `sources_in_conflict` (1 question) | CU-7 |
 | C-5 | Design projection `timing_value NUMERIC` cannot hold a range | CU-8 |
 | C-6 | Design: `score_max NULL` = open; IDAQ has no score at all | CU-9 |
-| C-7 | Design: item authority = item status; inherited component status ignores the parent's review flag | CU-11 |
+| C-7 | Design: item authority = item status; inherited component status ignores the parent's review flag | CU-11; **design corrected in rev 2.5 (CD-1)** |
 | C-8 | Design "unresolved … `OQ-IFHAS-AAA-SMOKING-DEFINITION`" noted as inconsistency #12 | CU-10 (unchanged) |
-| C-9 | Existing loader's `bool()` coercion | CU-15 |
+| C-9 | Existing loader's `bool()` coercion (fail-open for `null`/`""`/`0`/absent, not only the string case) | CU-15 |
 | C-10 | `standard.manifest_source_id` match: manifest `version` for SRC-03 is `V10 (Revised)` vs `V10` | match on `document_ref` ↔ `document_reference` |
 | C-11 | ERD `never_inferred_from` shown as `text_array` with no nullability | absent → `NULL` (§2.4) |
 
