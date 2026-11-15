@@ -643,6 +643,179 @@ None of these adds, removes or re-keys a table. CD-1, CD-2, CD-9 and CD-10 would
 
 ---
 
+## 9. Future Health Challenge Requirements Alignment
+
+**Status:** review only, *PROPOSED*, nothing approved. No schema, ERD, mapping, YAML, loader or code was changed.
+
+**Baseline used.** The eight requirements as supplied in the task. The official Future Health challenge page is registered as `SRC-09` in the manifest, but it is a **researched** HTML source: the manifest records that no datasets are supplied, that the "What data can we use?" answer was not rendered, and that the full Challenge Rules page was not read. This section therefore does not quote the official statement; it is aligned to the eight requirements as given. The data-use rules remain an open external dependency (EX-1).
+
+**Evidence read for this section:** design §4.3 (attribute contract), §5 (all 18 synthetic tables), §7 (lifecycle), `synthetic_data_spec.md`, the clinical YAML items (counted by loader), and the official-data findings above.
+
+### 9.1 What exists today (facts the matrix relies on)
+
+| Area | Present | Absent |
+|---|---|---|
+| **Patient attributes the engine may read** (§4.3) | `date_of_birth`, `sex`, `thiqa_member`, `ever_smoked` | Everything else: no diagnosis, family history, chronic condition, measured value, genomic, social or environmental attribute |
+| **Patient profile fields** | `nationality_group` (emirati / non_emirati / not_stated), `region_id` (3 regions), fictional `district_label`, `preferred_language` (`ar`, `en`), `preferred_channel`, `contact_status`, `registered_profile_id` | Disability, household/guardian circumstances beyond a guardian link, residence coordinates, any cultural preference |
+| **Care events** | `ifhas_screening`, `well_child_visit` (with `performed_date`), per-item `component_result` (`completed / refused / not_done / not_applicable`), `assessment` (M-CHAT-R, IDAQ, PHQ-9, GAD-7: score and item responses, no diagnosis, no severity band), `referral`, `appointment`, `outreach_event`, `consent`, `history_availability` | **Measured values** (BP, BMI, HbA1c, lipids) are not stored; "completed" records that an item was done, not what it showed. No outcome, diagnosis or stage |
+| **Decision layers** | Deterministic `eligibility_evaluation` → `care_gap` (R-S4); model-only `priority_score`, `priority_explanation` (free text), `scored_by_model_version`, `scored_at`, gated by an explicit AI-scoring consent (D18); human override in `care_gap_review` | A structured factor/contribution record; a risk score; a probability; a label or ground truth |
+| **Rules (YAML)** | 20 screening packages, 14 visit schedules, M-CHAT-R / IDAQ tiers, follow-up windows, workflow timing, 23 open questions | No risk rule, risk score, genomic rule, family-history rule or chronic-condition rule (the clinical mapping states "Elevated health risk — not represented in `clinical`") |
+| **Official data** | Regional aggregates (population, births, deaths, capacity, workforce), a licence-level facility register (5,339 points) | **No screening, visit, attendance, coverage, immunisation or prevalence indicator** (0 of 1,700 indicators; the quality report's gap table); no individual-level data; no genomic, family-history, social or environmental source |
+
+### 9.2 Requirement-to-capability matrix
+
+Legend — **Arch**: current architecture supports it. **Official**: held official datasets support it. **YAML**: clinical rules support it. **Synth**: the synthetic schema can *demonstrate* it. Values: Yes / Partial / No.
+
+| # | Requirement | Arch | Official | YAML | Synth | What is missing | Scope | Approvals / dependencies |
+|---|---|---|---|---|---|---|---|---|
+| **1** | Identify children, adults and communities with unmet or elevated risk | **Partial** — *unmet preventive-care need* yes (rule-derived `care_gap`); *elevated health risk* no; *community* no | **Partial** — regional context only (population, births, capacity); no risk indicator | **Partial** — eligibility and due logic for 54 rules; no risk rule | **Partial** — gaps yes; risk and community no | A clinically approved definition of "elevated risk"; community-level unit and aggregation rule; any risk input data | MVP: **unmet preventive-care need (care gaps)**. Future: elevated risk, community view | Clinical approval for any risk definition; governance for community aggregation |
+| **2** | Connect to the appropriate Well-Child visit, adult screening or preventive intervention | **Yes** (eligibility → gap → outreach → appointment → event), with simulated facility capability (D1) | **Partial** — real facility names/locations; no capability, no operating status (D13), Thiqa columns empty; 434 unidentified | **Yes** for schedule and package definition; gated by open questions (due window, age convention, frequency anchor) | **Yes** | Facility service capability (simulated by design); due/overdue for Well-Child; partial-package semantics | **MVP** | Clinical: OC-1…OC-4; DoH: OP-D2 (operating status); no real routing claims |
+| **3** | Use authorised clinical, genomic, developmental, behavioural, family-history, screening-history and contextual data where available | **Partial** — screening history (explicit `history_availability`), consent gating (D18) | **No** — no individual-level source of any kind | **Partial** — rules name `date_of_birth`, `sex`, `thiqa_member`, `ever_smoked`, scored instruments | **Partial** — screening history, assessments yes; others no (see §9.3) | Genomic, family history, chronic conditions, measured values, social and environmental attributes; a lawful basis and consent categories for each | MVP: screening history, DOB, sex, region, consent. Future: the rest | Per-category consent and governance; data residency (`OQ-GOV-DATA-RESIDENCY`); licensed access to real data; none obtained |
+| **4** | Explain major factors behind risk and care-gap flags | **Partial** — deterministic reasons are stored (`evaluation_reason`, guard reason codes) and traceable to `rule_id` + version; model explanation is one free-text column | **No** | **Yes** for rule-derived reasons | **Partial** — rule reasons yes; factor-level model explanation no | A structured, versioned factor vocabulary; a statement that explanations only cite available features; a faithfulness check | MVP: rule-based reasons. Future: model factor attribution | Responsible-AI explanation requirement; clinical review of wording |
+| **5** | Recommend personalised preventive pathways within approved clinical guidelines | **Partial** — the model may only *order* gaps the rules already identified (R-S6); pathway content comes from YAML | **No** | **Partial** — pathways are the published standards as transcribed; 47 rules are authoritative **but none is clinically approved** (CA-5, `OQ-GOV-CLINICAL-VALIDATION`) | **Partial** | Clinical approval of the rules used; any personalisation beyond order and timing; genomic or risk-stratified pathways | MVP: standard pathway by eligibility, personalised **ordering and outreach** only. Future: risk-adjusted pathways | Clinical validation by a licensed partner; AI risk classification (not done) |
+| **6** | Support culturally appropriate engagement and meaningful participation choices | **Partial** — language (`ar`/`en`), channel, guardian-addressed outreach for children, consent and refusal as first-class facts | **No** | **Partial** — `WCV-POLICY-PARENTAL-REFUSAL` is encoded; no IFHAS refusal rule | **Partial** | Other languages, interpreter need, clinician-sex preference, scheduling constraints (religious, work, travel), accessibility; a refusal vs "declined referral" decision (D2/S4); content reviewed by the community | MVP: language, channel, consent, refusal as designed. Future: preferences above | Community and cultural review; clinical decision D2/S4; privacy review for any new preference data |
+| **7** | Evaluate reach, false-positive and false-negative patterns, recommendation rates and uptake across segments | **Partial** — the event chain supports reach and uptake counts; no ground truth, no label | **Partial** — population denominators by region, gender, citizenship, age (with the §3.B and §3.C caveats) | n/a | **Partial** — counts by segment yes; FP/FN and calibration no | A recorded ground truth per synthetic person; a defined prediction to evaluate; a fairness metric specification; segment attributes (§9.8) | MVP: **simulated** reach, recommendation rate and uptake by available segment. Future: FP/FN, calibration | Governance for protected attributes; metric definitions approved by the clinical/AI-governance owner |
+| **8** | Measure completed visits, screenings, preventive actions, timely attendance, recall, follow-up, calibration and downstream clinical value | **Partial** — completion, attendance, referral, outreach and follow-up are structured; "booking ≠ care" is enforced (R-S8) | **No** — no official baseline for any of these | **Partial** — "timely" cannot be defined for Well-Child (`OQ-WCV-DUE-WINDOW`) or IFHAS recurrence (`OQ-IFHAS-FREQUENCY-ANCHOR`); follow-up windows partly in conflict | **Partial** — completion, attendance, recall, follow-up yes; timely (partly), calibration and clinical value no | Outcome data (diagnoses, results, stage, downstream care); a timeliness definition; calibration labels | MVP: **simulated** counts of completion, attendance, recall, referral. Future: timeliness, calibration, clinical value | Clinical decision for "timely"; real outcome measurement needs real data and governance |
+
+### 9.3 Specific areas
+
+#### Genomic data — recorded as a data gap
+- **No genomic source exists** in the manifest or the data, **no consent category** for genomic data exists in `consent`, **no interpretation rule** exists in the YAML, and the synthetic schema has **no genomic attribute**. Nothing was invented and no genomic risk calculation is proposed.
+- The only genomic content in the corpus is *descriptive*: a "targeted genomic sequence analysis panel" is a component of the liquid-biopsy package, and one liquid-biopsy exclusion reads "Known hereditary / germline risk of colorectal cancer (e.g., Lynch syndrome or Familial Adenomatous Polyposis)". Both are non-machine-evaluable, in a rule flagged `requires_clinical_review`.
+- **Status: data gap (GAP-1).** Prerequisites, none of which exists: a lawful, consented source; a validated interpretation standard; clinical approval; genomic-data governance applicable in Abu Dhabi (not identified in this review). **Scope: future phase.**
+
+#### Family history and chronic conditions
+- **Not represented in the synthetic patient model.** There is no family-history, chronic-condition or diagnosis column, and the absence of a diagnosis column is deliberate (R-S9). `ever_smoked` is the only history-like patient attribute.
+- The Well-Child visit rules list "Family history", "Maternal history", "Birth history" and "Socio-economic history" as `history_components` on all 14 visits. They are **text lists in `spec`**, with no per-item code or verification status, so they cannot be told apart as verified or unresolved below rule level, and they are not exposed as rule items.
+- **Missing attributes (listed, not added):** structured family history (relation, condition, age at onset); chronic and prior conditions with status and date; conditions that appear as exclusions in the standards (colorectal cancer history, inflammatory bowel disease, hysterectomy); birth and maternal history (gestation, prematurity, which the YAML mentions as "inquire further history"); and *measured values* (BP, BMI, HbA1c, lipids), which `component_result` does not store.
+- **Consequence:** rules whose conditions need these attributes cannot be evaluated; they correctly route to `requires_clinical_review` or `insufficient_information`. Do not substitute NHANES distributions for a person's history (the spec forbids it, and prevalence for Abu Dhabi is not available).
+
+#### Developmental and behavioural factors — Well-Child items
+Counted across the 14 visit rules (174 items). "Verified" is a transcription status, not clinical validation.
+
+| Item (category) | Item rows | Verified | Unresolved | Notes |
+|---|---|---|---|---|
+| `developmental_milestones` (developmental) | 14 | 11 | **3** (4, 5, 6-year visits, `OQ-WCV-MILESTONES-4-6Y`) | May be a PDF layout omission, not visually checked |
+| `parent_child_interaction_observation` (developmental) | 14 | 14 | 0 | |
+| `m_chat_r` (developmental) | 2 | 2 | 0 | 18 and 24 months; tier rules authoritative; referral timing and target wording open (`OQ-WCV-MCHAT-*`) |
+| `idaq` and `idaq_referral` | 1 + 1 | 2 | 0 | 18 months |
+| `m_chat_r_tier_follow_up`, `positive_screening_follow_up` (follow-up) | 2 + 14 | 16 | 0 | |
+| `head_circumference` (growth) | 14 | 9 | **5** (30 months and later, `OQ-WCV-HEAD-CIRC`) | |
+| `oral_examination` | 9 | 8 | **1** (15 months, `OQ-WCV-ORAL-15M`) | |
+| `growth_zscore_plot`, `weight`, `vision_screening`, `physical_examination_vital_signs` | 14 each | all | 0 | |
+| Remaining items (hearing, hip, BP, CBC, height or length, and three referral follow-ups) | 3–6 each | all | 0 | |
+
+- **Behavioural scope is thin.** The only behavioural *screening instruments* in the corpus are PHQ-9 and GAD-7 (adult, IFHAS Major Package, stored as scores with **no severity band** because none is encoded) and the child developmental instruments above. Counselling topics (secondhand-smoke prevention, physical activity, sleep, safety) appear as a text list in `spec.counselling_elements` only.
+- **Do not** turn an M-CHAT-R tier or an IDAQ referral into a diagnosis or a "risk" claim: both rules are `is_diagnosis: false`, and the schema has no diagnosis column.
+
+#### Geography and community intelligence
+Three different things must stay separate.
+
+| Level | What exists | Valid use | Invalid use |
+|---|---|---|---|
+| **Official regional aggregate** | SCAD indicators by `Abu Dhabi / Al Ain / Al Dhafra` (population, births, deaths, capacity), with the §3.B reconciliation caveats and no regional births before 2010 | Context, denominators, shape calibration of the synthetic population | Assigning any rate, risk or probability to an individual; "ecological" inference |
+| **Facility location** | 5,339 licence-level points (4,905 identified, 9 without usable coordinates), operating status unresolved (D13), no service capability | Maps of licensed facilities; a *simulated* capability overlay (D1) | Reading licence count as capacity or access; routing real people |
+| **Individual residence** | **None.** `patient.region_id` and a fictional `district_label` only; no coordinates | Region-level assignment in synthetic data | Any claim that a synthetic person's location reflects a real one; any real-residence inference |
+
+Community-level "unmet risk" would need a defined unit, a governed aggregation of individual-level data, and a small-count suppression rule. None of these exists. **Do not infer individual risk from regional statistics.**
+
+#### Social and environmental context — source requirements (nothing acquired)
+Candidate categories, **none of which has been acquired or verified in this review**: socio-economic position (income band, employment, education), housing and household composition, nutrition and food access, education and school context, neighbourhood and environmental exposure, transport access, language and literacy, and disability. The only social content in the corpus is the Well-Child "Socio-economic history" heading (text, no structure) and `thiqa_member` (programme membership; the SDI Thiqa columns are empty).
+Governance considerations to resolve before any use: lawful basis and consent per category; whether the category is special-category or sensitive; data residency; small-area re-identification risk; whether using the attribute to *prioritise* people is permitted and fair; and who approves a source. **Status: requirement identified, source not identified (GAP-2).**
+
+#### Risk versus care gaps — five separate concepts
+The design already separates most of them; the report recommends keeping all five distinct in names, tables, UI and metrics.
+
+| Concept | Meaning | Where it lives today | Must never be conflated with |
+|---|---|---|---|
+| **Elevated health risk** | A person's higher probability of a health outcome | **Nowhere** (no model, rule or data) | Programme eligibility or a care gap |
+| **Programme eligibility** | Meets a programme's entry rule (e.g. IFHAS 18+, Thiqa, sex and age band) | `eligibility_evaluation` for gate rules | Preventive-care eligibility |
+| **Preventive-care eligibility** | Eligible for a specific package or visit at this time | `eligibility_evaluation` for schedulable rules | A risk judgement |
+| **Documented care gap** | A rule-derived consequence of an evaluation with evidence; "unknown" and "insufficient information" never create one (R-S3, R-S4) | `care_gap` | Not having a record |
+| **Operational priority** | An ordering for outreach effort | `priority_score` (model-only, consent-gated) and `care_gap_review` overrides | Clinical urgency or risk |
+
+Two guard-rails follow. A model score is a *priority for outreach*, not a *risk estimate*; it must not be labelled or reported as one. And requirement 1's "elevated risk" cannot be claimed from this architecture without a separately approved risk definition.
+
+#### Fairness and evaluation — data needed
+For each metric the data that must exist, and what is missing.
+
+| Metric | Required data | Present | Missing |
+|---|---|---|---|
+| **Reach** (who was identified/contacted) | Denominator by segment; contacted counts | Synthetic population; `outreach_event`; segments `sex`, age (from DOB), `nationality_group`, `region_id`, `preferred_language`, `preferred_channel`, `thiqa_member`, `contact_status` | Disability, socio-economic position, residence detail, other languages |
+| **Recommendation rate** | Gaps and scored gaps by segment | `care_gap`, `priority_score` | Whether suppression by consent differs by segment is derivable but is not a defined report |
+| **Uptake** | Outreach → appointment → event, by segment | `outreach_event`, `appointment`, event tables | Reasons for non-uptake beyond a free-text refusal reason |
+| **False negative / false positive** | A *ground truth* for the thing predicted, per person | **None.** Gaps are rule-derived and deterministic; the model only orders them; no label is stored | The generator's hidden "true state" (what the person actually needs/has done), a defined prediction target, and thresholds |
+| **Calibration** | Predicted probability and observed outcome | `priority_score` is a score, not a probability; no outcome | A probability output, an outcome label, enough events per bin |
+| **Subgroup performance** | All of the above split by segment, with counts | Segment attributes (above) | Small-count rules; confidence intervals; approved fairness criteria |
+
+**Two cautions for simulated results.**
+1. **Circularity.** A synthetic population's disparities are whatever the generator was told to produce. A fairness result computed on it demonstrates the *pipeline*, not a finding about people.
+2. **Labelling.** Every simulated metric must carry the run identifier, the generator version and seed, and the text "simulated; not real-world performance; not validated" on every table, chart and export. Official shape inputs (calibration) must be cited with their caveats, including the §3.B reconciliation classes.
+
+#### Outcome measurement — data needed
+
+| Measure | Data required | Status |
+|---|---|---|
+| Completed visits and screenings | Event rows with `performed_date` linked to an appointment; per-item results | **Representable** (simulated) |
+| Screening attendance | `appointment.status` (`attended`, `no_show`, …) | **Representable**; attendance is not completion (R-S8) |
+| Timely attendance | A due window and anchor | **Not definable**: no Well-Child due or overdue window (`OQ-WCV-DUE-WINDOW`); IFHAS interval anchor undefined (`OQ-IFHAS-FREQUENCY-ANCHOR`); age convention undefined (`OQ-COMMON-AGE-CALC`) |
+| Referrals and follow-up | `referral` with rule-derived deadlines; working-day calendar (D12) | **Representable**; M-CHAT-R timing conflicts (`OQ-WCV-MCHAT-FOLLOWUP-TIMING`) and the "declined referral" decision (S4) are open |
+| Recall | `outreach_event` and the transcribed "Invitation System" rule | **Representable**; invitation ownership open (`OQ-IFHAS-INVITATION-OWNERSHIP`) |
+| Downstream clinical value | Diagnoses, results, stage, treatment, outcome | **Not representable** by design (no diagnosis column, no measured values); needs real data |
+| Baseline for comparison | Official coverage or performance | **None exists**. The IFHAS ">85% participation" and Well-Child "100% target" figures are *targets in standards*, not measurements |
+
+**Rule:** simulated outcomes must never be described as official programme performance, and no simulated rate may be placed beside an official figure as though comparable.
+
+### 9.4 MVP versus future scope
+
+| In MVP (simulated, labelled) | Future phase (needs data, approval or both) |
+|---|---|
+| Rule-based eligibility, care gaps, reasons traceable to rule and version | Elevated-risk definition and scoring |
+| Consent-gated model ordering and a rule-grounded explanation | Structured factor attribution; calibration against outcomes |
+| Language, channel, guardian outreach, consent, refusal | Wider cultural, accessibility and scheduling preferences |
+| Appointment, event, referral, recall tracking | Timeliness (needs due windows); real follow-up tracking |
+| Simulated reach, recommendation rate and uptake by available segment | FP/FN, calibration, subgroup fairness with approved criteria |
+| Official regional context beside simulated data, with vintages | Community-level intelligence; social and environmental context |
+| Real-facility map with simulated capability overlay | Operating-facility status, real capability, real routing |
+| — | Genomic, family-history, chronic-condition, measured-value inputs |
+
+### 9.5 Gaps and dependencies
+
+**Data gaps (not acquired; not to be assumed)**
+
+| ID | Gap | Why it matters |
+|---|---|---|
+| GAP-1 | Genomic source and validated interpretation | Requirement 3, 5 |
+| GAP-2 | Social and environmental sources | Requirement 3, 6 |
+| GAP-3 | Family history, chronic conditions, measured values in the patient model | Requirement 3, 4, 5 |
+| GAP-4 | A ground truth and prediction target for FP/FN and calibration | Requirement 7, 8 |
+| GAP-5 | Any real outcome or downstream clinical-value data | Requirement 8 |
+| GAP-6 | Official screening, attendance or coverage baseline (none exists) | Requirement 7, 8 |
+| GAP-7 | Cultural and accessibility preference attributes | Requirement 6 |
+| GAP-8 | Challenge data-use rules (the FAQ answer and full rules page not read) | All |
+
+**External and governance dependencies**
+
+| ID | Dependency | Owner |
+|---|---|---|
+| EX-1 | Official challenge data-use and submission rules | Challenge organiser |
+| EX-2 | Data residency vs deployment target (`OQ-GOV-DATA-RESIDENCY`) before any real data | Architecture / DoH |
+| EX-3 | Clinical validation, AI risk classification and conformity assessment (`OQ-GOV-CLINICAL-VALIDATION`) | Healthcare partner / DoH |
+| EX-4 | Consent categories and lawful basis for each additional data type | Governance / legal |
+| EX-5 | Fairness metrics and protected-attribute policy | AI-governance owner |
+| EX-6 | Clinical decisions that gate "timely", "overdue" and refusal (§7.2: OC-1…OC-4; D2, S4) | Clinical / rules owner |
+| EX-7 | Community and cultural review of engagement content | Community partner |
+
+### 9.6 Assessment against the eight requirements
+
+- **Supported as designed, in simulation:** 2 (connect to the right visit or screening), the screening-history part of 3, and the completion, attendance, recall and referral parts of 8.
+- **Partly supported, with a defined limit:** 1 (care gaps, not elevated risk), 4 (rule reasons, not factor attribution), 5 (ordering, not risk-adjusted pathways), 6 (language, channel, consent), 7 (reach, recommendation rate, uptake).
+- **Not supported by any held data or design element:** genomic, family-history, chronic, social and environmental inputs (3); false positives, false negatives and calibration (7, 8); downstream clinical value (8); and any real-world measurement.
+- **No requirement is blocked by a defect found in the reconciliation work (§§2–3).** Several are bounded by the same open questions: the due window, age convention and frequency anchor limit "timely" in 8, and the clinical-validation gap limits "approved guidelines" in 5.
+- **Nothing here changes the architecture or the table inventory.** Closing GAP-3 and GAP-4 would require additional attributes or entities, so each is a proposal for a later, approved design revision, not a change made now.
+
+---
+
 ## Appendix A — Evidence for the 42 non-reconciling cells
 
 | Indicator | Year | Aggregate | Leaf sum | Difference | Class |
@@ -664,6 +837,6 @@ For 2009, the three births cuts give three different leaf totals against one agg
 
 | File | Change |
 |---|---|
-| `docs/mappings/phase-3-reconciliation-report.md` | **Created** (this document) |
+| `docs/mappings/phase-3-reconciliation-report.md` | **Created** (this document); §9 "Future Health Challenge Requirements Alignment" added in a second pass |
 
 No other repository file was created, modified, deleted, staged or committed. Temporary analysis scripts were written to the session scratchpad, outside the repository.
