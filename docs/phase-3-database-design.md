@@ -4,7 +4,7 @@
 
 **Date:** 2026-11-15
 **Status:** **DRAFT — partially approved.** Per the project owner's instruction recorded in revision 2.2: **D1, D8, D16 and D18 are APPROVED**; **D2 is PROVISIONAL — clinical approval required**; every other decision in §8 remains open. Nothing is clinically approved, and no external (clinical, legal, governance, SCAD, DoH) approval has been obtained.
-**Revision:** 2.3 (2026-11-15) — D6, D7, D11 recommendations recorded (**pending owner confirmation, not approved**); `official` and `clinical` ERDs linked (§9.4). Revision 2.2 recorded owner decisions D1, D8, D16, D18 (D2 kept provisional; consent default applied, §5.2, §5.5). Revision 2.1 (final consistency corrections) is summarised in §12.
+**Revision:** 2.4 (2026-11-15) — source-to-database mapping specifications linked and their completion status recorded (§9.4); **no design content changed**. Revision 2.3 (2026-11-15) — D6, D7, D11 recommendations recorded (**pending owner confirmation, not approved**); `official` and `clinical` ERDs linked (§9.4). Revision 2.2 recorded owner decisions D1, D8, D16, D18 (D2 kept provisional; consent default applied, §5.2, §5.5). Revision 2.1 (final consistency corrections) is summarised in §12.
 **Input verdict:** [`phase-3-database-design-review.md`](phase-3-database-design-review.md) — *APPROVED WITH CHANGES*.
 **Canonical status:** once approved, this document supersedes the 11-table contract in [`../data/metadata/synthetic_data_spec.md`](../data/metadata/synthetic_data_spec.md) §3–4 as the database design. The spec's safety rules (§1), scenarios (§5) and generator prohibitions (§6) remain the contract the design must satisfy.
 
@@ -1420,6 +1420,14 @@ The ERD is **not drawn** here. Two different things are reported and must not be
 - [`erd/clinical-schema-erd.md`](erd/clinical-schema-erd.md) — all 12 `clinical` tables.
 - **Not created:** the `synthetic` ERD (D2 is provisional) and the conditional `official.working_calendar` (D12).
 - The ERDs are design documents only. They claim no clinical, legal or governance approval.
+
+**Mapping specifications (Phase 3, Step 3 — revision 2.4).** Status: **drafted, awaiting review.** Design/documentation only; no model, migration, SQL, loader, ingestion or YAML change was made. They contain no approval of D2, D3–D5, D6, D7, D10, D11, D13 or any clinical, legal, governance or publisher matter; each unresolved item is registered there with its safe interim behaviour. Findings that differ from this document are listed in each mapping's discrepancy section (official §12, clinical §8) and are **not** applied here — review requested.
+
+| Document | Covers | Status |
+|---|---|---|
+| [`mappings/official-source-to-table-mapping.md`](mappings/official-source-to-table-mapping.md) | all 9 `official` tables | **Drafted — awaiting review** |
+| [`mappings/clinical-yaml-to-database-mapping.md`](mappings/clinical-yaml-to-database-mapping.md) | all 12 `clinical` tables | **Drafted — awaiting review** |
+| [`mappings/data-loading-and-validation-strategy.md`](mappings/data-loading-and-validation-strategy.md) | loading sequence, validation placement, reconciliation, quarantine, idempotency, cross-schema needs | **Drafted — awaiting review** |
 
 ### 9.5 Verdict
 
