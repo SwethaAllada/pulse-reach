@@ -1,5 +1,6 @@
 from alembic import context
 
+import app.models  # noqa: F401  (registers the tables on the shared MetaData)
 from app.core.config import settings
 from app.db.session import SCHEMAS, DatabaseNotConfigured, build_engine, metadata
 

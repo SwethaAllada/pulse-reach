@@ -113,16 +113,19 @@ def test_live_connection_and_migrations(monkeypatch):
     assert client.get("/health/db").status_code == 200
 
     cfg = Config("alembic.ini")
-    command.upgrade(cfg, "head")
+    command.downgrade(cfg, "base")  # start from empty whatever a previous run left behind
+    # Revision 0001 only: the schema-creation step. Table creation is covered by
+    # tests/test_official_schema.py.
+    command.upgrade(cfg, "0001")
     engine = create_engine(url)
     try:
         assert set(SCHEMAS) <= set(inspect(engine).get_schema_names())
-        # Application tables are not created by this step.
+        # Revision 0001 creates no application tables.
         for schema in SCHEMAS:
             assert inspect(engine).get_table_names(schema=schema) == []
         command.downgrade(cfg, "base")
         assert not set(SCHEMAS) & set(inspect(engine).get_schema_names())
-        command.upgrade(cfg, "head")  # idempotent re-apply
+        command.upgrade(cfg, "0001")  # idempotent re-apply
     finally:
         engine.dispose()
         session.get_engine.cache_clear()
