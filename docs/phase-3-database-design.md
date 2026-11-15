@@ -4,7 +4,7 @@
 
 **Date:** 2026-11-15
 **Status:** **DRAFT — partially approved.** Per the project owner's instruction recorded in revision 2.2: **D1, D8, D16 and D18 are APPROVED**; **D2 is PROVISIONAL — clinical approval required**; every other decision in §8 remains open. Nothing is clinically approved, and no external (clinical, legal, governance, SCAD, DoH) approval has been obtained.
-**Revision:** 2.2 (2026-11-15) — owner decisions D1, D8, D16, D18 recorded; D2 kept provisional; ERD readiness updated; consent default applied (§5.2, §5.5). Revision 2.1 (final consistency corrections) is summarised in §12.
+**Revision:** 2.3 (2026-11-15) — D6, D7, D11 recommendations recorded (**pending owner confirmation, not approved**); `official` and `clinical` ERDs linked (§9.4). Revision 2.2 recorded owner decisions D1, D8, D16, D18 (D2 kept provisional; consent default applied, §5.2, §5.5). Revision 2.1 (final consistency corrections) is summarised in §12.
 **Input verdict:** [`phase-3-database-design-review.md`](phase-3-database-design-review.md) — *APPROVED WITH CHANGES*.
 **Canonical status:** once approved, this document supersedes the 11-table contract in [`../data/metadata/synthetic_data_spec.md`](../data/metadata/synthetic_data_spec.md) §3–4 as the database design. The spec's safety rules (§1), scenarios (§5) and generator prohibitions (§6) remain the contract the design must satisfy.
 
@@ -1143,12 +1143,12 @@ Blocking classification: **Blocks ERD** means the entity-relationship diagram ca
 | D3 | Meaning of `-` / `:` | OPEN | — | SCAD | No | Workbook loading only |
 | D4 | Age-label correction | OPEN | — | SCAD | No | Age-band use of 4 indicators |
 | D5 | Duplicate 3422 | OPEN | — | SCAD | No | No (rows quarantined) |
-| D6 | PostGIS vs plain coordinates | OPEN | — | — | No | **Yes — before the first migration** |
-| D7 | Migration tool | OPEN | — | — | No | **Yes — before the first migration** |
+| D6 | PostGIS vs plain coordinates | **RECOMMENDED — awaiting owner confirmation** (plain lat/lon) | Not yet | — | No | **Yes — before the first migration** |
+| D7 | Migration tool | **RECOMMENDED — awaiting owner confirmation** (Alembic + SQLAlchemy 2.x) | Not yet | — | No | **Yes — before the first migration** |
 | **D8** | Generation-run provenance | **APPROVED** | Yes | None required by the decision; **spec refresh is a follow-up** | No (settled) | No |
 | D9 | Workbook loading / re-fetch | OPEN | — | — | No | Loader only |
 | D10 | IFHAS component codes | OPEN | — | Rules owner (if YAML codes) | No | Rule loader |
-| D11 | Evaluation history | Treated as decided; **not formally approved** | Confirm | — | No (reshapes one table if reversed) | `eligibility_evaluation` |
+| D11 | Evaluation history | **RECOMMENDED — awaiting owner confirmation** (append-only; design already assumes it) | Not yet | — | No (reshapes one table if reversed) | `eligibility_evaluation` |
 | D12 | Working-day calendar | OPEN | — | ADPHC/programme owner | No | Decides whether `working_calendar` exists |
 | D13 | Licence-status mapping | OPEN | — | DoH licensing (advisable) | No | **Facility-profile creation and `v_facility_usable`** |
 | D14 | Rule applicability policy | OPEN | — | **Clinical** | No | Engine |
@@ -1234,6 +1234,8 @@ Blocking classification: **Blocks ERD** means the entity-relationship diagram ca
 | **Consequences** | Recommended: no polygon queries; the "inside the box ≠ inside the emirate" caveat stays. PostGIS: image change, new extension in migrations, geometry column instead of two doubles |
 | **Blocks ERD?** | No (column type only) |
 | **Approval** | Owner: yes (technical). Clinical: no |
+| **Status (rev 2.3)** | **RECOMMENDED — awaiting owner confirmation.** Not approved |
+| **Recommendation detail (rev 2.3)** | MVP uses plain PostgreSQL `DOUBLE PRECISION` `latitude`/`longitude` with the range `CHECK`s already in §3.4; **no PostGIS** unless polygon-based spatial queries become an established requirement (none is in the requirements reviewed; scenario 24 needs radius/nearest only). The original and usable coordinates and `geo_quality` are preserved exactly as designed: `source_longitude/latitude` (as published), `longitude/latitude` (usable only when `geo_quality IN ('ok','swapped_repaired')`), `geo_quality` (4 values). Keep the `postgres:16-alpine` image. Revisit if polygon/region-by-geometry queries are required — that would be a migration adding a geometry column derived from the two doubles, not a rewrite |
 
 ### D7 — Migration tooling
 | | |
@@ -1245,6 +1247,8 @@ Blocking classification: **Blocks ERD** means the entity-relationship diagram ca
 | **Consequences** | Adds a dependency (not installed here) |
 | **Blocks ERD?** | No |
 | **Approval** | Owner: yes (technical) |
+| **Status (rev 2.3)** | **RECOMMENDED — awaiting owner confirmation.** Not approved; nothing installed or created |
+| **Recommendation detail (rev 2.3)** | **Alembic with SQLAlchemy 2.x** (SQLAlchemy 2.0.36 and psycopg 3 are already in `backend/requirements.txt`; Alembic is not and would be added only after confirmation). **Reasons:** (1) native to the SQLAlchemy stack already chosen; (2) hand-written migrations can express what `create_all` cannot — generated columns, partial unique indexes, `NULLS NOT DISTINCT`, triggers, roles/privileges, schema creation; (3) linear, reviewable history per schema change; (4) supports offline SQL generation for review. **Conventions (proposed):** one Alembic environment and one revision history for all three schemas; the version table lives in a dedicated location (`version_table_schema` fixed, e.g. a `public` or `meta` schema, not any of the three); `include_schemas=True` with an `include_object` filter so autogenerate sees `official`, `clinical`, `synthetic` only; the shared `naming_convention` (§2.2) on `MetaData`; each model's `MetaData`/tables declare `schema=` explicitly; autogenerate output is **always reviewed and hand-edited** (it cannot detect generated columns, triggers, partial/`NULLS NOT DISTINCT` indexes, privileges, views); views, triggers and grants are written as explicit `op.execute` statements; migrations ordered `official` → `clinical` → `synthetic` so the one-way FK direction (§2.1) holds at every revision; downgrades are provided but append-only tables are never data-reversed; seed/lookup data (e.g. `region`, status vocabularies) is **loaded by the loaders, not by migrations**. **Implications for schema-separated tables:** the schema-boundary test (§2.1) runs after every migration; the migration role needs `CREATE` on all three schemas while the application role stays `SELECT`-only on `official`/`clinical`; FKs across schemas must name the schema; generated-column composite FKs (§2.5, U8) are verified in the first migration |
 
 ### D8 — Generation-run provenance — **APPROVED**
 | | |
@@ -1289,6 +1293,8 @@ Blocking classification: **Blocks ERD** means the entity-relationship diagram ca
 | **Consequences** | Recommended: trivial volume; a `care_gap` FK stays valid. Alternative: breaks FKs and audit |
 | **Blocks ERD?** | No — **provisionally treated as decided in the design**; reversing it would reshape `eligibility_evaluation`, so confirm it with D1/D2/D8 |
 | **Approval** | Owner: yes |
+| **Status (rev 2.3)** | **RECOMMENDED — awaiting owner confirmation.** Not approved |
+| **Recommendation detail (rev 2.3)** | **Append-only evaluation history.** Each `synthetic.eligibility_evaluation` row preserves: its **rule version** (`rule_id`, `rule_version`, composite FK to `clinical.rule`); its **evaluation run** (`evaluation_run_id` → `evaluation_run`); the **reference date** (held once on `evaluation_run.reference_date`, so row and run cannot disagree); the **timestamp** (`evaluated_at`); the **status** (`evaluation_status`); and the **reason** (`reason_code`, plus every fired guard in `evaluation_reason`). Rows are never updated or deleted. **Current status is read through `v_eligibility_current`** (latest per patient and `rule_id`), never by overwriting. This matches §5.3 as already written; no table shape changes |
 
 ### D12 — Working-day calendar
 | | |
@@ -1408,7 +1414,14 @@ The ERD is **not drawn** here. Two different things are reported and must not be
 **Governance / legal:** D18 — review of consent requirements for outreach and AI processing; D1 — review of naming real facilities beside synthetic patients; D2-S5 — guardianship/consent authority.
 **External confirmation:** SCAD (D3, D4, D5); DoH licensing (D13, advisable); ADPHC (`OQ-WCV-REFUSAL-STATE`, working week D12).
 
-### 9.4 Verdict
+### 9.4 ERD deliverables (revision 2.3)
+
+- [`erd/official-schema-erd.md`](erd/official-schema-erd.md) — all 9 `official` tables.
+- [`erd/clinical-schema-erd.md`](erd/clinical-schema-erd.md) — all 12 `clinical` tables.
+- **Not created:** the `synthetic` ERD (D2 is provisional) and the conditional `official.working_calendar` (D12).
+- The ERDs are design documents only. They claim no clinical, legal or governance approval.
+
+### 9.5 Verdict
 
 - **`official`: ready for ERD.**
 - **`clinical`: ready for ERD** (D16 approved).
