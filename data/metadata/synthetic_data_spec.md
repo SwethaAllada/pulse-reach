@@ -65,7 +65,7 @@ The synthetic population's shape is anchored to real Abu Dhabi aggregates **for 
 | Dimension | Anchor | Source | Caveat |
 |---|---|---|---|
 | Region split | Abu Dhabi 68% / Al Ain 24% / Al Dhafra 8% | SCAD census portal, 2024 | Context figures, not a dataset (see quality report §4) |
-| Age structure | 18 five-year bands, 0-4 … 85+ | SCAD 2024 pyramid | **Rounded to the nearest 5; does not reconcile to headline totals by 15 people.** Shape only — never counts |
+| Age structure | 18 five-year bands, 0-4 … 85+ | SCAD 2024 pyramid | **Band values are multiples of 5; the bands do not reconcile to the headline total (2024 gap +10,940, unexplained and not attributable to rounding — see `docs/mappings/phase-3-reconciliation-report.md` AG-3).** Shape only — never counts |
 | Sex ratio | 67% male / 33% female overall | SCAD 2024 | Driven by a migrant labour force; heavily skewed in working-age bands |
 | Child cohort | 39,333 live births in 2024, by region and citizenship | `raw/scad/scad_birth_statistics_2024_en.xlsx` | Only 2024 is held; a 0–6 cohort needs seven birth years (quality report B6) |
 | Facility mix | 67 hospitals, 1,136 health centres, 765 clinics by region | `raw/scad/scad_health_statistics_2022_en.xlsx` | 2022 reference period; counts only, no names or coordinates |

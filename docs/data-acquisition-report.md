@@ -219,8 +219,9 @@ and the remap documented, never silently trusted.
 
 ### 6.4 Rounding and reconciliation
 - 2024 age bands sum to **4,146,925** against a stated total of **4,135,985** — **+10,940**
-  (bands rounded to the nearest 5 for disclosure control). Usable as a *distribution shape*,
-  never as counts. This is a larger discrepancy than the ±15 previously found on the census page.
+  (the band values are multiples of 5, but rounding cannot explain the gap; the cause is
+  **unexplained** — see `mappings/phase-3-reconciliation-report.md` §3.B, AG-3). Usable as a
+  *distribution shape*, never as counts. This is a larger discrepancy than the ±15 previously found on the census page.
 - **Facility register vs SCAD, restricted to `Active` licences:** 71 hospitals / 8,828 beds
   (SDI) against 75 hospitals / 8,082 beds (SCAD 2801/4111) — **5% and 9% variance**. Close
   enough to confirm both describe the same estate; far enough apart to prove the definitions
@@ -238,7 +239,9 @@ outside the emirate (two in Saudi Arabia). All are repaired or flagged — never
   flags and carry no information. **IFHAS Thiqa eligibility cannot be derived from this file.**
 - `BEDS`, `SPECIALITIES`, `PROFESSIONALS` are **semicolon-delimited composite strings**, not
   numbers (`"Acute Care , Pediatric , 38 , 0 , 0; …"`). Casting them yields nothing.
-  `INPATIENTBEDCAPACITY` is the plain integer.
+  `INPATIENTBEDCAPACITY` is the bed field but is held in the source as a **string**: `"0"`,
+  `""` (not recorded, not zero) and `null` (unidentified record) are distinct states
+  (see `mappings/phase-3-reconciliation-report.md` §3.E, FA-2).
 - Only **3,005 of 5,339** rows are `Active`; 434 (all `rehabilitation_center`) have a blank
   region and status.
 

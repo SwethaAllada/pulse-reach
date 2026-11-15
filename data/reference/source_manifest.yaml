@@ -760,7 +760,9 @@ sources:
       - >-
         BEDS, SPECIALITIES and PROFESSIONALS are semicolon-delimited composite strings, not
         numbers (e.g. "Acute Care , Pediatric , 38 , 0 , 0; ..."). Casting them yields nothing.
-        INPATIENTBEDCAPACITY is the plain integer.
+        INPATIENTBEDCAPACITY is the bed field but is a source string, not an integer: "0", ""
+        (not recorded; not zero) and null (unidentified record) are distinct states (see
+        docs/mappings/phase-3-reconciliation-report.md, FA-2).
       - >-
         Only 3,005 of 5,339 rows are LICENSESTATUS "Active". The rest are cancelled, expired,
         preliminary or pending. Filter before treating a row as an operating facility.
