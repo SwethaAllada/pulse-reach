@@ -1,5 +1,5 @@
-"""Tests for revisions 0003 and 0004: official views, deferred integrity controls and the locked
-reconciliation rules.
+"""Tests for revisions 0003, 0004 and 0005: official views, deferred integrity controls, the locked
+reconciliation rules and the reconciliation precision tolerance.
 
 Every test runs against a *disposable* PostgreSQL database that this module creates on the server named by
 TEST_DATABASE_URL and drops afterwards (so the shared test database is never touched). Without
@@ -696,7 +696,7 @@ def test_upgrade_and_downgrade_preserve_tables_and_data():
             assert catalogue(eng) == (set(), set(), set(), "0002")
             assert structure(eng) == struct2 and row_digest(eng) == data2
 
-            command.upgrade(cfg, "head")  # 0004 replaces two views only: same catalogue, tables and rows
+            command.upgrade(cfg, "0004")  # 0004 replaces two views only: same catalogue, tables and rows
             assert catalogue(eng) == (VIEWS, FUNCTIONS, TRIGGERS, "0004")
             assert structure(eng) == struct2, "0004 must not change any table, column, constraint or index"
             assert row_digest(eng) == data2
@@ -706,6 +706,21 @@ def test_upgrade_and_downgrade_preserve_tables_and_data():
                     "AND table_name = 'v_indicator_year_shape'"))}
                 assert "vintage selector" in c.execute(text(
                     "SELECT obj_description('official.v_observation_current'::regclass)")).scalar().lower()
+
+            command.upgrade(cfg, "head")  # 0005 replaces the same two views again
+            assert catalogue(eng) == (VIEWS, FUNCTIONS, TRIGGERS, "0005")
+            assert structure(eng) == struct2, "0005 must not change any table, column, constraint or index"
+            assert row_digest(eng) == data2
+            with eng.connect() as c:
+                assert {"precision_tolerance", "reconciled_within_precision"} <= {r[0] for r in c.execute(text(
+                    "SELECT column_name FROM information_schema.columns WHERE table_schema = 'official' "
+                    "AND table_name = 'v_indicator_year_shape'"))}
+            command.downgrade(cfg, "0004")  # 0004's own definition comes back
+            assert catalogue(eng) == (VIEWS, FUNCTIONS, TRIGGERS, "0004")
+            with eng.connect() as c:
+                assert "precision_tolerance" not in {r[0] for r in c.execute(text(
+                    "SELECT column_name FROM information_schema.columns WHERE table_schema = 'official' "
+                    "AND table_name = 'v_indicator_year_shape'"))}
 
             command.downgrade(cfg, "0003")  # 0003's own definitions come back
             assert catalogue(eng) == (VIEWS, FUNCTIONS, TRIGGERS, "0003")
@@ -720,7 +735,7 @@ def test_upgrade_and_downgrade_preserve_tables_and_data():
 
             command.downgrade(cfg, "base")  # full round trip, then back to head on an empty database
             command.upgrade(cfg, "head")
-            assert catalogue(eng)[3] == "0004"
+            assert catalogue(eng)[3] == "0005"
         finally:
             eng.dispose()
 
@@ -753,10 +768,99 @@ def test_upgrade_refuses_data_that_already_violates_the_new_invariants():
             eng.dispose()
 
 
-def test_migration_0004_follows_0003_and_is_the_head():
+def test_migration_0005_follows_0004_and_is_the_head():
     from alembic.script import ScriptDirectory
     script = ScriptDirectory(str(BACKEND / "migrations"))
-    assert script.get_heads() == ["0004"]
+    assert script.get_heads() == ["0005"]
+    assert script.get_revision("0005").down_revision == "0004"
     assert script.get_revision("0004").down_revision == "0003"
     assert script.get_revision("0003").down_revision == "0002"
-    assert [r.revision for r in script.walk_revisions()] == ["0004", "0003", "0002", "0001"]  # linear
+    assert [r.revision for r in script.walk_revisions()] == ["0005", "0004", "0003", "0002", "0001"]  # linear
+
+
+# --- reconciliation precision tolerance (0005) -------------------------------
+def precision(conn, ind):
+    rows = q(conn, """SELECT period_year, cell_state, mismatch_class, difference, precision_tolerance,
+                             reconciled_within_precision
+                      FROM official.v_indicator_year_shape WHERE indicator_id = :i ORDER BY period_year""", i=ind)
+    return {r[0]: r[1:] for r in rows}
+
+
+@live
+def test_precision_tolerance_boundary_is_half_unit_of_15th_significant_digit_summed_over_members(conn):
+    """Values near 100 (3 integer digits) are known to 5E-13 each; three members -> 1.5E-12 in total."""
+    ind, f, mem = new_indicator(conn), new_file(conn), gender_members(conn)
+    put(conn, ind, f, 2001, {"m": Decimal("100"), "f": Decimal("200"), "total": Decimal("300")}, mem)  # exact
+    put(conn, ind, f, 2002, {"m": Decimal("100"), "f": Decimal("200.0000000000015"), "total": Decimal("300")}, mem)
+    put(conn, ind, f, 2003, {"m": Decimal("100"), "f": Decimal("200.0000000000016"), "total": Decimal("300")}, mem)
+    put(conn, ind, f, 2004, {"m": Decimal("100"), "f": Decimal("199.9999999999985"), "total": Decimal("300")}, mem)
+    put(conn, ind, f, 2005, {"m": Decimal("100"), "f": Decimal("199.9999999999984"), "total": Decimal("300")}, mem)
+    got = precision(conn, ind)
+    assert got[2001] == ("reconciles", None, 0, Decimal("0.0000000000015"), False)
+    # exactly on the bound: within (inclusive), in either direction; the exact difference is still reported
+    assert got[2002] == ("reconciles", None, Decimal("0.0000000000015"), Decimal("0.0000000000015"), True)
+    assert got[2004] == ("reconciles", None, Decimal("-0.0000000000015"), Decimal("0.0000000000015"), True)
+    # one digit beyond the bound: a mismatch, classified as before (leaves above / below, no residual member)
+    assert got[2003][:3] == ("mismatch", "RC-LEAVES-ABOVE", Decimal("0.0000000000016"))
+    assert got[2005][:3] == ("mismatch", "RC-RESIDUAL-BELOW", Decimal("-0.0000000000016"))
+    assert got[2003][4] is False and got[2005][4] is False  # reconciled_within_precision only where it applies
+
+
+@live
+def test_precision_tolerance_scales_with_magnitude_and_is_not_a_global_constant(conn):
+    ind, f, mem = new_indicator(conn), new_file(conn), gender_members(conn)
+    # near 1E7 every member is known to 5E-8: a 9E-9 gap is representation noise (the indicator 2622 case)
+    put(conn, ind, f, 2001, {"m": Decimal("5000000"), "f": Decimal("5000000.000000009"),
+                             "total": Decimal("10000000")}, mem)
+    # near 1 every member is known to 5E-15: the same 9E-9 gap is a real discrepancy
+    put(conn, ind, f, 2002, {"m": Decimal("1"), "f": Decimal("1.000000009"), "total": Decimal("2")}, mem)
+    got = precision(conn, ind)
+    assert got[2001][0] == "reconciles" and got[2001][4] is True
+    assert got[2002][0] == "mismatch" and got[2002][1] == "RC-LEAVES-ABOVE"
+
+
+@live
+def test_precision_tolerance_never_absorbs_a_unit_difference(conn):
+    ind, f, mem = new_indicator(conn), new_file(conn), gender_members(conn)
+    put(conn, ind, f, 2001, {"m": 13165217, "f": 4990910, "total": 18156128}, mem)  # integers, 1 apart
+    put(conn, ind, f, 2002, {"m": 99999999999999, "f": 1, "total": 99999999999999}, mem)  # largest 14-digit count
+    got = precision(conn, ind)
+    assert got[2001][:3] == ("mismatch", "RC-RESIDUAL-BELOW", -1)
+    assert got[2002][0] == "mismatch"
+
+
+@live
+def test_precision_tolerance_does_not_change_the_projection_or_residual_rules(conn):
+    proj = new_indicator(conn, series_kind="projected")
+    f, mem = new_file(conn), gender_members(conn)
+    put(conn, proj, f, 2030, {"m": 1000, "f": 2000, "total": 3500}, mem)    # still RC-PROJ-ROUNDING
+    put(conn, proj, f, 2027, {"m": 1000, "f": 2000, "total": 3500}, mem)    # still unresolved: no step for 2027
+    got = precision(conn, proj)
+    assert got[2030][:2] == ("mismatch", "RC-PROJ-ROUNDING") and got[2027][:2] == ("mismatch", None)
+    ind = new_indicator(conn)
+    put(conn, ind, f, 2020, {"m": 3, "f": 4, "total": 10}, mem)             # below, no residual: RC-RESIDUAL-BELOW
+    put(conn, ind, f, 2021, {"m": 3, "f": 4, "ns": 1, "total": 10}, mem)    # below, residual present: unresolved
+    got = precision(conn, ind)
+    assert got[2020][:2] == ("mismatch", "RC-RESIDUAL-BELOW")
+    assert got[2021][:2] == ("mismatch", None)
+
+
+@live
+def test_indicator_2622_real_values_reconcile_within_precision_and_stay_unmodified(conn):
+    """The two real SCAD cases: 2016 differs by 9E-9 and 2017 by 1E-9 (Decimal, exactly as published)."""
+    ind, f, mem = new_indicator(conn), new_file(conn), gender_members(conn)
+    cases = {2016: ("13165217.3892964", "4990910.66883999", "881792.809562619", "19037920.867699"),
+             2017: ("12632279.0089575", "4553761.68922617", "748353.853446131", "17934394.5516298")}
+    for year, (a, b, c, tot) in cases.items():
+        # three leaves need a third leaf member
+        third = new_member(conn, "gender", "leaf", f"Third{n()}")
+        for key, v in (("m", a), ("f", b)):
+            obs(conn, ind, f, year=year, value=Decimal(v), gender_member_id=mem[key])
+        obs(conn, ind, f, year=year, value=Decimal(c), gender_member_id=third)
+        obs(conn, ind, f, year=year, value=Decimal(tot), row_role="aggregate", gender_member_id=mem["total"])
+    got = precision(conn, ind)
+    assert got[2016][0] == "reconciles" and got[2016][2] == Decimal("9E-9") and got[2016][4] is True
+    assert got[2017][0] == "reconciles" and got[2017][2] == Decimal("1E-9") and got[2017][4] is True
+    assert got[2016][3] > Decimal("9E-9") and got[2017][3] > Decimal("1E-9")
+    stored = {v for (v,) in q(conn, "SELECT value FROM official.observation WHERE indicator_id = :i", i=ind)}
+    assert Decimal("13165217.3892964") in stored and Decimal("19037920.867699") in stored  # nothing rewritten

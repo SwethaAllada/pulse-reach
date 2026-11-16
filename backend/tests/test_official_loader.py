@@ -897,16 +897,18 @@ def test_real_reconciliation_report_ingestion_success_is_not_reconciliation_succ
     eng, report = real
     rec = report["reconciliation"]
     one = rec["single_dimension"]
-    assert one["cells_by_state"] == {"reconciles": 484, "no_aggregate": 141, "aggregate_only": 11, "mismatch": 44}
+    assert one["cells_by_state"] == {"reconciles": 486, "no_aggregate": 141, "aggregate_only": 11, "mismatch": 42}
     assert one["mismatch_classes"] == {"RC-ZERO-LEAVES": 33, "RC-PROJ-ROUNDING": 4, "RC-RESIDUAL-BELOW": 4,
-                                       "RC-UNEXPLAINED": 1, "RC-LEAVES-ABOVE": 2}
+                                       "RC-UNEXPLAINED": 1}
     # the one unexplained cell: 4868, 2024, age bands exceed the stated total by 10,940
     assert rec["rc_unexplained_cells"] == [["4868", "2024", "age_group", "4135985.0", "4146925.0", "10940.0"]]
-    # the 2 extra RC-LEAVES-ABOVE cells are 2622 (2016, 2017): a 1e-9 float artefact in the published decimals
+    # 2622 (2016, 2017) differ by 9e-9 / 1e-9: representation error of 15-significant-digit source values.
+    # They reconcile within the precision tolerance (migration 0005); the exact difference is still reported.
     tiny = scalar_list(eng, """SELECT indicator_id * 10000 + period_year FROM official.v_indicator_year_shape
-                               WHERE indicator_id = 2622 AND mismatch_class = 'RC-LEAVES-ABOVE'
+                               WHERE indicator_id = 2622 AND reconciled_within_precision AND cell_state = 'reconciles'
                                  AND abs(difference) < 0.000001""")
     assert sorted(tiny) == [2622 * 10000 + 2016, 2622 * 10000 + 2017]
+    assert scalar(eng, "SELECT count(*) FROM official.v_indicator_year_shape WHERE reconciled_within_precision") == 2
     base = rec["phase3_baseline_screen_multi_dimension"]
     assert (base["tested"], base["reconcile"], base["mismatch"], base["not_tested"]) == (4858, 4379, 479, 432)
     assert (base["mismatch_leaves_all_zero"], base["mismatch_leaves_below"], base["mismatch_leaves_above"]) == (299, 128, 52)
