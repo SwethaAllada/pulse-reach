@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     # When unset the API still starts; database features report "not configured".
     database_url: SecretStr | None = None
     cors_origins: str = "http://localhost:3000"
+    rules_dir: str | None = None
+    data_dir: str | None = None
 
     # Connection pool (SQLAlchemy QueuePool)
     db_pool_size: int = 5
