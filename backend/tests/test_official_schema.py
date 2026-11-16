@@ -213,7 +213,9 @@ def test_migration_chain_is_linear_and_0001_is_untouched():
     from alembic.script import ScriptDirectory
 
     script = ScriptDirectory.from_config(Config(str(BACKEND / "alembic.ini")))
-    assert [r.revision for r in script.walk_revisions()] == ["0002", "0001"]
+    assert [r.revision for r in script.walk_revisions()] == ["0004", "0003", "0002", "0001"]
+    assert script.get_revision("0004").down_revision == "0003"
+    assert script.get_revision("0003").down_revision == "0002"
     assert script.get_revision("0002").down_revision == "0001"
     assert script.get_revision("0001").down_revision is None
 
