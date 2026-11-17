@@ -82,6 +82,62 @@ def _valid_date(text: Optional[str], allow_year_month: bool) -> bool:
     return allow_year_month and bool(_YEAR_MONTH.match(text)) and 1 <= int(text[5:]) <= 12
 
 
+def _strict_bool(value: Any, field_name: str, where: str, issues: List[ValidationIssue]) -> Optional[bool]:
+    """Accept only genuine Python bool (True or False); reject None, ints, strings, etc."""
+    if isinstance(value, bool):
+        return value
+    issues.append(
+        ValidationIssue(where, f"'{field_name}' must be a boolean (true or false), got {value!r}")
+    )
+    return None
+
+
+def _validate_conditions(
+    conditions: Any, where: str, requires_review: Optional[bool], issues: List[ValidationIssue]
+) -> None:
+    if conditions is None:
+        return
+    if not isinstance(conditions, list):
+        issues.append(ValidationIssue(where, "spec.eligibility.conditions must be a list"))
+        return
+    for idx, cond in enumerate(conditions, 1):
+        clabel = f"{where}, condition[{idx}]"
+        if not isinstance(cond, dict):
+            issues.append(ValidationIssue(clabel, "condition must be a mapping"))
+            continue
+        kind = _text(cond.get("kind"))
+        if kind not in ("inclusion", "exclusion"):
+            issues.append(
+                ValidationIssue(clabel, f"condition kind {kind!r} must be 'inclusion' or 'exclusion'")
+            )
+        if not _text(cond.get("as_printed")):
+            issues.append(ValidationIssue(clabel, "condition missing 'as_printed'"))
+        if "machine_evaluable" not in cond:
+            issues.append(ValidationIssue(clabel, "condition missing mandatory boolean 'machine_evaluable'"))
+            me = None
+        else:
+            me = _strict_bool(cond.get("machine_evaluable"), "machine_evaluable", clabel, issues)
+        if me is True:
+            if kind == "exclusion":
+                issues.append(
+                    ValidationIssue(clabel, "exclusion condition cannot have machine_evaluable=true")
+                )
+            if not _text(cond.get("attribute")) or "required_value" not in cond or cond.get("required_value") is None:
+                issues.append(
+                    ValidationIssue(
+                        clabel,
+                        "machine_evaluable=true condition requires 'attribute' and non-null 'required_value'",
+                    )
+                )
+        elif me is False and requires_review is False:
+            issues.append(
+                ValidationIssue(
+                    clabel,
+                    "rule with machine_evaluable=false condition must have requires_clinical_review=true",
+                )
+            )
+
+
 # --------------------------------------------------------------------------- items
 def _parse_items(
     spec: Dict[str, Any], where: str, issues: List[ValidationIssue], oq_ids: Set[str]
@@ -184,7 +240,12 @@ def _parse_rule(raw: Any, index: int, rel: str, expected_pathway: str, config_pa
         issues.append(ValidationIssue(where, "rule must be a mapping"))
         return None
 
-    missing = [k for k in REQUIRED_RULE_METADATA if k not in raw or (k != "effective_date" and _text(raw.get(k)) is None)]
+    missing = [
+        k
+        for k in REQUIRED_RULE_METADATA
+        if k not in raw
+        or (k not in ("effective_date", "requires_clinical_review") and _text(raw.get(k)) is None)
+    ]
     if missing:
         issues.append(ValidationIssue(where, "missing mandatory metadata: " + ", ".join(missing)))
     unknown = sorted(set(raw) - set(REQUIRED_RULE_METADATA) - set(OPTIONAL_RULE_KEYS))
@@ -227,16 +288,30 @@ def _parse_rule(raw: Any, index: int, rel: str, expected_pathway: str, config_pa
     for q in oqs:
         if q not in oq_ids:
             issues.append(ValidationIssue(where, f"unknown open question id '{q}'"))
-    review = bool(raw.get("requires_clinical_review", False))
+    review_opt: Optional[bool] = None
+    if "requires_clinical_review" in raw:
+        review_opt = _strict_bool(raw.get("requires_clinical_review"), "requires_clinical_review", where, issues)
+    review = review_opt is True
     if status == "unresolved" and not oqs:
         issues.append(ValidationIssue(where, "unresolved rules must reference at least one open_question_id"))
     if review and not oqs:
         issues.append(ValidationIssue(where, "requires_clinical_review rules must reference at least one open_question_id explaining why"))
 
-    spec = raw.get("spec") or {}
-    if not isinstance(spec, dict):
+    spec = raw.get("spec")
+    if spec is None:
+        spec = {}
+    elif not isinstance(spec, dict):
         issues.append(ValidationIssue(where, "spec must be a mapping"))
         spec = {}
+
+    for bflag in ("one_time", "is_diagnosis", "is_screening_result_only"):
+        if bflag in spec:
+            _strict_bool(spec.get(bflag), f"spec.{bflag}", where, issues)
+
+    elig = spec.get("eligibility")
+    if isinstance(elig, dict) and "conditions" in elig:
+        _validate_conditions(elig.get("conditions"), where, review_opt, issues)
+
     if raw.get("rule_type") == "screening_package":
         _validate_package_spec(spec, where, issues)
     items = _parse_items(spec, where, issues, oq_ids)
@@ -287,9 +362,17 @@ def load_rules(rules_dir: Optional[Path] = None) -> RuleBundle:
     missing_st = [s for s in EVALUATION_STATUSES if s not in defined]
     if missing_st:
         issues.append(ValidationIssue(STATUS_FILE, "missing evaluation status definition(s): " + ", ".join(missing_st)))
-    ver_defined = tuple(s.get("id") for s in st_data.get("verification_statuses") or [])
+    ver_list = st_data.get("verification_statuses") or []
+    ver_defined = tuple(s.get("id") for s in ver_list if isinstance(s, dict))
     if set(ver_defined) != set(ALLOWED_VERIFICATION_STATUSES):
         issues.append(ValidationIssue(STATUS_FILE, f"verification_statuses must be exactly {list(ALLOWED_VERIFICATION_STATUSES)}"))
+    for s in ver_list:
+        if isinstance(s, dict):
+            sid = s.get("id")
+            if "may_drive_decisions" not in s:
+                issues.append(ValidationIssue(STATUS_FILE, f"verification_status '{sid}' missing 'may_drive_decisions'"))
+            else:
+                _strict_bool(s.get("may_drive_decisions"), "may_drive_decisions", f"{STATUS_FILE}: verification_status '{sid}'", issues)
 
     rules: List[Rule] = []
     locations: Dict[str, str] = {}

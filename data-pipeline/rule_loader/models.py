@@ -19,7 +19,7 @@ EVALUATION_STATUSES = (
     "requires_clinical_review",
 )
 
-# Mandatory metadata on every rule (section 6 of the Phase 2 brief).
+# Mandatory metadata on every rule (section 6 of the Phase 2 brief + Phase 3 strict boolean rule).
 REQUIRED_RULE_METADATA = (
     "rule_id",
     "pathway",
@@ -31,12 +31,12 @@ REQUIRED_RULE_METADATA = (
     "effective_date",
     "last_reviewed",
     "description",
+    "requires_clinical_review",
 )
 
 OPTIONAL_RULE_KEYS = (
     "rule_type",
     "effective_date_note",
-    "requires_clinical_review",
     "open_question_ids",
     "history",
     "notes",

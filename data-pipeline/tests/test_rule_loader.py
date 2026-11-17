@@ -33,7 +33,7 @@ def test_real_config_loads_both_pathways():
 @pytest.mark.parametrize(
     "field",
     ["rule_id", "pathway", "rule_version", "source_name", "source_version", "source_reference",
-     "verification_status", "effective_date", "last_reviewed", "description"],
+     "verification_status", "effective_date", "last_reviewed", "description", "requires_clinical_review"],
 )
 def test_missing_mandatory_metadata_is_reported(make_config, field):
     rule = synthetic_rule("SYN-IFHAS-1", "ifhas")
@@ -43,6 +43,107 @@ def test_missing_mandatory_metadata_is_reported(make_config, field):
         load_rules(path)
     assert field in str(exc.value)
     assert "missing mandatory metadata" in str(exc.value)
+
+
+@pytest.mark.parametrize("bad_bool", [None, "", 0, 1, "true", "false", "True", "False", []])
+def test_strict_boolean_rejects_non_bool_requires_clinical_review(make_config, bad_bool):
+    rule = synthetic_rule("SYN-IFHAS-1", "ifhas", requires_clinical_review=bad_bool, open_question_ids=["OQ-SYN-1"])
+    with pytest.raises(RuleConfigError, match="requires_clinical_review"):
+        load_rules(make_config(ifhas_rules=[rule]))
+
+
+@pytest.mark.parametrize("flag", ["one_time", "is_diagnosis", "is_screening_result_only"])
+@pytest.mark.parametrize("bad_bool", [None, "", 0, 1, "true", "false"])
+def test_strict_boolean_rejects_non_bool_spec_flags(make_config, flag, bad_bool):
+    rule = synthetic_rule("SYN-IFHAS-1", "ifhas", spec={flag: bad_bool})
+    with pytest.raises(RuleConfigError, match=flag):
+        load_rules(make_config(ifhas_rules=[rule]))
+
+
+@pytest.mark.parametrize("bad_bool", [None, "", 0, 1, "true", "false"])
+def test_strict_boolean_rejects_non_bool_machine_evaluable(make_config, bad_bool):
+    cond = {"kind": "inclusion", "as_printed": "ever smoked", "attribute": "ever_smoked", "required_value": True, "machine_evaluable": bad_bool}
+    rule = synthetic_rule(
+        "SYN-IFHAS-1",
+        "ifhas",
+        requires_clinical_review=True,
+        open_question_ids=["OQ-SYN-1"],
+        spec={"eligibility": {"conditions": [cond]}},
+    )
+    with pytest.raises(RuleConfigError, match="machine_evaluable"):
+        load_rules(make_config(ifhas_rules=[rule]))
+
+
+def test_missing_machine_evaluable_on_condition_is_rejected(make_config):
+    cond = {"kind": "inclusion", "as_printed": "ever smoked"}
+    rule = synthetic_rule(
+        "SYN-IFHAS-1",
+        "ifhas",
+        requires_clinical_review=True,
+        open_question_ids=["OQ-SYN-1"],
+        spec={"eligibility": {"conditions": [cond]}},
+    )
+    with pytest.raises(RuleConfigError, match="machine_evaluable"):
+        load_rules(make_config(ifhas_rules=[rule]))
+
+
+@pytest.mark.parametrize("bad_bool", [None, "", 0, 1, "true", "false"])
+def test_strict_boolean_rejects_non_bool_may_drive_decisions(make_config, bad_bool):
+    import yaml
+
+    path = make_config()
+    st_path = path / "common" / "status_definitions.yaml"
+    st_data = yaml.safe_load(st_path.read_text(encoding="utf-8"))
+    st_data["verification_statuses"][0]["may_drive_decisions"] = bad_bool
+    st_path.write_text(yaml.safe_dump(st_data, sort_keys=False), encoding="utf-8")
+    with pytest.raises(RuleConfigError, match="may_drive_decisions"):
+        load_rules(path)
+
+
+def test_condition_validation_rules(make_config):
+    # 1. Invalid kind
+    r_kind = synthetic_rule(
+        "SYN-IFHAS-1",
+        "ifhas",
+        requires_clinical_review=True,
+        open_question_ids=["OQ-SYN-1"],
+        spec={"eligibility": {"conditions": [{"kind": "other", "as_printed": "x", "machine_evaluable": False}]}},
+    )
+    with pytest.raises(RuleConfigError, match="kind"):
+        load_rules(make_config(ifhas_rules=[r_kind]))
+
+    # 2. Exclusion cannot be machine_evaluable=True
+    r_excl = synthetic_rule(
+        "SYN-IFHAS-1",
+        "ifhas",
+        requires_clinical_review=True,
+        open_question_ids=["OQ-SYN-1"],
+        spec={
+            "eligibility": {
+                "conditions": [
+                    {
+                        "kind": "exclusion",
+                        "as_printed": "prior cancer",
+                        "attribute": "prior_cancer",
+                        "required_value": True,
+                        "machine_evaluable": True,
+                    }
+                ]
+            }
+        },
+    )
+    with pytest.raises(RuleConfigError, match="exclusion"):
+        load_rules(make_config(ifhas_rules=[r_excl]))
+
+    # 3. machine_evaluable=False requires parent requires_clinical_review=True
+    r_unrev = synthetic_rule(
+        "SYN-IFHAS-1",
+        "ifhas",
+        requires_clinical_review=False,
+        spec={"eligibility": {"conditions": [{"kind": "inclusion", "as_printed": "x", "machine_evaluable": False}]}},
+    )
+    with pytest.raises(RuleConfigError, match="requires_clinical_review"):
+        load_rules(make_config(ifhas_rules=[r_unrev]))
 
 
 def test_null_effective_date_requires_explanation(make_config):
