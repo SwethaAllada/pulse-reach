@@ -459,6 +459,15 @@ def test_migration_0007_append_only_trigger_has_scoped_reset_guard():
     assert "IF TG_OP = 'DELETE'" in text
 
 
+def test_migration_0007_uses_frozen_static_ddl():
+    mig_path = BACKEND / "migrations" / "versions" / "0007_create_synthetic_schema_tables.py"
+    src = mig_path.read_text(encoding="utf-8")
+    assert "app.models" not in src
+    assert "Base.metadata" not in src
+    for tbl_name in TABLES - {"care_gap_follow_up_event"}:
+        assert f"CREATE TABLE synthetic.{tbl_name}" in src
+
+
 # --- live PostgreSQL (set TEST_DATABASE_URL) -----------------------------
 live = pytest.mark.skipif(
     not os.getenv("TEST_DATABASE_URL"), reason="TEST_DATABASE_URL not set"
@@ -480,7 +489,7 @@ def test_live_synthetic_migration(monkeypatch):
     engine = create_engine(url)
     try:
         insp = inspect(engine)
-        assert set(insp.get_table_names(schema="synthetic")) == TABLES
+        assert set(insp.get_table_names(schema="synthetic")) == (TABLES - {"care_gap_follow_up_event"})
         assert set(insp.get_view_names(schema="synthetic")) >= {
             "v_consent_current",
             "v_history_availability_current",
