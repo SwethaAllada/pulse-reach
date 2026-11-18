@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class RulesSummaryOut(BaseModel):
@@ -446,6 +446,12 @@ class FollowUpCreateIn(BaseModel):
     evidence_reference: str | None = None
     recorded_by: str = Field(min_length=1)
     note: str | None = None
+
+    @model_validator(mode="after")
+    def _validate_close_gap_event_type(self) -> "FollowUpCreateIn":
+        if self.close_gap and self.event_type != "completion_documented":
+            raise ValueError("close_gap=True is only allowed with event_type='completion_documented'.")
+        return self
 
 
 class AppointmentCreateIn(BaseModel):

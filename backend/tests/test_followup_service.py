@@ -150,24 +150,57 @@ def test_follow_up_appointment_and_referral_write_endpoints():
     assert bad_close.status_code == 422
 
     # 4. Closing gap WITH documented evidence -> 201 and gap becomes closed_completed
+    ds = get_cached_dataset()
+    scr_by_pat = {s["patient_id"]: s["screening_id"] for s in ds.ifhas_screenings}
+    target_gap = next(
+        g for g in ds.care_gaps if g["status"] == "open" and g["patient_id"] in scr_by_pat
+    )
+    target_gap_id = target_gap["care_gap_id"]
+    ev_ref = scr_by_pat[target_gap["patient_id"]]
     good_close = client.post(
-        f"/api/v1/care-gaps/{gap_id}/follow-ups",
+        f"/api/v1/care-gaps/{target_gap_id}/follow-ups",
         json={
             "event_type": "completion_documented",
             "close_gap": True,
             "documented_evidence": True,
-            "evidence_reference": "SYNTH-SCR-DOC-001",
+            "evidence_reference": ev_ref,
             "recorded_by": "clinician_ui",
             "note": "Completed at clinic",
         },
     )
     assert good_close.status_code == 201
-    gap_after = client.get(f"/api/v1/care-gaps/{gap_id}").json()
+    gap_after = client.get(f"/api/v1/care-gaps/{target_gap_id}").json()
     assert gap_after["status"] == "closed_completed"
     assert any(
         ev["follow_up_id"] == good_close.json()["follow_up_id"]
         for ev in gap_after["follow_up_events"]
     )
+
+    # 5. Closing an already-closed gap -> 422
+    reclose = client.post(
+        f"/api/v1/care-gaps/{target_gap_id}/follow-ups",
+        json={
+            "event_type": "completion_documented",
+            "close_gap": True,
+            "documented_evidence": True,
+            "evidence_reference": ev_ref,
+            "recorded_by": "clinician_ui",
+        },
+    )
+    assert reclose.status_code == 422
+
+    # 6. close_gap=True with outreach_attempted -> 422 validation error
+    bad_combo = client.post(
+        f"/api/v1/care-gaps/{target_gap_id}/follow-ups",
+        json={
+            "event_type": "outreach_attempted",
+            "close_gap": True,
+            "documented_evidence": True,
+            "evidence_reference": ev_ref,
+            "recorded_by": "clinician_ui",
+        },
+    )
+    assert bad_combo.status_code == 422
 
 
 def test_referral_list_create_and_patch_endpoints():

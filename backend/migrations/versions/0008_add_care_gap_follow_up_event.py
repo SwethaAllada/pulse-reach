@@ -52,6 +52,7 @@ def upgrade() -> None:
                 "synthetic.care_gap.care_gap_id",
             ],
             name="fk_care_gap_follow_up_event_care_gap",
+            onupdate="RESTRICT",
             ondelete="RESTRICT",
         ),
         sa.CheckConstraint("is_synthetic IS TRUE", name="ck_care_gap_follow_up_event_is_synthetic"),
@@ -92,7 +93,7 @@ def upgrade() -> None:
         CREATE TRIGGER trg_care_gap_follow_up_event_append_only
             BEFORE UPDATE OR DELETE ON synthetic.care_gap_follow_up_event
             FOR EACH ROW
-            EXECUTE FUNCTION synthetic.prevent_append_only_mutation();
+            EXECUTE FUNCTION synthetic.reject_append_only_mutation();
         """
     )
 

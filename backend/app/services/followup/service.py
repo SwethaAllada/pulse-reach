@@ -136,8 +136,11 @@ class FollowUpService:
         rule_id: str,
         rule_meta: dict[str, Any] | None = None,
         care_gap: dict[str, Any] | None = None,
+        evaluations: list[dict[str, Any]] | None = None,
     ) -> tuple[bool, str | None, str | None]:
         """Return `(allowed, contact_consent_id, blocked_reason)` using D18 consent rules."""
+        from app.services.outreach.service import resolve_applicable_contact_consent
+
         meta = rule_meta or {
             "rule_id": rule_id,
             "rule_version": "1.0",
@@ -149,32 +152,33 @@ class FollowUpService:
             if care_gap is not None
             else [{"care_gap_id": "SYNTH-GAP-000001", "rule_id": rule_id, "status": "open"}]
         )
-        res = self._outreach.preview_outreach(
-            patient=patient,
-            rule=meta,
-            rule_id=rule_id,
-            evaluations=[
+        eval_list = (
+            evaluations
+            if evaluations is not None
+            else [
                 {
                     "rule_id": rule_id,
                     "rule_version": meta.get("rule_version", "1.0"),
                     "evaluation_status": "due",
                 }
-            ],
+            ]
+        )
+        res = self._outreach.preview_outreach(
+            patient=patient,
+            rule=meta,
+            rule_id=rule_id,
+            evaluations=eval_list,
             care_gaps=gap_list,
             consents=consents,
             channel=patient.get("preferred_channel", "sms"),
             language=patient.get("preferred_language", "en"),
         )
-        contact_consents = [
-            c
-            for c in consents
-            if c.get("consent_type") == "contact"
-            and c.get("state") == "granted"
-            and c.get("scope_pathway") in (None, pathway)
-        ]
+        resolved = resolve_applicable_contact_consent(
+            consents, rule_id=rule_id, pathway=pathway
+        )
         consent_id = (
-            max(contact_consents, key=lambda c: (c["recorded_at"], c["consent_id"]))["consent_id"]
-            if contact_consents
+            str(resolved["consent_id"])
+            if resolved is not None and resolved.get("state") == "granted"
             else None
         )
         return res.allowed, consent_id, res.blocked_reason

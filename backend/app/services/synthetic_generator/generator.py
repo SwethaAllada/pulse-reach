@@ -1086,10 +1086,20 @@ def generate_synthetic_dataset(
 
     # T-10: Enrich background patients (idx >= 28) with deterministic operational journeys
     # without altering any Scenario 1-27 IDs or statuses.
-    consent_by_patient_contact: dict[str, str] = {}
+    latest_contact_consent: dict[str, dict[str, Any]] = {}
     for c in consents:
-        if c["consent_type"] == "contact" and c["state"] == "granted":
-            consent_by_patient_contact[c["patient_id"]] = c["consent_id"]
+        if c["consent_type"] == "contact":
+            prev = latest_contact_consent.get(c["patient_id"])
+            if prev is None or (c["recorded_at"], c["consent_id"]) > (
+                prev["recorded_at"],
+                prev["consent_id"],
+            ):
+                latest_contact_consent[c["patient_id"]] = c
+    consent_by_patient_contact: dict[str, str] = {
+        pid: c["consent_id"]
+        for pid, c in latest_contact_consent.items()
+        if c["state"] == "granted"
+    }
 
     # Ensure >= 40 background patients with open care gaps have granted contact consent
     # (so >= 30 contactable people with open gaps exist even after 5 are closed below).
@@ -1098,7 +1108,7 @@ def generate_synthetic_dataset(
         pid = g["patient_id"]
         if int(pid.split("-")[-1]) < 28 or g["status"] != "open":
             continue
-        if pid in consent_by_patient_contact:
+        if pid in latest_contact_consent:
             continue
         if patients_by_id_map[pid]["contact_status"] != "valid":
             continue
@@ -1128,11 +1138,19 @@ def generate_synthetic_dataset(
         if len(consent_by_patient_contact) >= 45:
             break
 
+    items_by_rule: dict[tuple[str, str], list[tuple[str, str]]] = {}
+    for it in clinical_bundle.items:
+        items_by_rule.setdefault((it["rule_id"], it["rule_version"]), []).append(
+            (it["category"], it["code"])
+        )
+
     open_gaps_bg = [
         g
         for g in care_gaps
         if int(g["patient_id"].split("-")[-1]) >= 28
         and g["status"] == "open"
+        and g["rule_id"].startswith("IFHAS-")
+        and (g["rule_id"], g["rule_version"]) in items_by_rule
         and g["patient_id"] in consent_by_patient_contact
     ]
     seen_in_progress: set[str] = set()
@@ -1204,7 +1222,7 @@ def generate_synthetic_dataset(
                 "rule_version": g["rule_version"],
                 "appointment_id": None,
                 "performed_date": reference_date - timedelta(days=2),
-                "completion_status": "completed",
+                "completion_status": "complete",
                 "results_communicated_date": reference_date - timedelta(days=1),
                 "journey_reported_date": reference_date - timedelta(days=1),
                 "has_abnormal_finding": False,
@@ -1212,6 +1230,7 @@ def generate_synthetic_dataset(
         )
         cmp_seq += 1
         cr_id = _next_id("CMP", cmp_seq)
+        item_cat, item_code = items_by_rule[(g["rule_id"], g["rule_version"])][0]
         component_results.append(
             {
                 "component_result_id": cr_id,
@@ -1222,8 +1241,8 @@ def generate_synthetic_dataset(
                 "well_child_visit_id": None,
                 "rule_id": g["rule_id"],
                 "rule_version": g["rule_version"],
-                "item_category": "screening_component",
-                "item_code": "documented_completion",
+                "item_category": item_cat,
+                "item_code": item_code,
                 "result_status": "completed",
                 "performed_date": reference_date - timedelta(days=2),
                 "documented_in_record": True,
@@ -1234,14 +1253,15 @@ def generate_synthetic_dataset(
         )
         g["status"] = "closed_completed"
         g["closed_date"] = reference_date
-        g["closed_by_component_result_id"] = cr_id
-        g["subject_ifhas_screening_id"] = scr_id
+        g["closed_by_ifhas_screening_id"] = scr_id
         if len(seen_completed) >= 5:
             break
 
     # 2 declined/cancelled referral scenarios on background patients with screenings
     bg_screenings = [
-        s for s in ifhas_screenings if int(s["patient_id"].split("-")[-1]) >= 28
+        s
+        for s in ifhas_screenings
+        if int(s["patient_id"].split("-")[-1]) >= 28 and s["completion_status"] != "not_attended"
     ]
     for status_val, scr_item in zip(("declined", "cancelled"), bg_screenings[:2]):
         ref_seq += 1

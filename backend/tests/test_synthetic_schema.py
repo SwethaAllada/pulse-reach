@@ -64,6 +64,7 @@ EXPECTED_PKS = {
     "referral": ("referral_id",),
     "care_gap": ("care_gap_id",),
     "care_gap_review": ("review_id",),
+    "care_gap_follow_up_event": ("follow_up_id",),
     "appointment": ("appointment_id",),
     "outreach_event": ("outreach_id",),
 }

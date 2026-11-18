@@ -1209,7 +1209,9 @@ class MemoryReadRepository:
         ]
         from app.repositories.followup_repo import get_memory_follow_up_events
 
-        follow_up_events = get_memory_follow_up_events(gap_id)
+        follow_up_events = get_memory_follow_up_events(
+            gap_id, run_id=gap["run_id"], patient_id=pid
+        )
         return _build_care_gap_detail_out(
             gap=gap,
             patient=patient,

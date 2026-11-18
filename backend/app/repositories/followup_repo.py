@@ -13,13 +13,18 @@ from sqlalchemy.orm import Session
 from app.models.clinical import Rule
 from app.models.synthetic import (
     Appointment,
+    Assessment,
     CareGap,
     CareGapFollowUpEvent,
     Consent,
+    EligibilityEvaluation,
     EvaluationRun,
+    FacilityServiceProfile,
     GenerationRun,
+    IfhasScreening,
     Patient,
     Referral,
+    WellChildVisit,
 )
 from app.repositories.read_repo import get_cached_bundle, get_cached_dataset, get_cached_index
 from app.schemas.v1 import (
@@ -39,8 +44,29 @@ from app.services.followup import FollowUpService, FollowUpValidationError
 _MEMORY_FOLLOW_UP_EVENTS: list[dict[str, Any]] = []
 
 
-def get_memory_follow_up_events(care_gap_id: str) -> list[dict[str, Any]]:
-    return [e for e in _MEMORY_FOLLOW_UP_EVENTS if e["care_gap_id"] == care_gap_id]
+def get_memory_follow_up_events(
+    care_gap_id: str,
+    *,
+    run_id: str | None = None,
+    patient_id: str | None = None,
+) -> list[dict[str, Any]]:
+    return [
+        e
+        for e in _MEMORY_FOLLOW_UP_EVENTS
+        if e["care_gap_id"] == care_gap_id
+        and (run_id is None or e["run_id"] == run_id)
+        and (patient_id is None or e["patient_id"] == patient_id)
+    ]
+
+
+def _next_synth_id(prefix: str, max_existing: str | None) -> str:
+    if not max_existing:
+        return f"{prefix}-000001"
+    try:
+        num = int(max_existing.rsplit("-", 1)[-1])
+    except ValueError:
+        num = 0
+    return f"{prefix}-{num + 1:06d}"
 
 
 class FollowUpRepository(Protocol):
@@ -121,8 +147,12 @@ class MemoryFollowUpRepository:
             raise HTTPException(status_code=404, detail=f"Patient '{gap['patient_id']}' not found")
 
         rule_meta = next(
-            (r for r in get_cached_bundle().rules if r["rule_id"] == gap["rule_id"]),
-            {"pathway": "ifhas"},
+            (
+                r
+                for r in get_cached_bundle().rules
+                if r["rule_id"] == gap["rule_id"] and r["rule_version"] == gap["rule_version"]
+            ),
+            {"rule_id": gap["rule_id"], "rule_version": gap["rule_version"], "pathway": "ifhas"},
         )
         event_type = req.event_type
         outcome_status: str | None = "noted"
@@ -130,6 +160,11 @@ class MemoryFollowUpRepository:
         suppression_reason: str | None = None
 
         if req.close_gap:
+            if gap["status"] != "open":
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Cannot close care gap '{gap_id}' with status '{gap['status']}'.",
+                )
             try:
                 self._svc.validate_gap_completion(
                     documented_evidence=req.documented_evidence,
@@ -137,11 +172,33 @@ class MemoryFollowUpRepository:
                 )
             except FollowUpValidationError as exc:
                 raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+            ev_ref = req.evidence_reference.strip()
+            pid = gap["patient_id"]
+            if any(s["screening_id"] == ev_ref and s["patient_id"] == pid for s in ds.ifhas_screenings):
+                gap["closed_by_ifhas_screening_id"] = ev_ref
+            elif any(v["visit_id"] == ev_ref and v["patient_id"] == pid for v in ds.well_child_visits):
+                gap["closed_by_well_child_visit_id"] = ev_ref
+            elif any(r["referral_id"] == ev_ref and r["patient_id"] == pid for r in ds.referrals):
+                gap["closed_by_referral_id"] = ev_ref
+            else:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        f"evidence_reference '{ev_ref}' must reference an existing screening, "
+                        f"well-child visit, or referral for patient '{pid}'."
+                    ),
+                )
             gap["status"] = "closed_completed"
             gap["closed_date"] = ds.evaluation_run["reference_date"]
             outcome_status = "completed"
 
         if req.event_type == "outreach_attempted":
+            patient_evals = [
+                e
+                for e in idx.evaluations_by_patient.get(gap["patient_id"], [])
+                if e["rule_id"] == gap["rule_id"]
+            ]
             allowed, consent_id, blocked_reason = self._svc.evaluate_outreach_consent(
                 patient=patient,
                 consents=idx.consents_by_patient.get(gap["patient_id"], []),
@@ -149,6 +206,7 @@ class MemoryFollowUpRepository:
                 rule_id=gap["rule_id"],
                 rule_meta=rule_meta,
                 care_gap=gap,
+                evaluations=patient_evals,
             )
             if allowed and consent_id:
                 contact_consent_id = consent_id
@@ -207,6 +265,10 @@ class MemoryFollowUpRepository:
         idx = get_cached_index()
         if req.patient_id not in idx.patients_by_id:
             raise HTTPException(status_code=404, detail=f"Patient '{req.patient_id}' not found")
+        if not any(f["profile_id"] == req.profile_id for f in ds.facility_service_profiles):
+            raise HTTPException(
+                status_code=404, detail=f"Facility service profile '{req.profile_id}' not found"
+            )
         if req.care_gap_id is not None:
             gap = next(
                 (
@@ -277,6 +339,45 @@ class MemoryFollowUpRepository:
         idx = get_cached_index()
         if req.patient_id not in idx.patients_by_id:
             raise HTTPException(status_code=404, detail=f"Patient '{req.patient_id}' not found")
+        if not any(
+            r["rule_id"] == req.trigger_rule_id and r["rule_version"] == req.trigger_rule_version
+            for r in get_cached_bundle().rules
+        ):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Rule '{req.trigger_rule_id}' v'{req.trigger_rule_version}' not found",
+            )
+        if req.target_profile_id is not None and not any(
+            f["profile_id"] == req.target_profile_id for f in ds.facility_service_profiles
+        ):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Target facility service profile '{req.target_profile_id}' not found",
+            )
+        if req.ifhas_screening_id is not None and not any(
+            s["screening_id"] == req.ifhas_screening_id and s["patient_id"] == req.patient_id
+            for s in ds.ifhas_screenings
+        ):
+            raise HTTPException(
+                status_code=404,
+                detail=f"IFHAS screening '{req.ifhas_screening_id}' not found for patient",
+            )
+        if req.well_child_visit_id is not None and not any(
+            v["visit_id"] == req.well_child_visit_id and v["patient_id"] == req.patient_id
+            for v in ds.well_child_visits
+        ):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Well-child visit '{req.well_child_visit_id}' not found for patient",
+            )
+        if req.assessment_id is not None and not any(
+            a["assessment_id"] == req.assessment_id and a["patient_id"] == req.patient_id
+            for a in ds.assessments
+        ):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Assessment '{req.assessment_id}' not found for patient",
+            )
         try:
             self._svc.validate_referral_create(
                 ifhas_screening_id=req.ifhas_screening_id,
@@ -382,7 +483,11 @@ class PostgresFollowUpRepository:
             ).first()
             if patient is None:
                 raise HTTPException(status_code=404, detail=f"Patient '{gap.patient_id}' not found")
-            rule = self._session.scalars(select(Rule).where(Rule.rule_id == gap.rule_id)).first()
+            rule = self._session.scalars(
+                select(Rule).where(
+                    Rule.rule_id == gap.rule_id, Rule.rule_version == gap.rule_version
+                )
+            ).first()
             pathway = rule.pathway if rule is not None else "ifhas"
 
             event_type = req.event_type
@@ -391,6 +496,11 @@ class PostgresFollowUpRepository:
             suppression_reason: str | None = None
 
             if req.close_gap:
+                if gap.status != "open":
+                    raise HTTPException(
+                        status_code=422,
+                        detail=f"Cannot close care gap '{gap_id}' with status '{gap.status}'.",
+                    )
                 try:
                     self._svc.validate_gap_completion(
                         documented_evidence=req.documented_evidence,
@@ -398,6 +508,50 @@ class PostgresFollowUpRepository:
                     )
                 except FollowUpValidationError as exc:
                     raise HTTPException(status_code=422, detail=str(exc)) from exc
+                ev_ref = req.evidence_reference.strip()
+                scr = self._session.scalars(
+                    select(IfhasScreening).where(
+                        IfhasScreening.run_id == gr.run_id,
+                        IfhasScreening.patient_id == gap.patient_id,
+                        IfhasScreening.screening_id == ev_ref,
+                    )
+                ).first()
+                vis = (
+                    None
+                    if scr is not None
+                    else self._session.scalars(
+                        select(WellChildVisit).where(
+                            WellChildVisit.run_id == gr.run_id,
+                            WellChildVisit.patient_id == gap.patient_id,
+                            WellChildVisit.visit_id == ev_ref,
+                        )
+                    ).first()
+                )
+                ref = (
+                    None
+                    if (scr is not None or vis is not None)
+                    else self._session.scalars(
+                        select(Referral).where(
+                            Referral.run_id == gr.run_id,
+                            Referral.patient_id == gap.patient_id,
+                            Referral.referral_id == ev_ref,
+                        )
+                    ).first()
+                )
+                if scr is not None:
+                    gap.closed_by_ifhas_screening_id = ev_ref
+                elif vis is not None:
+                    gap.closed_by_well_child_visit_id = ev_ref
+                elif ref is not None:
+                    gap.closed_by_referral_id = ev_ref
+                else:
+                    raise HTTPException(
+                        status_code=422,
+                        detail=(
+                            f"evidence_reference '{ev_ref}' must reference an existing screening, "
+                            f"well-child visit, or referral for patient '{gap.patient_id}'."
+                        ),
+                    )
                 gap.status = "closed_completed"
                 gap.closed_date = er.reference_date
                 outcome_status = "completed"
@@ -411,6 +565,17 @@ class PostgresFollowUpRepository:
                         )
                     ).all()
                 ]
+                patient_evals = [
+                    self._row_dict(e)
+                    for e in self._session.scalars(
+                        select(EligibilityEvaluation).where(
+                            EligibilityEvaluation.run_id == gr.run_id,
+                            EligibilityEvaluation.evaluation_run_id == er.evaluation_run_id,
+                            EligibilityEvaluation.patient_id == gap.patient_id,
+                            EligibilityEvaluation.rule_id == gap.rule_id,
+                        )
+                    ).all()
+                ]
                 allowed, consent_id, blocked_reason = self._svc.evaluate_outreach_consent(
                     patient=self._row_dict(patient),
                     consents=consents,
@@ -418,6 +583,7 @@ class PostgresFollowUpRepository:
                     rule_id=gap.rule_id,
                     rule_meta=self._row_dict(rule) if rule is not None else None,
                     care_gap=self._row_dict(gap),
+                    evaluations=patient_evals,
                 )
                 if allowed and consent_id:
                     contact_consent_id = consent_id
@@ -427,11 +593,11 @@ class PostgresFollowUpRepository:
                     outcome_status = "suppressed"
                     suppression_reason = blocked_reason or "contact_consent_missing"
 
-            count_existing = int(
-                self._session.scalar(select(func.count(CareGapFollowUpEvent.follow_up_id))) or 0
+            max_existing = self._session.scalar(
+                select(func.max(CareGapFollowUpEvent.follow_up_id))
             )
             fup = CareGapFollowUpEvent(
-                follow_up_id=f"SYNTH-FUP-{count_existing + 1:06d}",
+                follow_up_id=_next_synth_id("SYNTH-FUP", max_existing),
                 run_id=gr.run_id,
                 patient_id=gap.patient_id,
                 care_gap_id=gap_id,
@@ -451,7 +617,7 @@ class PostgresFollowUpRepository:
             self._session.refresh(fup)
         except SQLAlchemyError as exc:
             self._session.rollback()
-            raise HTTPException(status_code=503, detail=f"PostgreSQL write failed: {exc}") from exc
+            raise HTTPException(status_code=503, detail="PostgreSQL write failed.") from exc
         return _to_follow_up_out(self._row_dict(fup))
 
     def list_appointments(
@@ -499,6 +665,17 @@ class PostgresFollowUpRepository:
             ).first()
             if p is None:
                 raise HTTPException(status_code=404, detail=f"Patient '{req.patient_id}' not found")
+            fsp = self._session.scalars(
+                select(FacilityServiceProfile).where(
+                    FacilityServiceProfile.run_id == gr.run_id,
+                    FacilityServiceProfile.profile_id == req.profile_id,
+                )
+            ).first()
+            if fsp is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Facility service profile '{req.profile_id}' not found",
+                )
             if req.care_gap_id is not None:
                 gap = self._session.scalars(
                     select(CareGap).where(
@@ -512,11 +689,9 @@ class PostgresFollowUpRepository:
                         status_code=404,
                         detail=f"Care gap '{req.care_gap_id}' not found for patient",
                     )
-            count_existing = int(
-                self._session.scalar(select(func.count(Appointment.appointment_id))) or 0
-            )
+            max_existing = self._session.scalar(select(func.max(Appointment.appointment_id)))
             apt = Appointment(
-                appointment_id=f"SYNTH-APT-{count_existing + 1:06d}",
+                appointment_id=_next_synth_id("SYNTH-APT", max_existing),
                 run_id=gr.run_id,
                 patient_id=req.patient_id,
                 is_synthetic=True,
@@ -533,7 +708,7 @@ class PostgresFollowUpRepository:
             self._session.refresh(apt)
         except SQLAlchemyError as exc:
             self._session.rollback()
-            raise HTTPException(status_code=503, detail=f"PostgreSQL write failed: {exc}") from exc
+            raise HTTPException(status_code=503, detail="PostgreSQL write failed.") from exc
         return _to_appointment_out(self._row_dict(apt))
 
     def update_appointment(self, appointment_id: str, req: AppointmentPatchIn) -> AppointmentOut:
@@ -605,6 +780,68 @@ class PostgresFollowUpRepository:
             ).first()
             if p is None:
                 raise HTTPException(status_code=404, detail=f"Patient '{req.patient_id}' not found")
+            rule = self._session.scalars(
+                select(Rule).where(
+                    Rule.rule_id == req.trigger_rule_id,
+                    Rule.rule_version == req.trigger_rule_version,
+                )
+            ).first()
+            if rule is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Rule '{req.trigger_rule_id}' v'{req.trigger_rule_version}' not found",
+                )
+            if req.target_profile_id is not None:
+                fsp = self._session.scalars(
+                    select(FacilityServiceProfile).where(
+                        FacilityServiceProfile.run_id == gr.run_id,
+                        FacilityServiceProfile.profile_id == req.target_profile_id,
+                    )
+                ).first()
+                if fsp is None:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"Target facility service profile '{req.target_profile_id}' not found",
+                    )
+            if req.ifhas_screening_id is not None:
+                scr = self._session.scalars(
+                    select(IfhasScreening).where(
+                        IfhasScreening.run_id == gr.run_id,
+                        IfhasScreening.patient_id == req.patient_id,
+                        IfhasScreening.screening_id == req.ifhas_screening_id,
+                    )
+                ).first()
+                if scr is None:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"IFHAS screening '{req.ifhas_screening_id}' not found for patient",
+                    )
+            if req.well_child_visit_id is not None:
+                vis = self._session.scalars(
+                    select(WellChildVisit).where(
+                        WellChildVisit.run_id == gr.run_id,
+                        WellChildVisit.patient_id == req.patient_id,
+                        WellChildVisit.visit_id == req.well_child_visit_id,
+                    )
+                ).first()
+                if vis is None:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"Well-child visit '{req.well_child_visit_id}' not found for patient",
+                    )
+            if req.assessment_id is not None:
+                asm = self._session.scalars(
+                    select(Assessment).where(
+                        Assessment.run_id == gr.run_id,
+                        Assessment.patient_id == req.patient_id,
+                        Assessment.assessment_id == req.assessment_id,
+                    )
+                ).first()
+                if asm is None:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"Assessment '{req.assessment_id}' not found for patient",
+                    )
             try:
                 self._svc.validate_referral_create(
                     ifhas_screening_id=req.ifhas_screening_id,
@@ -617,11 +854,9 @@ class PostgresFollowUpRepository:
                 )
             except FollowUpValidationError as exc:
                 raise HTTPException(status_code=422, detail=str(exc)) from exc
-            count_existing = int(
-                self._session.scalar(select(func.count(Referral.referral_id))) or 0
-            )
+            max_existing = self._session.scalar(select(func.max(Referral.referral_id)))
             ref = Referral(
-                referral_id=f"SYNTH-REF-{count_existing + 1:06d}",
+                referral_id=_next_synth_id("SYNTH-REF", max_existing),
                 run_id=gr.run_id,
                 patient_id=req.patient_id,
                 is_synthetic=True,
@@ -642,7 +877,7 @@ class PostgresFollowUpRepository:
             self._session.refresh(ref)
         except SQLAlchemyError as exc:
             self._session.rollback()
-            raise HTTPException(status_code=503, detail=f"PostgreSQL write failed: {exc}") from exc
+            raise HTTPException(status_code=503, detail="PostgreSQL write failed.") from exc
         return _to_referral_out(self._row_dict(ref))
 
     def update_referral(self, referral_id: str, req: ReferralPatchIn) -> ReferralOut:
