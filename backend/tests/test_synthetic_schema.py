@@ -42,6 +42,7 @@ TABLES = {
     "referral",
     "care_gap",
     "care_gap_review",
+    "care_gap_follow_up_event",
     "appointment",
     "outreach_event",
 }

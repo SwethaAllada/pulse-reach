@@ -38,7 +38,7 @@ from app.services.evaluation import (
 )
 
 GENERATOR_VERSION = "0.1.0"
-SPEC_VERSION = "2.5.0"
+SPEC_VERSION = "2.6.0"
 DEFAULT_RUN_ID = "SYNTH-RUN-0001"
 DEFAULT_EVAL_RUN_ID = "SYNTH-EVR-000001"
 DEFAULT_REFERENCE_DATE = date(2026, 11, 16)
@@ -1083,6 +1083,188 @@ def generate_synthetic_dataset(
                         "message_template_id": "TPL-IFHAS-INVITE-EN",
                     }
                 )
+
+    # T-10: Enrich background patients (idx >= 28) with deterministic operational journeys
+    # without altering any Scenario 1-27 IDs or statuses.
+    consent_by_patient_contact: dict[str, str] = {}
+    for c in consents:
+        if c["consent_type"] == "contact" and c["state"] == "granted":
+            consent_by_patient_contact[c["patient_id"]] = c["consent_id"]
+
+    # Ensure >= 40 background patients with open care gaps have granted contact consent
+    # (so >= 30 contactable people with open gaps exist even after 5 are closed below).
+    patients_by_id_map = {p["patient_id"]: p for p in patients}
+    for g in care_gaps:
+        pid = g["patient_id"]
+        if int(pid.split("-")[-1]) < 28 or g["status"] != "open":
+            continue
+        if pid in consent_by_patient_contact:
+            continue
+        if patients_by_id_map[pid]["contact_status"] != "valid":
+            continue
+        cns_seq += 1
+        cid = _next_id("CNS", cns_seq)
+        consents.append(
+            {
+                "consent_id": cid,
+                "run_id": run_id,
+                "patient_id": pid,
+                "is_synthetic": True,
+                "guardian_id": None,
+                "consent_type": "contact",
+                "state": "granted",
+                "applies_to": "self",
+                "scope_pathway": "ifhas",
+                "scope_rule_id": None,
+                "scope_rule_version": None,
+                "recorded_at": started_ts - timedelta(days=5),
+                "recorded_by": "synthetic_intake_portal",
+                "documented_in_record": True,
+                "signature_on_file": True,
+                "refusal_reason": None,
+            }
+        )
+        consent_by_patient_contact[pid] = cid
+        if len(consent_by_patient_contact) >= 45:
+            break
+
+    open_gaps_bg = [
+        g
+        for g in care_gaps
+        if int(g["patient_id"].split("-")[-1]) >= 28
+        and g["status"] == "open"
+        and g["patient_id"] in consent_by_patient_contact
+    ]
+    seen_in_progress: set[str] = set()
+    for g in open_gaps_bg:
+        pid = g["patient_id"]
+        if pid in seen_in_progress:
+            continue
+        seen_in_progress.add(pid)
+        apt_seq += 1
+        apt_id = _next_id("APT", apt_seq)
+        appointments.append(
+            {
+                "appointment_id": apt_id,
+                "run_id": run_id,
+                "patient_id": pid,
+                "is_synthetic": True,
+                "profile_id": "SYNTH-FSP-000001",
+                "care_gap_id": g["care_gap_id"],
+                "appointment_type": "ifhas_screening",
+                "scheduled_datetime": eval_ts + timedelta(days=5),
+                "slot_type": "weekday",
+                "status": "scheduled",
+                "booked_via": "coordinator_portal",
+            }
+        )
+        out_seq += 1
+        outreach_events.append(
+            {
+                "outreach_id": _next_id("OUT", out_seq),
+                "run_id": run_id,
+                "patient_id": pid,
+                "is_synthetic": True,
+                "care_gap_id": g["care_gap_id"],
+                "guardian_id": None,
+                "recipient": "patient",
+                "event_type": "invitation",
+                "channel": "sms",
+                "sent_datetime": eval_ts + timedelta(hours=3),
+                "delivery_status": "delivered",
+                "suppression_reason": None,
+                "contact_consent_id": consent_by_patient_contact[pid],
+                "response": "booked",
+                "appointment_id": apt_id,
+                "triggered_by_ai_score": False,
+                "clinician_approved_by": None,
+                "message_template_id": "TPL-IFHAS-INVITE-EN",
+            }
+        )
+        if len(seen_in_progress) >= 5:
+            break
+
+    # 5 background patients with documented completion + component_result + closed_completed gap
+    seen_completed: set[str] = set()
+    for g in open_gaps_bg:
+        pid = g["patient_id"]
+        if pid in seen_in_progress or pid in seen_completed:
+            continue
+        seen_completed.add(pid)
+        scr_seq += 1
+        scr_id = _next_id("SCR", scr_seq)
+        ifhas_screenings.append(
+            {
+                "screening_id": scr_id,
+                "run_id": run_id,
+                "patient_id": pid,
+                "is_synthetic": True,
+                "profile_id": "SYNTH-FSP-000001",
+                "rule_id": g["rule_id"],
+                "rule_version": g["rule_version"],
+                "appointment_id": None,
+                "performed_date": reference_date - timedelta(days=2),
+                "completion_status": "completed",
+                "results_communicated_date": reference_date - timedelta(days=1),
+                "journey_reported_date": reference_date - timedelta(days=1),
+                "has_abnormal_finding": False,
+            }
+        )
+        cmp_seq += 1
+        cr_id = _next_id("CMP", cmp_seq)
+        component_results.append(
+            {
+                "component_result_id": cr_id,
+                "run_id": run_id,
+                "patient_id": pid,
+                "is_synthetic": True,
+                "ifhas_screening_id": scr_id,
+                "well_child_visit_id": None,
+                "rule_id": g["rule_id"],
+                "rule_version": g["rule_version"],
+                "item_category": "screening_component",
+                "item_code": "documented_completion",
+                "result_status": "completed",
+                "performed_date": reference_date - timedelta(days=2),
+                "documented_in_record": True,
+                "signature_on_file": True,
+                "refused_by_guardian_id": None,
+                "refusal_reason": None,
+            }
+        )
+        g["status"] = "closed_completed"
+        g["closed_date"] = reference_date
+        g["closed_by_component_result_id"] = cr_id
+        g["subject_ifhas_screening_id"] = scr_id
+        if len(seen_completed) >= 5:
+            break
+
+    # 2 declined/cancelled referral scenarios on background patients with screenings
+    bg_screenings = [
+        s for s in ifhas_screenings if int(s["patient_id"].split("-")[-1]) >= 28
+    ]
+    for status_val, scr_item in zip(("declined", "cancelled"), bg_screenings[:2]):
+        ref_seq += 1
+        referrals.append(
+            {
+                "referral_id": _next_id("REF", ref_seq),
+                "run_id": run_id,
+                "patient_id": scr_item["patient_id"],
+                "is_synthetic": True,
+                "ifhas_screening_id": scr_item["screening_id"],
+                "well_child_visit_id": None,
+                "assessment_id": None,
+                "trigger_rule_id": scr_item["rule_id"],
+                "trigger_rule_version": scr_item["rule_version"],
+                "rule_action_ordinal": None,
+                "referral_target": "specialist_follow_up",
+                "target_profile_id": "SYNTH-FSP-000001",
+                "trigger_date": reference_date - timedelta(days=10),
+                "initiated_date": reference_date - timedelta(days=8),
+                "completed_date": None,
+                "status": status_val,
+            }
+        )
 
     generation_run = {
         "run_id": run_id,
