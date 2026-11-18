@@ -1,0 +1,24 @@
+"""Shared session-scoped PostgreSQL test fixtures (`T-14`)."""
+
+from __future__ import annotations
+
+import os
+
+import pytest
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine
+
+
+@pytest.fixture(scope="session")
+def pg_test_engine() -> Engine:
+    """Session-scoped SQLAlchemy Engine for `TEST_DATABASE_URL` (skips if unset)."""
+    url = os.environ.get("TEST_DATABASE_URL")
+    if not url:
+        pytest.skip("TEST_DATABASE_URL is not set; skipping PostgreSQL integration test.")
+    engine = create_engine(url, pool_pre_ping=True, future=True)
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+    try:
+        yield engine
+    finally:
+        engine.dispose()
