@@ -911,17 +911,10 @@ def generate_synthetic_dataset(
             p_consent_id: str | None = None
             p_supp_reason: str | None = None
 
-            if ai_consent_id is not None and gf.status == "open":
-                p_score = Decimal("0.78")
-                p_expl = (
-                    f"Non-clinical operational scheduling priority for {gf.rule_id} "
-                    f"(gap_type={gf.gap_type}). Does not alter clinical eligibility."
-                )
-                p_model = "pulsereach-priority-0.1.0"
-                p_scored_at = eval_ts
-                p_consent_id = ai_consent_id
-            elif idx == 20 and gf.status == "open":
+            if idx == 20 and gf.status == "open":
                 p_supp_reason = "ai_consent_refused"
+            elif gf.status == "open":
+                p_supp_reason = "model_not_implemented"
 
             gap_row = {
                 "care_gap_id": gid,

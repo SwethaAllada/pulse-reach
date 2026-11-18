@@ -43,3 +43,16 @@ def test_synthetic_dataset_includes_required_journey_archetypes():
     assert len(ds.care_gaps) == len(ds2.care_gaps)
     assert len(ds.appointments) == len(ds2.appointments)
     assert len(ds.component_results) == len(ds2.component_results)
+
+
+def test_no_fabricated_priority_score_or_model_version():
+    ds = generate_synthetic_dataset(seed=20261116, total_patients=60)
+    assert all(g["priority_score"] is None for g in ds.care_gaps)
+    assert all(g["scored_by_model_version"] is None for g in ds.care_gaps)
+    open_gaps = [g for g in ds.care_gaps if g["status"] == "open"]
+    assert open_gaps
+    assert all(
+        g["scoring_suppressed_reason"] in ("ai_consent_refused", "model_not_implemented")
+        for g in open_gaps
+    )
+    assert any(g["scoring_suppressed_reason"] == "model_not_implemented" for g in open_gaps)
