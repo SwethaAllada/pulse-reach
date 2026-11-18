@@ -206,3 +206,45 @@ def test_care_gap_patient_filter_and_detail_endpoint():
 
     # Unknown gap -> 404
     assert client.get("/api/v1/care-gaps/SYNTH-GAP-999999").status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# T-08: Population dashboard breakdowns (no double-counting people)
+# ---------------------------------------------------------------------------
+
+
+def test_dashboard_summary_breakdowns_reconcile_without_double_counting():
+    resp = client.get("/api/v1/dashboard/summary")
+    assert resp.status_code == 200
+    body = resp.json()
+
+    total_patients = body["total_patients"]
+    assert body["n_adults"] + body["n_children"] == total_patients
+
+    # Distinct person-level counts must never exceed total_patients
+    p_counts = body["patient_status_counts"]
+    assert isinstance(p_counts, dict)
+    assert all(cnt <= total_patients for cnt in p_counts.values())
+    assert body["unknown_history_patients_count"] <= total_patients
+    assert body["review_flagged_patients_count"] <= total_patients
+
+    # Pathway breakdown
+    pb = body["pathway_breakdown"]
+    assert set(pb.keys()) == {"ifhas", "well_child"}
+    assert (
+        pb["ifhas"]["open_care_gaps_count"] + pb["well_child"]["open_care_gaps_count"]
+        == body["open_care_gaps_count"]
+    )
+
+    # Gaps by pathway & type reconcile
+    assert (
+        body["gaps_by_pathway"]["ifhas"] + body["gaps_by_pathway"]["well_child"]
+        == body["open_care_gaps_count"]
+    )
+    assert sum(body["gaps_by_type"].values()) == body["open_care_gaps_count"]
+
+    # Region breakdown reconciles to total_patients and open_care_gaps_count
+    regions = body["region_breakdown"]
+    assert len(regions) >= 1
+    assert sum(r["total_patients"] for r in regions) == total_patients
+    assert sum(r["open_care_gaps_count"] for r in regions) == body["open_care_gaps_count"]

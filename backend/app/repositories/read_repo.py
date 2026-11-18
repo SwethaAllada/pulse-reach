@@ -58,11 +58,13 @@ from app.schemas.v1 import (
     PaginatedFacilitiesOut,
     PaginatedPatientsOut,
     PaginatedRulesOut,
+    PathwayBreakdownOut,
     PatientConsentsOut,
     PatientEvaluationsOut,
     PatientHistoryOut,
     PatientSummaryOut,
     ReferralOut,
+    RegionBreakdownOut,
     RuleDetailOut,
     RuleItemOut,
     RulesSummaryOut,
@@ -595,6 +597,108 @@ def _build_patient_context_from_dicts(
     )
 
 
+def _build_dashboard_summary_out(
+    *,
+    run_id: str,
+    evaluation_run_id: str,
+    reference_date: date,
+    n_adults: int,
+    n_children: int,
+    patients: list[tuple[str, int]],
+    evaluations: list[tuple[str, str, str]],
+    care_gaps: list[tuple[str, str, str, str]],
+    history_rows: list[tuple[str, str, str]],
+    rule_pathway_map: dict[str, str],
+    rules_summary: RulesSummaryOut,
+) -> DashboardSummaryOut:
+    status_counts = Counter(st for _, _, st in evaluations)
+    patients_by_status: dict[str, set[str]] = {}
+    pathway_patients_with_history: dict[str, set[str]] = {"ifhas": set(), "well_child": set()}
+    pathway_unknown_history: dict[str, set[str]] = {"ifhas": set(), "well_child": set()}
+    pathway_eligible_due: dict[str, set[str]] = {"ifhas": set(), "well_child": set()}
+    pathway_review_flagged: dict[str, set[str]] = {"ifhas": set(), "well_child": set()}
+
+    for pid, pw, hst in history_rows:
+        if pw in pathway_patients_with_history:
+            if hst in ("available", "partial"):
+                pathway_patients_with_history[pw].add(pid)
+            elif hst == "not_available":
+                pathway_unknown_history[pw].add(pid)
+
+    for pid, rid, st in evaluations:
+        patients_by_status.setdefault(st, set()).add(pid)
+        pw = rule_pathway_map.get(rid)
+        if pw in pathway_eligible_due:
+            if st in ("eligible", "due", "upcoming", "overdue"):
+                pathway_eligible_due[pw].add(pid)
+            if st == "requires_clinical_review":
+                pathway_review_flagged[pw].add(pid)
+
+    patient_region = {pid: reg for pid, reg in patients}
+    open_gaps_count = 0
+    closed_refused_count = 0
+    gaps_by_type: Counter[str] = Counter()
+    gaps_by_pathway: Counter[str] = Counter({"ifhas": 0, "well_child": 0})
+    region_open_gaps: Counter[int] = Counter()
+    for pid, rid, gtype, gst in care_gaps:
+        if gst == "open":
+            open_gaps_count += 1
+            gaps_by_type[gtype] += 1
+            pw = rule_pathway_map.get(rid)
+            if pw:
+                gaps_by_pathway[pw] += 1
+            reg = patient_region.get(pid)
+            if reg is not None:
+                region_open_gaps[reg] += 1
+        elif gst == "closed_refused":
+            closed_refused_count += 1
+
+    region_patient_counts = Counter(reg for _, reg in patients)
+    region_breakdown = [
+        RegionBreakdownOut(
+            region_id=reg_id,
+            total_patients=region_patient_counts[reg_id],
+            open_care_gaps_count=region_open_gaps[reg_id],
+        )
+        for reg_id in sorted(region_patient_counts.keys())
+    ]
+
+    pathway_breakdown = {
+        pw: PathwayBreakdownOut(
+            patients_with_history=len(pathway_patients_with_history[pw]),
+            eligible_or_due_patients=len(pathway_eligible_due[pw]),
+            unknown_history_patients=len(pathway_unknown_history[pw]),
+            review_flagged_patients=len(pathway_review_flagged[pw]),
+            open_care_gaps_count=gaps_by_pathway[pw],
+        )
+        for pw in ("ifhas", "well_child")
+    }
+
+    return DashboardSummaryOut(
+        is_synthetic=True,
+        run_id=run_id,
+        evaluation_run_id=evaluation_run_id,
+        reference_date=reference_date,
+        total_patients=len(patients),
+        n_adults=n_adults,
+        n_children=n_children,
+        open_care_gaps_count=open_gaps_count,
+        closed_refused_care_gaps_count=closed_refused_count,
+        unknown_history_patients_count=len(patients_by_status.get("unknown", set())),
+        review_flagged_patients_count=len(
+            patients_by_status.get("requires_clinical_review", set())
+        ),
+        evaluation_status_counts=dict(status_counts),
+        patient_status_counts={st: len(pids) for st, pids in patients_by_status.items()},
+        pathway_breakdown=pathway_breakdown,
+        gaps_by_type=dict(gaps_by_type),
+        gaps_by_pathway=dict(gaps_by_pathway),
+        region_breakdown=region_breakdown,
+        rules_summary=rules_summary,
+        governance_disclaimer=_GOVERNANCE_DISCLAIMER,
+    )
+
+
 class MemoryReadRepository:
     """In-memory repository preserving the existing deterministic demo mode."""
 
@@ -603,24 +707,31 @@ class MemoryReadRepository:
         ds = get_cached_dataset()
         gr = ds.generation_run
         er = ds.evaluation_run
-        status_counts = Counter(e["evaluation_status"] for e in ds.eligibility_evaluations)
-        open_gaps = sum(1 for g in ds.care_gaps if g["status"] == "open")
-        refused_gaps = sum(1 for g in ds.care_gaps if g["status"] == "closed_refused")
+        rule_pathway_map = {r["rule_id"]: r["pathway"] for r in bundle.rules}
         auth_rules = sum(1 for r in bundle.rules if r["is_authoritative"])
         flagged_rules = sum(1 for r in bundle.rules if r["requires_clinical_review"])
         unres_rules = sum(1 for r in bundle.rules if r["verification_status"] == "unresolved")
 
-        return DashboardSummaryOut(
-            is_synthetic=True,
+        return _build_dashboard_summary_out(
             run_id=gr["run_id"],
             evaluation_run_id=er["evaluation_run_id"],
             reference_date=er["reference_date"],
-            total_patients=len(ds.patients),
             n_adults=gr["n_adults"],
             n_children=gr["n_children"],
-            open_care_gaps_count=open_gaps,
-            closed_refused_care_gaps_count=refused_gaps,
-            evaluation_status_counts=dict(status_counts),
+            patients=[(p["patient_id"], p["region_id"]) for p in ds.patients],
+            evaluations=[
+                (e["patient_id"], e["rule_id"], e["evaluation_status"])
+                for e in ds.eligibility_evaluations
+            ],
+            care_gaps=[
+                (g["patient_id"], g["rule_id"], g["gap_type"], g["status"])
+                for g in ds.care_gaps
+            ],
+            history_rows=[
+                (h["patient_id"], h["pathway"], h["history_status"])
+                for h in ds.history_availabilities
+            ],
+            rule_pathway_map=rule_pathway_map,
             rules_summary=RulesSummaryOut(
                 total_rules=len(bundle.rules),
                 authoritative_rules=auth_rules,
@@ -629,7 +740,6 @@ class MemoryReadRepository:
                 total_rule_items=len(bundle.items),
                 clinical_review_status=bundle.clinical_review_status,
             ),
-            governance_disclaimer=_GOVERNANCE_DISCLAIMER,
         )
 
     def list_patients(
@@ -1399,37 +1509,61 @@ class PostgresReadRepository:
     def get_dashboard_summary(self) -> DashboardSummaryOut:
         try:
             gr, er = self._latest_runs()
-            eval_rows = self._session.scalars(
-                select(EligibilityEvaluation.evaluation_status).where(
-                    EligibilityEvaluation.evaluation_run_id == er.evaluation_run_id
-                )
-            ).all()
-            gap_statuses = self._session.scalars(
-                select(CareGap.status).where(CareGap.run_id == gr.run_id)
-            ).all()
-            rules = self._session.scalars(select(Rule)).all()
-            n_items = len(self._session.scalars(select(RuleItem.rule_id)).all())
-            n_patients = len(
-                self._session.scalars(
-                    select(Patient.patient_id).where(Patient.run_id == gr.run_id)
+            eval_rows = list(
+                self._session.execute(
+                    select(
+                        EligibilityEvaluation.patient_id,
+                        EligibilityEvaluation.rule_id,
+                        EligibilityEvaluation.evaluation_status,
+                    ).where(
+                        EligibilityEvaluation.evaluation_run_id == er.evaluation_run_id
+                    )
                 ).all()
             )
+            gap_rows = list(
+                self._session.execute(
+                    select(
+                        CareGap.patient_id,
+                        CareGap.rule_id,
+                        CareGap.gap_type,
+                        CareGap.status,
+                    ).where(CareGap.run_id == gr.run_id)
+                ).all()
+            )
+            patient_rows = list(
+                self._session.execute(
+                    select(Patient.patient_id, Patient.region_id).where(
+                        Patient.run_id == gr.run_id
+                    )
+                ).all()
+            )
+            history_rows = list(
+                self._session.execute(
+                    select(
+                        HistoryAvailability.patient_id,
+                        HistoryAvailability.pathway,
+                        HistoryAvailability.history_status,
+                    ).where(HistoryAvailability.run_id == gr.run_id)
+                ).all()
+            )
+            rules = self._session.scalars(select(Rule)).all()
+            n_items = len(self._session.scalars(select(RuleItem.rule_id)).all())
             std = self._session.scalars(select(Standard)).first()
             clin_status = std.clinical_review_status if std is not None else "not_reviewed"
         except SQLAlchemyError as exc:
             raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
 
-        return DashboardSummaryOut(
-            is_synthetic=True,
+        return _build_dashboard_summary_out(
             run_id=gr.run_id,
             evaluation_run_id=er.evaluation_run_id,
             reference_date=er.reference_date,
-            total_patients=n_patients,
             n_adults=gr.n_adults,
             n_children=gr.n_children,
-            open_care_gaps_count=sum(1 for s in gap_statuses if s == "open"),
-            closed_refused_care_gaps_count=sum(1 for s in gap_statuses if s == "closed_refused"),
-            evaluation_status_counts=dict(Counter(eval_rows)),
+            patients=[(pid, reg) for pid, reg in patient_rows],
+            evaluations=[(pid, rid, st) for pid, rid, st in eval_rows],
+            care_gaps=[(pid, rid, gt, gst) for pid, rid, gt, gst in gap_rows],
+            history_rows=[(pid, pw, hst) for pid, pw, hst in history_rows],
+            rule_pathway_map={r.rule_id: r.pathway for r in rules},
             rules_summary=RulesSummaryOut(
                 total_rules=len(rules),
                 authoritative_rules=sum(1 for r in rules if r.is_authoritative),
@@ -1438,7 +1572,6 @@ class PostgresReadRepository:
                 total_rule_items=n_items,
                 clinical_review_status=clin_status,
             ),
-            governance_disclaimer=_GOVERNANCE_DISCLAIMER,
         )
 
     def _patient_history_map(self, patient_ids: list[str]) -> dict[str, dict[str, str]]:

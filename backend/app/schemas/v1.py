@@ -17,6 +17,20 @@ class RulesSummaryOut(BaseModel):
     clinical_review_status: str
 
 
+class PathwayBreakdownOut(BaseModel):
+    patients_with_history: int = 0
+    eligible_or_due_patients: int = 0
+    unknown_history_patients: int = 0
+    review_flagged_patients: int = 0
+    open_care_gaps_count: int = 0
+
+
+class RegionBreakdownOut(BaseModel):
+    region_id: int
+    total_patients: int = 0
+    open_care_gaps_count: int = 0
+
+
 class DashboardSummaryOut(BaseModel):
     is_synthetic: bool = True
     run_id: str
@@ -27,7 +41,14 @@ class DashboardSummaryOut(BaseModel):
     n_children: int
     open_care_gaps_count: int
     closed_refused_care_gaps_count: int
+    unknown_history_patients_count: int = 0
+    review_flagged_patients_count: int = 0
     evaluation_status_counts: dict[str, int]
+    patient_status_counts: dict[str, int] = Field(default_factory=dict)
+    pathway_breakdown: dict[str, PathwayBreakdownOut] = Field(default_factory=dict)
+    gaps_by_type: dict[str, int] = Field(default_factory=dict)
+    gaps_by_pathway: dict[str, int] = Field(default_factory=dict)
+    region_breakdown: list[RegionBreakdownOut] = Field(default_factory=list)
     rules_summary: RulesSummaryOut
     governance_disclaimer: str
 
