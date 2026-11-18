@@ -1,26 +1,222 @@
 @import "tailwindcss";
 
+/*
+ * PulseReach — "Population Constellation" design tokens.
+ * Two complete themes selected by [data-theme] on <html>.
+ * Components reference semantic tokens only — never theme-specific colours.
+ */
+
+:root,
+[data-theme="light"] {
+  --bg: #f6f8f9;
+  --bg-elevated: #ffffff;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #edf1f3;
+  --border: #dce3e8;
+  --border-strong: #c3cfd6;
+  --text: #12232e;
+  --text-muted: #52636f;
+  --text-faint: #7c8b94;
+  --accent: #0e7c6b;
+  --accent-strong: #0b6e5b;
+  --accent-2: #1d6fa8;
+  --accent-soft: rgba(14, 124, 107, 0.1);
+  --on-accent: #ffffff;
+  --focus: #0e7c6b;
+  --nav-active-bg: rgba(14, 124, 107, 0.1);
+  --shadow-popover: 0 8px 24px rgba(14, 26, 31, 0.12);
+  --shadow-card: 0 1px 2px rgba(14, 26, 31, 0.06);
+
+  --status-due: #c4532f;
+  --status-upcoming: #2f6e95;
+  --status-eligible: #55605c;
+  --status-completed: #276b43;
+  --status-not-eligible: #8a8f8b;
+  --status-unknown: #646c69;
+  --status-insufficient: #946200;
+  --status-review: #7b4bb7;
+  --status-info: #2b5e78;
+  --status-error: #b42318;
+
+  /* Cohort / chart palette (muted for paper surfaces) */
+  --cohort-1: #0e7c6b;
+  --cohort-2: #2f6e95;
+  --cohort-3: #946200;
+  --cohort-4: #7b4bb7;
+  --cohort-5: #8a8f8b;
+
+  /* Constellation field behind content — muted, low contrast */
+  --field-star: rgba(18, 35, 46, 0.16);
+  --field-line: rgba(18, 35, 46, 0.07);
+  --glow: none;
+}
+
+[data-theme="dark"] {
+  --bg: #070d1b;
+  --bg-elevated: #0c1730;
+  --surface: #0c1730;
+  --surface-raised: #11203e;
+  --surface-sunken: #081122;
+  --border: #1d3050;
+  --border-strong: #2a3f63;
+  --text: #e4f0f6;
+  --text-muted: #8da3b8;
+  --text-faint: #5e748a;
+  --accent: #2dd4bf;
+  --accent-strong: #14b8a6;
+  --accent-2: #38bdf8;
+  --accent-soft: rgba(45, 212, 191, 0.12);
+  --on-accent: #04241f;
+  --focus: #5ed1b0;
+  --nav-active-bg: rgba(45, 212, 191, 0.12);
+  --shadow-popover: 0 8px 28px rgba(0, 0, 0, 0.45);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+
+  --status-due: #f08a6c;
+  --status-upcoming: #7db8e0;
+  --status-eligible: #a9b7b2;
+  --status-completed: #6ccb8f;
+  --status-not-eligible: #6b7a75;
+  --status-unknown: #9aa4a0;
+  --status-insufficient: #e0b04f;
+  --status-review: #b89af0;
+  --status-info: #9cc7d9;
+  --status-error: #f97066;
+
+  --cohort-1: #5ed1b0;
+  --cohort-2: #7db8e0;
+  --cohort-3: #e0b04f;
+  --cohort-4: #b89af0;
+  --cohort-5: #9aa4a0;
+
+  --field-star: rgba(125, 184, 224, 0.28);
+  --field-line: rgba(125, 184, 224, 0.08);
+  --glow: 0 0 18px rgba(45, 212, 191, 0.25);
+}
+
+/* Ink band: the deep observatory surface used for the hero in BOTH themes. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ink: #081423;
+  --ink-raised: #0e2032;
+  --ink-line: #1c3547;
+  --ink-text: #e6f2ef;
+  --ink-muted: #9ab4ad;
+  --ink-faint: #5f7a75;
+  --ink-accent: #5ed1b0;
+  --ink-accent-2: #7db8e0;
+  --ink-due: #f08a6c;
+  --ink-completed: #6ccb8f;
+  --ink-review: #b89af0;
+  --ink-insufficient: #e0b04f;
+  --ink-unknown: #9aa4a0;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--bg);
+  --color-background-elevated: var(--bg-elevated);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-foreground: var(--text);
+  --color-muted: var(--text-muted);
+  --color-faint: var(--text-faint);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-2: var(--accent-2);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-focus: var(--focus);
+  --color-status-due: var(--status-due);
+  --color-status-upcoming: var(--status-upcoming);
+  --color-status-eligible: var(--status-eligible);
+  --color-status-completed: var(--status-completed);
+  --color-status-not-eligible: var(--status-not-eligible);
+  --color-status-unknown: var(--status-unknown);
+  --color-status-insufficient: var(--status-insufficient);
+  --color-status-review: var(--status-review);
+  --color-status-info: var(--status-info);
+  --color-status-error: var(--status-error);
+  --color-cohort-1: var(--cohort-1);
+  --color-cohort-2: var(--cohort-2);
+  --color-cohort-3: var(--cohort-3);
+  --color-cohort-4: var(--cohort-4);
+  --color-cohort-5: var(--cohort-5);
+  --color-field-star: var(--field-star);
+  --color-field-line: var(--field-line);
+  --color-ink: var(--ink);
+  --color-ink-raised: var(--ink-raised);
+  --color-ink-line: var(--ink-line);
+  --color-ink-text: var(--ink-text);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-ink-accent: var(--ink-accent);
+  --color-ink-accent-2: var(--ink-accent-2);
+  --color-ink-due: var(--ink-due);
+  --color-ink-completed: var(--ink-completed);
+  --color-ink-review: var(--ink-review);
+  --color-ink-insufficient: var(--ink-insufficient);
+  --color-ink-unknown: var(--ink-unknown);
   --font-sans: var(--font-geist-sans);
+  --font-display: var(--font-space-grotesk);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: var(--bg);
+  color: var(--text);
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Subtle constellation field behind the app content. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1.5px 1.5px at 8% 12%, var(--field-star) 50%, transparent 51%),
+    radial-gradient(1px 1px at 22% 68%, var(--field-star) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 45% 22%, var(--field-star) 50%, transparent 51%),
+    radial-gradient(1px 1px at 61% 82%, var(--field-star) 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 78% 38%, var(--field-star) 50%, transparent 51%),
+    radial-gradient(1px 1px at 90% 66%, var(--field-star) 50%, transparent 51%),
+    radial-gradient(1px 1px at 33% 45%, var(--field-star) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 70% 8%, var(--field-star) 50%, transparent 51%);
+}
+
+[data-theme="dark"] body::before {
+  background-image:
+    radial-gradient(1.5px 1.5px at 8% 12%, var(--field-star) 50%, transparent 51%),
+    radial-gradient(1px 1px at 22% 68%, var(--field-star) 50%, transparent 51%),
+    radial-gradient(1.6px 1.6px at 45% 22%, rgba(94, 209, 176, 0.35) 50%, transparent 51%),
+    radial-gradient(1px 1px at 61% 82%, var(--field-star) 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 78% 38%, var(--field-star) 50%, transparent 51%),
+    radial-gradient(1px 1px at 90% 66%, var(--field-star) 50%, transparent 51%),
+    radial-gradient(1px 1px at 33% 45%, var(--field-star) 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 70% 8%, rgba(125, 184, 224, 0.4) 50%, transparent 51%),
+    radial-gradient(700px 420px at 85% -10%, rgba(45, 212, 191, 0.06), transparent 70%),
+    radial-gradient(600px 380px at -10% 100%, rgba(56, 189, 248, 0.05), transparent 70%);
+}
+
+/* Focus visibility — never remove. */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
