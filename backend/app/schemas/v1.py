@@ -419,6 +419,93 @@ class OutreachEventOut(BaseModel):
     is_synthetic: bool = True
 
 
+class FollowUpEventOut(BaseModel):
+    follow_up_id: str
+    patient_id: str
+    care_gap_id: str
+    event_type: str
+    outcome_status: str | None = None
+    documented_evidence: bool = False
+    evidence_reference: str | None = None
+    contact_consent_id: str | None = None
+    suppression_reason: str | None = None
+    recorded_by: str
+    recorded_at: datetime
+    note: str | None = None
+    is_synthetic: bool = True
+
+
+class FollowUpCreateIn(BaseModel):
+    event_type: Literal[
+        "outreach_attempted",
+        "completion_documented",
+        "note_recorded",
+    ]
+    close_gap: bool = False
+    documented_evidence: bool = False
+    evidence_reference: str | None = None
+    recorded_by: str = Field(min_length=1)
+    note: str | None = None
+
+
+class AppointmentCreateIn(BaseModel):
+    patient_id: str
+    profile_id: str
+    care_gap_id: str | None = None
+    appointment_type: Literal["ifhas_screening", "well_child_visit", "referral_visit", "other"]
+    scheduled_datetime: datetime
+    slot_type: Literal["weekday", "evening", "weekend"] = "weekday"
+    booked_via: str = Field(default="clinician_portal", min_length=1)
+
+
+class AppointmentPatchIn(BaseModel):
+    status: Literal[
+        "scheduled",
+        "attended",
+        "no_show",
+        "cancelled_by_patient",
+        "cancelled_by_facility",
+        "rescheduled",
+    ]
+    scheduled_datetime: datetime | None = None
+
+
+class PaginatedAppointmentsOut(BaseModel):
+    is_synthetic: bool = True
+    total: int
+    limit: int
+    offset: int
+    items: list[AppointmentOut]
+
+
+class ReferralCreateIn(BaseModel):
+    patient_id: str
+    ifhas_screening_id: str | None = None
+    well_child_visit_id: str | None = None
+    assessment_id: str | None = None
+    trigger_rule_id: str
+    trigger_rule_version: str
+    referral_target: str = Field(min_length=1)
+    target_profile_id: str | None = None
+    trigger_date: date
+    initiated_date: date | None = None
+    status: Literal["pending", "initiated"] = "pending"
+
+
+class ReferralPatchIn(BaseModel):
+    status: Literal["pending", "initiated", "completed", "declined", "cancelled"]
+    initiated_date: date | None = None
+    completed_date: date | None = None
+
+
+class PaginatedReferralsOut(BaseModel):
+    is_synthetic: bool = True
+    total: int
+    limit: int
+    offset: int
+    items: list[ReferralOut]
+
+
 class CareGapDetailOut(CareGapOut):
     patient: PatientSummaryOut
     rule: RuleSummaryOut
@@ -426,6 +513,7 @@ class CareGapDetailOut(CareGapOut):
     linked_appointments: list[AppointmentOut] = Field(default_factory=list)
     linked_referrals: list[ReferralOut] = Field(default_factory=list)
     linked_outreach_events: list[OutreachEventOut] = Field(default_factory=list)
+    follow_up_events: list[FollowUpEventOut] = Field(default_factory=list)
     facility_capability_notice: str = (
         "Facility capability and service profile references are simulated overlays only; "
         "real facility IFHAS/WCV capabilities remain unknown unless backed by an approved source."

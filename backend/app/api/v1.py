@@ -13,6 +13,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.core.config import settings
 from app.db.deps import get_db_session
+from app.repositories.followup_repo import (
+    FollowUpRepository,
+    MemoryFollowUpRepository,
+    PostgresFollowUpRepository,
+)
 from app.repositories.read_repo import (
     MemoryReadRepository,
     PostgresReadRepository,
@@ -23,6 +28,9 @@ from app.repositories.read_repo import (
     get_cached_engine,
 )
 from app.schemas.v1 import (
+    AppointmentCreateIn,
+    AppointmentOut,
+    AppointmentPatchIn,
     CareGapDetailOut,
     CareGapOut,
     DashboardSummaryOut,
@@ -31,16 +39,23 @@ from app.schemas.v1 import (
     EvaluationReasonOut,
     ExplanationOut,
     ExplanationRequestIn,
+    FollowUpCreateIn,
+    FollowUpEventOut,
     OutreachPreviewOut,
     OutreachPreviewRequestIn,
+    PaginatedAppointmentsOut,
     PaginatedCareGapsOut,
     PaginatedFacilitiesOut,
     PaginatedPatientsOut,
+    PaginatedReferralsOut,
     PaginatedRulesOut,
     PatientConsentsOut,
     PatientEvaluationsOut,
     PatientHistoryOut,
     PatientSummaryOut,
+    ReferralCreateIn,
+    ReferralOut,
+    ReferralPatchIn,
     RuleDetailOut,
 )
 from app.services.evaluation.engine import ENGINE_VERSION
@@ -64,6 +79,15 @@ def get_read_repository() -> Iterator[ReadRepository]:
         return
     for session in get_db_session():
         yield PostgresReadRepository(session)
+
+
+def get_followup_repository() -> Iterator[FollowUpRepository]:
+    """Resolve the active follow-up write repository from `settings.data_source`."""
+    if settings.data_source == "memory":
+        yield MemoryFollowUpRepository()
+        return
+    for session in get_db_session():
+        yield PostgresFollowUpRepository(session)
 
 
 @router.get("/dashboard/summary", response_model=DashboardSummaryOut)
@@ -470,3 +494,91 @@ def preview_outreach(
         preview_message=res.preview_message,
         disclaimer=res.disclaimer,
     )
+
+
+@router.post(
+    "/care-gaps/{gap_id}/follow-ups",
+    response_model=FollowUpEventOut,
+    status_code=201,
+)
+def create_care_gap_follow_up(
+    gap_id: str,
+    req: FollowUpCreateIn,
+    repo: FollowUpRepository = Depends(get_followup_repository),
+) -> FollowUpEventOut:
+    return repo.create_follow_up(gap_id, req)
+
+
+@router.get("/appointments", response_model=PaginatedAppointmentsOut)
+def list_appointments(
+    patient_id: str | None = Query(default=None),
+    care_gap_id: str | None = Query(default=None),
+    status: Literal[
+        "scheduled",
+        "attended",
+        "no_show",
+        "cancelled_by_patient",
+        "cancelled_by_facility",
+        "rescheduled",
+    ]
+    | None = Query(default=None),
+    limit: int = Query(default=25, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    repo: FollowUpRepository = Depends(get_followup_repository),
+) -> PaginatedAppointmentsOut:
+    return repo.list_appointments(
+        patient_id=patient_id,
+        care_gap_id=care_gap_id,
+        status=status,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.post("/appointments", response_model=AppointmentOut, status_code=201)
+def create_appointment(
+    req: AppointmentCreateIn,
+    repo: FollowUpRepository = Depends(get_followup_repository),
+) -> AppointmentOut:
+    return repo.create_appointment(req)
+
+
+@router.patch("/appointments/{appointment_id}", response_model=AppointmentOut)
+def update_appointment(
+    appointment_id: str,
+    req: AppointmentPatchIn,
+    repo: FollowUpRepository = Depends(get_followup_repository),
+) -> AppointmentOut:
+    return repo.update_appointment(appointment_id, req)
+
+
+@router.get("/referrals", response_model=PaginatedReferralsOut)
+def list_referrals(
+    patient_id: str | None = Query(default=None),
+    status: Literal["pending", "initiated", "completed", "declined", "cancelled"] | None = Query(
+        default=None
+    ),
+    limit: int = Query(default=25, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    repo: FollowUpRepository = Depends(get_followup_repository),
+) -> PaginatedReferralsOut:
+    return repo.list_referrals(
+        patient_id=patient_id, status=status, limit=limit, offset=offset
+    )
+
+
+@router.post("/referrals", response_model=ReferralOut, status_code=201)
+def create_referral(
+    req: ReferralCreateIn,
+    repo: FollowUpRepository = Depends(get_followup_repository),
+) -> ReferralOut:
+    return repo.create_referral(req)
+
+
+@router.patch("/referrals/{referral_id}", response_model=ReferralOut)
+def update_referral(
+    referral_id: str,
+    req: ReferralPatchIn,
+    repo: FollowUpRepository = Depends(get_followup_repository),
+) -> ReferralOut:
+    return repo.update_referral(referral_id, req)

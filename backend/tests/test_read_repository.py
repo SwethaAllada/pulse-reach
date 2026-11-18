@@ -26,6 +26,7 @@ from app.models.synthetic import (
     Appointment,
     Assessment,
     CareGap,
+    CareGapFollowUpEvent,
     ComponentResult,
     Consent,
     EligibilityEvaluation,
@@ -116,6 +117,7 @@ def test_postgres_read_repository_matches_memory_repository_on_seeded_subset():
         EligibilityEvaluation.__table__,
         EvaluationReason.__table__,
         CareGap.__table__,
+        CareGapFollowUpEvent.__table__,
         OutreachEvent.__table__,
     ]
     test_meta = MetaData()

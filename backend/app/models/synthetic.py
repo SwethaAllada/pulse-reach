@@ -1615,3 +1615,54 @@ class OutreachEvent(Base):
         Index("ix_outreach_event_contact_consent_id", "contact_consent_id"),
         {"schema": SCHEMA},
     )
+
+
+class CareGapFollowUpEvent(Base):
+    __tablename__ = "care_gap_follow_up_event"
+
+    follow_up_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    run_id: Mapped[str] = mapped_column(Text, nullable=False)
+    patient_id: Mapped[str] = mapped_column(Text, nullable=False)
+    care_gap_id: Mapped[str] = mapped_column(Text, nullable=False)
+    is_synthetic: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    event_type: Mapped[str] = mapped_column(Text, nullable=False)
+    outcome_status: Mapped[str | None] = mapped_column(Text)
+    documented_evidence: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    evidence_reference: Mapped[str | None] = mapped_column(Text)
+    contact_consent_id: Mapped[str | None] = mapped_column(Text)
+    suppression_reason: Mapped[str | None] = mapped_column(Text)
+    recorded_by: Mapped[str] = mapped_column(Text, nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False
+    )
+    note: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (
+        _fk(
+            ["run_id", "patient_id", "care_gap_id"],
+            ["care_gap.run_id", "care_gap.patient_id", "care_gap.care_gap_id"],
+            "fk_care_gap_follow_up_event_care_gap",
+        ),
+        *_synth_checks("follow_up_id", "FUP"),
+        CheckConstraint(
+            "event_type IN ('outreach_attempted', 'outreach_suppressed', 'appointment_scheduled', "
+            "'appointment_updated', 'referral_created', 'referral_updated', "
+            "'completion_documented', 'note_recorded')",
+            name="event_type",
+        ),
+        CheckConstraint(
+            "event_type <> 'outreach_attempted' OR contact_consent_id IS NOT NULL",
+            name="outreach_requires_consent",
+        ),
+        CheckConstraint(
+            "event_type <> 'outreach_suppressed' OR suppression_reason IS NOT NULL",
+            name="suppressed_requires_reason",
+        ),
+        Index("ix_care_gap_follow_up_event_gap_recorded", "care_gap_id", "recorded_at"),
+        Index("ix_care_gap_follow_up_event_patient", "patient_id", "recorded_at"),
+        {"schema": SCHEMA},
+    )

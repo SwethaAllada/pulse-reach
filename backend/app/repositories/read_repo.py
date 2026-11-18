@@ -26,6 +26,7 @@ from app.models.synthetic import (
     Appointment,
     Assessment,
     CareGap,
+    CareGapFollowUpEvent,
     ComponentResult,
     Consent,
     EligibilityEvaluation,
@@ -51,6 +52,7 @@ from app.schemas.v1 import (
     EvaluationItemOut,
     EvaluationReasonOut,
     FacilityItemOut,
+    FollowUpEventOut,
     GuardianOut,
     HistoryAvailabilityOut,
     IfhasScreeningOut,
@@ -1205,6 +1207,9 @@ class MemoryReadRepository:
             for o in ds.outreach_events
             if o["patient_id"] == pid and o["care_gap_id"] == gap_id
         ]
+        from app.repositories.followup_repo import get_memory_follow_up_events
+
+        follow_up_events = get_memory_follow_up_events(gap_id)
         return _build_care_gap_detail_out(
             gap=gap,
             patient=patient,
@@ -1213,6 +1218,7 @@ class MemoryReadRepository:
             appointments=appointments,
             referrals=referrals,
             outreach_events=outreach_events,
+            follow_up_events=follow_up_events,
         )
 
     def list_facilities(self, limit: int, offset: int) -> PaginatedFacilitiesOut:
@@ -1459,6 +1465,7 @@ def _build_care_gap_detail_out(
     appointments: list[dict[str, Any]],
     referrals: list[dict[str, Any]],
     outreach_events: list[dict[str, Any]],
+    follow_up_events: list[dict[str, Any]] | None = None,
 ) -> CareGapDetailOut:
     base = _build_care_gap_out(gap)
     return CareGapDetailOut(
@@ -1515,6 +1522,28 @@ def _build_care_gap_detail_out(
                 is_synthetic=bool(o.get("is_synthetic", True)),
             )
             for o in sorted(outreach_events, key=lambda x: x["outreach_id"], reverse=True)
+        ],
+        follow_up_events=[
+            FollowUpEventOut(
+                follow_up_id=f["follow_up_id"],
+                patient_id=f["patient_id"],
+                care_gap_id=f["care_gap_id"],
+                event_type=f["event_type"],
+                outcome_status=f.get("outcome_status"),
+                documented_evidence=bool(f.get("documented_evidence", False)),
+                evidence_reference=f.get("evidence_reference"),
+                contact_consent_id=f.get("contact_consent_id"),
+                suppression_reason=f.get("suppression_reason"),
+                recorded_by=f["recorded_by"],
+                recorded_at=f["recorded_at"],
+                note=f.get("note"),
+                is_synthetic=bool(f.get("is_synthetic", True)),
+            )
+            for f in sorted(
+                follow_up_events or [],
+                key=lambda x: (x["recorded_at"], x["follow_up_id"]),
+                reverse=True,
+            )
         ],
     )
 
@@ -2280,6 +2309,16 @@ class PostgresReadRepository:
                     )
                 ).all()
             ]
+            follow_up_events = [
+                _row_to_dict(f)
+                for f in self._session.scalars(
+                    select(CareGapFollowUpEvent).where(
+                        CareGapFollowUpEvent.run_id == gr.run_id,
+                        CareGapFollowUpEvent.patient_id == g.patient_id,
+                        CareGapFollowUpEvent.care_gap_id == gap_id,
+                    )
+                ).all()
+            ]
         except SQLAlchemyError as exc:
             raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
 
@@ -2291,6 +2330,7 @@ class PostgresReadRepository:
             appointments=appointments,
             referrals=referrals,
             outreach_events=outreach_events,
+            follow_up_events=follow_up_events,
         )
 
     def list_facilities(self, limit: int, offset: int) -> PaginatedFacilitiesOut:
