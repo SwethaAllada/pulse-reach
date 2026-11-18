@@ -12,4 +12,5 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 - `npx tsc --noEmit` · `npm run lint` · `npm test` (Vitest + Testing Library, jsdom) · `npm run build`
 - Default Node here is 22.5.1 (npm 8): keep Vitest 3.x / Vite 6.x — Vitest 5 / Vite 8 need Node ≥ 22.12.
+- `cacheComponents` is on: any `usePathname`/`useSearchParams`/`useParams` read must sit inside `<Suspense>` or dynamic routes (e.g. `/people/[personId]`) fail `next build` prerendering.
 - The Population workspace reads the live API (`NEXT_PUBLIC_API_URL`, default `http://localhost:8000`); backend CORS allows `http://localhost:3000` by default (`CORS_ORIGINS`).

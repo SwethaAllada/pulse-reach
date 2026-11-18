@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PanelLeftClose, PanelLeft, X } from "lucide-react";
-import { useEffect, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useSyncExternalStore } from "react";
 import { cn } from "@/lib/cn";
 import { NAV_ITEMS, isNavItemActive } from "./nav-items";
 import { LogoMark, LogoWordmark } from "./logo";
@@ -29,15 +29,21 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
+/** Reads the pathname inside a Suspense boundary so dynamic routes can prerender their shell. */
+function RoutedNav({ collapsed, onClose }: { collapsed: boolean; onClose: () => void }) {
   const pathname = usePathname();
-  const collapsed = useSyncExternalStore(subscribeCollapsed, getCollapsed, () => false);
 
   // Close the mobile drawer whenever navigation completes.
   useEffect(() => {
     onClose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
+
+  return <NavLinks pathname={pathname} collapsed={collapsed} />;
+}
+
+export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
+  const collapsed = useSyncExternalStore(subscribeCollapsed, getCollapsed, () => false);
 
   const toggleCollapsed = () => {
     try {
@@ -49,55 +55,9 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   };
 
   const nav = (
-    <nav aria-label="Primary" className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
-      {NAV_ITEMS.map((item) => {
-        const active = isNavItemActive(item, pathname);
-        const Icon = item.icon;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
-              active
-                ? "bg-[var(--nav-active-bg)] text-accent"
-                : "text-muted hover:bg-surface-sunken hover:text-foreground"
-            )}
-          >
-            {active && (
-              <span
-                aria-hidden="true"
-                className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-accent"
-              />
-            )}
-            <Icon size={18} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
-            <span
-              className={cn(
-                "flex min-w-0 flex-col transition-opacity duration-150",
-                collapsed && "lg:sr-only lg:opacity-0"
-              )}
-            >
-              <span className="truncate">{item.label}</span>
-              {item.verb && (
-                <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-faint">
-                  {item.verb}
-                </span>
-              )}
-            </span>
-            {/* Tooltip — collapsed desktop only */}
-            {collapsed && (
-              <span
-                role="tooltip"
-                className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-md border border-border bg-surface-raised px-2.5 py-1.5 text-xs font-medium text-foreground opacity-0 shadow-[var(--shadow-popover)] transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 lg:block"
-              >
-                {item.label}
-              </span>
-            )}
-          </Link>
-        );
-      })}
-    </nav>
+    <Suspense fallback={<NavLinks pathname={null} collapsed={collapsed} />}>
+      <RoutedNav collapsed={collapsed} onClose={onClose} />
+    </Suspense>
   );
 
   return (
@@ -159,5 +119,59 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         </div>
       </aside>
     </>
+  );
+}
+
+function NavLinks({ pathname, collapsed }: { pathname: string | null; collapsed: boolean }) {
+  return (
+    <nav aria-label="Primary" className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
+      {NAV_ITEMS.map((item) => {
+        const active = pathname !== null && isNavItemActive(item, pathname);
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
+              active
+                ? "bg-[var(--nav-active-bg)] text-accent"
+                : "text-muted hover:bg-surface-sunken hover:text-foreground"
+            )}
+          >
+            {active && (
+              <span
+                aria-hidden="true"
+                className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-accent"
+              />
+            )}
+            <Icon size={18} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
+            <span
+              className={cn(
+                "flex min-w-0 flex-col transition-opacity duration-150",
+                collapsed && "lg:sr-only lg:opacity-0"
+              )}
+            >
+              <span className="truncate">{item.label}</span>
+              {item.verb && (
+                <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-faint">
+                  {item.verb}
+                </span>
+              )}
+            </span>
+            {/* Tooltip — collapsed desktop only */}
+            {collapsed && (
+              <span
+                role="tooltip"
+                className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-md border border-border bg-surface-raised px-2.5 py-1.5 text-xs font-medium text-foreground opacity-0 shadow-[var(--shadow-popover)] transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 lg:block"
+              >
+                {item.label}
+              </span>
+            )}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }

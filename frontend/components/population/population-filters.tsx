@@ -14,13 +14,37 @@ import {
 interface Props {
   filters: PopulationFilters;
   onChange: (next: PopulationFilters) => void;
+  /** `ink` for the observatory hero band, `paper` for theme surfaces. */
+  tone?: "ink" | "paper";
+  emptyText?: string;
+  label?: string;
 }
 
-const SELECT_CLS =
-  "h-9 min-w-0 rounded-md border border-ink-line bg-ink-raised px-2.5 text-sm text-ink-text transition-colors hover:border-ink-muted focus-visible:border-ink-accent";
+const TONES = {
+  ink: {
+    label: "text-ink-faint",
+    select:
+      "border-ink-line bg-ink-raised text-ink-text hover:border-ink-muted focus-visible:border-ink-accent",
+    chip: "border-ink-line bg-ink-raised text-ink-text hover:border-ink-accent",
+    chipIcon: "text-ink-muted",
+    clear: "text-ink-accent hover:text-ink-text",
+    empty: "text-ink-faint",
+  },
+  paper: {
+    label: "text-faint",
+    select: "border-border-strong bg-surface text-foreground hover:border-faint focus-visible:border-accent",
+    chip: "border-border-strong bg-surface text-foreground hover:border-accent",
+    chipIcon: "text-muted",
+    clear: "text-accent hover:text-foreground",
+    empty: "text-faint",
+  },
+} as const;
 
 /** Only filters `GET /api/v1/patients` supports: programme, region, sex. All combinable. */
-export function PopulationFilterBar({ filters, onChange }: Props) {
+export function PopulationFilterBar({ filters, onChange, tone = "ink", emptyText, label = "Population filters" }: Props) {
+  const t = TONES[tone];
+  const selectCls = `h-9 min-w-0 rounded-md border px-2.5 text-sm transition-colors ${t.select}`;
+  const labelCls = `flex min-w-0 flex-col gap-1 text-[11px] font-medium uppercase tracking-[0.08em] ${t.label}`;
   const set = <K extends FilterKey>(key: K, value: PopulationFilters[K] | undefined) => {
     const next = { ...filters };
     if (value === undefined) delete next[key];
@@ -30,12 +54,12 @@ export function PopulationFilterBar({ filters, onChange }: Props) {
   const chips = filterChips(filters);
 
   return (
-    <div role="search" aria-label="Population filters">
+    <div role="search" aria-label={label}>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:flex lg:flex-wrap lg:items-end">
-        <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-faint lg:w-56">
+        <label className={`${labelCls} lg:w-56`}>
           Programme
           <select
-            className={SELECT_CLS}
+            className={selectCls}
             value={filters.pathway ?? ""}
             onChange={(e) => set("pathway", (e.target.value || undefined) as PopulationFilters["pathway"])}
           >
@@ -47,10 +71,10 @@ export function PopulationFilterBar({ filters, onChange }: Props) {
             ))}
           </select>
         </label>
-        <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-faint lg:w-44">
+        <label className={`${labelCls} lg:w-44`}>
           Region
           <select
-            className={SELECT_CLS}
+            className={selectCls}
             value={filters.region_id ?? ""}
             onChange={(e) =>
               set("region_id", e.target.value ? (Number(e.target.value) as PopulationFilters["region_id"]) : undefined)
@@ -64,10 +88,10 @@ export function PopulationFilterBar({ filters, onChange }: Props) {
             ))}
           </select>
         </label>
-        <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-faint lg:w-36">
+        <label className={`${labelCls} lg:w-36`}>
           Sex
           <select
-            className={SELECT_CLS}
+            className={selectCls}
             value={filters.sex ?? ""}
             onChange={(e) => set("sex", (e.target.value || undefined) as PopulationFilters["sex"])}
           >
@@ -83,7 +107,7 @@ export function PopulationFilterBar({ filters, onChange }: Props) {
 
       <div className="mt-3 flex min-h-7 flex-wrap items-center gap-2" aria-live="polite">
         {chips.length === 0 ? (
-          <p className="text-xs text-ink-faint">Showing the whole synthetic population.</p>
+          <p className={`text-xs ${t.empty}`}>{emptyText ?? "Showing the whole synthetic population."}</p>
         ) : (
           <>
             <span className="sr-only">Active filters:</span>
@@ -93,17 +117,17 @@ export function PopulationFilterBar({ filters, onChange }: Props) {
                 type="button"
                 onClick={() => set(c.key, undefined)}
                 aria-label={`Remove filter ${c.label}`}
-                className="inline-flex items-center gap-1.5 rounded-full border border-ink-line bg-ink-raised px-2.5 py-1 text-xs text-ink-text transition-colors hover:border-ink-accent"
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors ${t.chip}`}
               >
                 {c.label}
-                <X size={12} aria-hidden="true" className="text-ink-muted" />
+                <X size={12} aria-hidden="true" className={t.chipIcon} />
               </button>
             ))}
             {hasActiveFilters(filters) && (
               <button
                 type="button"
                 onClick={() => onChange({})}
-                className="rounded-md px-2 py-1 text-xs font-medium text-ink-accent transition-colors hover:text-ink-text"
+                className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${t.clear}`}
               >
                 Clear all
               </button>

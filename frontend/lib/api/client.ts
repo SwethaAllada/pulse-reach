@@ -1,10 +1,13 @@
 import type {
   CareGapOut,
   DashboardSummaryOut,
+  ExplanationOut,
   Paginated,
   PaginatedRulesOut,
+  PatientEvaluationsOut,
   PatientQuery,
   PatientSummaryOut,
+  RuleDetailOut,
 } from "./types";
 
 /** Backend base URL; `.env.example` documents the local default. */
@@ -33,10 +36,14 @@ async function apiGet<T>(path: string, query: Record<string, QueryValue> = {}, s
   const params = new URLSearchParams();
   for (const [k, v] of Object.entries(query)) if (v !== undefined) params.set(k, String(v));
   const qs = params.toString();
-  const url = `${API_BASE_URL}/api/v1${path}${qs ? `?${qs}` : ""}`;
+  return apiRequest<T>(path, `${path}${qs ? `?${qs}` : ""}`, { signal });
+}
+
+async function apiRequest<T>(path: string, pathWithQuery: string, init: RequestInit): Promise<T> {
+  const url = `${API_BASE_URL}/api/v1${pathWithQuery}`;
   let res: Response;
   try {
-    res = await fetch(url, { signal, headers: { Accept: "application/json" } });
+    res = await fetch(url, { ...init, headers: { Accept: "application/json", ...init.headers } });
   } catch (err) {
     if ((err as Error).name === "AbortError") throw err;
     throw new ApiError(`Could not reach the PulseReach API at ${API_BASE_URL}.`, null, path);
@@ -68,4 +75,20 @@ export const api = {
   allPatients: (query: PatientQuery, signal?: AbortSignal) =>
     getAllPages<PatientSummaryOut>("/patients", { ...query }, signal),
   allCareGaps: (signal?: AbortSignal) => getAllPages<CareGapOut>("/care-gaps", {}, signal),
+  /** One backend page of `/patients` (filters + `limit`/`offset`). */
+  patientsPage: (query: PatientQuery & { limit: number; offset: number }, signal?: AbortSignal) =>
+    apiGet<Paginated<PatientSummaryOut>>("/patients", { ...query }, signal),
+  patient: (id: string, signal?: AbortSignal) =>
+    apiGet<PatientSummaryOut>(`/patients/${encodeURIComponent(id)}`, {}, signal),
+  patientEvaluations: (id: string, signal?: AbortSignal) =>
+    apiGet<PatientEvaluationsOut>(`/patients/${encodeURIComponent(id)}/evaluations`, {}, signal),
+  ruleDetail: (id: string, signal?: AbortSignal) =>
+    apiGet<RuleDetailOut>(`/rules/${encodeURIComponent(id)}`, {}, signal),
+  explanation: (patientId: string, ruleId: string, signal?: AbortSignal) =>
+    apiRequest<ExplanationOut>("/explanations", "/explanations", {
+      method: "POST",
+      signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ patient_id: patientId, rule_id: ruleId }),
+    }),
 };
