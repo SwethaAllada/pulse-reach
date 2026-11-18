@@ -238,6 +238,33 @@ class EvaluationEngine:
             key = (item["rule_id"], item["rule_version"])
             self._items_by_rule.setdefault(key, []).append(item)
 
+        ifhas_min_rule = self._rules_by_id.get("IFHAS-PROG-ELIG-MIN-AGE", {})
+        ifhas_min_spec = (ifhas_min_rule.get("spec") or {}).get("min_years")
+        ifhas_pkg_mins = [
+            int(r["age_min_years"])
+            for r in self.bundle.rules
+            if r.get("pathway") == "ifhas" and r.get("age_min_years") is not None
+        ]
+        self._ifhas_min_age_years: int = (
+            int(ifhas_min_spec)
+            if ifhas_min_spec is not None
+            else (min(ifhas_pkg_mins) if ifhas_pkg_mins else 18)
+        )
+        ifhas_pkg_maxs = [
+            int(r["age_max_years"])
+            for r in self.bundle.rules
+            if r.get("pathway") == "ifhas" and r.get("age_max_years") is not None
+        ]
+        self._ifhas_max_verified_age_years: int = max(ifhas_pkg_maxs) if ifhas_pkg_maxs else 75
+
+        wcv_months = [
+            int(r["recommended_age_months"])
+            for r in self.bundle.rules
+            if r.get("pathway") == "well_child" and r.get("recommended_age_months") is not None
+        ]
+        self._wcv_min_age_months: int = min(wcv_months) if wcv_months else 1
+        self._wcv_max_age_months: int = max(wcv_months) if wcv_months else 72
+
     def evaluate_patient(
         self,
         patient: PatientContext,
@@ -457,15 +484,15 @@ class EvaluationEngine:
         if rtype == "programme_eligibility":
             gate = rule.get("gate_attribute")
             if gate == "thiqa_member":
-                if patient.thiqa_member is None:
+                if not isinstance(patient.thiqa_member, bool):
                     r = FiredReason(
                         reason_code="missing_required_attribute",
                         guard_id="GUARD-MISSING-ATTRIBUTE",
-                        detail="Required attribute 'thiqa_member' is missing.",
+                        detail="Required attribute 'thiqa_member' is missing or not a boolean.",
                     )
                     return _result("insufficient_information", r.reason_code, (r,)), []
                 return (
-                    _result("eligible" if patient.thiqa_member else "not_eligible"),
+                    _result("eligible" if patient.thiqa_member is True else "not_eligible"),
                     [],
                 )
             if gate == "age_years":
@@ -476,13 +503,27 @@ class EvaluationEngine:
                         detail="Date of birth is missing.",
                     )
                     return _result("insufficient_information", r.reason_code, (r,)), []
-                if age_years < 18:
+                spec = rule.get("spec") or {}
+                min_y = (
+                    int(spec["min_years"])
+                    if spec.get("min_years") is not None
+                    else self._ifhas_min_age_years
+                )
+                max_y = (
+                    int(spec["max_years"])
+                    if spec.get("max_years") is not None
+                    else self._ifhas_max_verified_age_years
+                )
+                if age_years < min_y:
                     return _result("not_eligible"), []
-                if age_years > 75:
+                if age_years > max_y:
                     r = FiredReason(
                         reason_code="rule_unresolved",
                         guard_id="GUARD-RULE-NOT-VERIFIED",
-                        detail="Age > 75 hits unresolved IFHAS upper age boundary (OQ-IFHAS-AGE-CEILING).",
+                        detail=(
+                            f"Age > {max_y} hits unresolved IFHAS upper age boundary "
+                            "(OQ-IFHAS-AGE-CEILING)."
+                        ),
                     )
                     return _result("requires_clinical_review", r.reason_code, (r,)), []
                 return _result("eligible"), []
@@ -661,7 +702,7 @@ class EvaluationEngine:
                     detail="Date of birth is missing.",
                 )
                 return _result("insufficient_information", r.reason_code, (r,)), []
-            if 1 <= age_months <= 72:
+            if self._wcv_min_age_months <= age_months <= self._wcv_max_age_months:
                 return _result("eligible"), []
             return _result("not_eligible"), []
 
@@ -677,7 +718,7 @@ class EvaluationEngine:
                     _result("insufficient_information", r.reason_code, (r, *item_reasons)),
                     [],
                 )
-            if age_months < 1 or age_months > 72:
+            if age_months < self._wcv_min_age_months or age_months > self._wcv_max_age_months:
                 return _result("not_eligible", reasons=tuple(item_reasons)), []
 
             if history_state == "not_available":
@@ -832,7 +873,7 @@ class EvaluationEngine:
                     detail="Date of birth is missing.",
                 )
                 return _result("insufficient_information", r.reason_code, (r,)), []
-            if age_months < 1 or age_months > 72:
+            if age_months < self._wcv_min_age_months or age_months > self._wcv_max_age_months:
                 return _result("not_eligible"), []
 
             matching_assessments = [
@@ -961,24 +1002,27 @@ class EvaluationEngine:
             return _result("insufficient_information", r.reason_code, (r,)), []
 
         if pathway == "ifhas":
-            if patient.thiqa_member is None:
+            if not isinstance(patient.thiqa_member, bool):
                 r = FiredReason(
                     reason_code="missing_required_attribute",
                     guard_id="GUARD-MISSING-ATTRIBUTE",
-                    detail="Required attribute 'thiqa_member' is missing.",
+                    detail="Required attribute 'thiqa_member' is missing or not a boolean.",
                 )
                 return _result("insufficient_information", r.reason_code, (r,)), []
-            if not patient.thiqa_member or age_years < 18:
+            if patient.thiqa_member is False or age_years < self._ifhas_min_age_years:
                 return _result("not_eligible"), []
-            if age_years > 75:
+            if age_years > self._ifhas_max_verified_age_years:
                 r = FiredReason(
                     reason_code="rule_unresolved",
                     guard_id="GUARD-RULE-NOT-VERIFIED",
-                    detail="Age > 75 hits unresolved IFHAS upper age boundary (OQ-IFHAS-AGE-CEILING).",
+                    detail=(
+                        f"Age > {self._ifhas_max_verified_age_years} hits unresolved IFHAS upper "
+                        "age boundary (OQ-IFHAS-AGE-CEILING)."
+                    ),
                 )
                 return _result("requires_clinical_review", r.reason_code, (r,)), []
             return _result("eligible"), []
 
-        if 1 <= age_months <= 72:
+        if self._wcv_min_age_months <= age_months <= self._wcv_max_age_months:
             return _result("eligible"), []
         return _result("not_eligible"), []
