@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
     rules_dir: str | None = None
     data_dir: str | None = None
+    llm_enabled: bool = False
+    log_level: str = "INFO"
 
     # Connection pool (SQLAlchemy QueuePool)
     db_pool_size: int = 5
