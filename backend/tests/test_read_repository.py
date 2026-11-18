@@ -29,7 +29,10 @@ from app.models.synthetic import (
     EvaluationRun,
     GenerationRun,
     HistoryAvailability,
+    IfhasScreening,
     Patient,
+    Referral,
+    WellChildVisit,
 )
 from app.repositories import MemoryReadRepository, PostgresReadRepository
 from app.services.clinical_loader.parse import parse_clinical_bundle
@@ -96,6 +99,9 @@ def test_postgres_read_repository_matches_memory_repository_on_seeded_subset():
         Patient.__table__,
         HistoryAvailability.__table__,
         Consent.__table__,
+        IfhasScreening.__table__,
+        WellChildVisit.__table__,
+        Referral.__table__,
         EligibilityEvaluation.__table__,
         EvaluationReason.__table__,
         CareGap.__table__,

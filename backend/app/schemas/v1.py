@@ -64,6 +64,7 @@ class PaginatedPatientsOut(BaseModel):
 class EvaluationReasonOut(BaseModel):
     reason_ordinal: int
     reason_code: str
+    reason_detail: str | None = None
     guard_id: str | None = None
     item_category: str | None = None
     item_code: str | None = None
@@ -76,10 +77,19 @@ class EvaluationItemOut(BaseModel):
     rule_version: str
     pathway: str
     rule_type: str | None = None
+    source_name: str | None = None
+    source_version: str | None = None
+    source_reference: str | None = None
+    is_authoritative: bool = False
+    requires_clinical_review: bool = False
+    engine_version: str | None = None
+    look_ahead_days: int | None = None
     evaluation_status: str
     reason_code: str | None = None
+    reason_detail: str | None = None
     next_due_date: date | None = None
     evaluated_at: datetime
+    input_snapshot: dict[str, Any] = Field(default_factory=dict)
     reasons: list[EvaluationReasonOut] = Field(default_factory=list)
 
 

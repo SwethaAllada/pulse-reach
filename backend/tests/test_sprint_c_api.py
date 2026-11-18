@@ -73,3 +73,46 @@ def test_patient_consents_current_state_and_history():
 
     # 404 for unknown patient
     assert client.get("/api/v1/patients/SYNTH-PAT-999999/consents").status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# T-05: Complete evaluation evidence trace
+# ---------------------------------------------------------------------------
+
+
+def test_evaluations_include_complete_evidence_trace_without_pii():
+    resp = client.get("/api/v1/patients/SYNTH-PAT-000001/evaluations")
+    assert resp.status_code == 200
+    body = resp.json()
+    by_rule = {e["rule_id"]: e for e in body["evaluations"]}
+    mammo = by_rule["IFHAS-PKG-MAMMOGRAPHY-40-75"]
+    assert mammo["rule_version"]
+    assert mammo["source_name"]
+    assert mammo["source_reference"]
+    assert mammo["is_authoritative"] is True
+    assert mammo["requires_clinical_review"] is False
+    assert mammo["engine_version"]
+    assert mammo["look_ahead_days"] == 30
+    assert mammo["reason_detail"]
+
+    snap = mammo["input_snapshot"]
+    assert snap["history_status"] == "available"
+    assert "age_years" in snap
+    for pii_key in ("given_name", "family_name", "emirates_id_synthetic", "phone_synthetic", "email_synthetic"):
+        assert pii_key not in snap
+
+
+def test_post_evaluations_includes_evidence_trace_with_custom_look_ahead():
+    resp = client.post(
+        "/api/v1/evaluations",
+        json={"patient_id": "SYNTH-PAT-000018", "look_ahead_days": 120},
+    )
+    assert resp.status_code == 200
+    by_rule = {e["rule_id"]: e for e in resp.json()["evaluations"]}
+    wcv18 = by_rule["WCV-VISIT-18M"]
+    assert wcv18["evaluation_status"] == "upcoming"
+    assert wcv18["look_ahead_days"] == 120
+    assert wcv18["engine_version"]
+    assert wcv18["source_reference"]
+    assert wcv18["reason_detail"]
+    assert "age_months" in wcv18["input_snapshot"]

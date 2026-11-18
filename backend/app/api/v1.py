@@ -17,6 +17,9 @@ from app.repositories.read_repo import (
     MemoryReadRepository,
     PostgresReadRepository,
     ReadRepository,
+    _compute_age_parts,
+    describe_reason,
+    get_cached_bundle,
     get_cached_engine,
 )
 from app.schemas.v1 import (
@@ -39,6 +42,7 @@ from app.schemas.v1 import (
     PatientSummaryOut,
     RuleDetailOut,
 )
+from app.services.evaluation.engine import ENGINE_VERSION
 from app.services.explanation import (
     BoundedExplanationInput,
     ExplanationService,
@@ -142,16 +146,36 @@ def run_evaluation(
         if cached is not None:
             return cached
 
-    summary = get_cached_engine().evaluate_patient(
+    engine = get_cached_engine()
+    summary = engine.evaluate_patient(
         ctx,
         reference_date=ref_date,
         look_ahead_days=req.look_ahead_days,
     )
+    rule_meta = {r["rule_id"]: r for r in get_cached_bundle().rules}
+    age_years, age_months = _compute_age_parts(ctx.date_of_birth, ref_date)
+    prior_rules = {s.rule_id for s in ctx.ifhas_screenings} | {
+        v.rule_id for v in ctx.well_child_visits
+    }
+    referral_rules = {r.rule_id for r in ctx.referrals if r.rule_id}
     eval_items: list[EvaluationItemOut] = []
     eval_id_by_rule: dict[str, str] = {}
     for ord_ev, ev in enumerate(summary.evaluations, 1):
         eid = f"SYNTH-EVL-{ord_ev:06d}"
         eval_id_by_rule[ev.rule_id] = eid
+        rm = rule_meta.get(ev.rule_id, {})
+        h_status = ctx.history_by_pathway.get(ev.pathway, "not_available")
+        relevant_consents = [
+            c
+            for c in ctx.consents
+            if c.consent_type == "screening_participation"
+            and c.scope_pathway in (None, ev.pathway)
+        ]
+        latest_consent = (
+            max(relevant_consents, key=lambda c: (c.recorded_at, c.consent_id)).state
+            if relevant_consents
+            else "absent"
+        )
         eval_items.append(
             EvaluationItemOut(
                 evaluation_id=eid,
@@ -160,14 +184,43 @@ def run_evaluation(
                 rule_version=ev.rule_version,
                 pathway=ev.pathway,
                 rule_type=ev.rule_type,
+                source_name=rm.get("source_name"),
+                source_version=rm.get("source_version"),
+                source_reference=rm.get("source_reference"),
+                is_authoritative=bool(rm.get("is_authoritative", False)),
+                requires_clinical_review=bool(rm.get("requires_clinical_review", False)),
+                engine_version=ENGINE_VERSION,
+                look_ahead_days=req.look_ahead_days,
                 evaluation_status=ev.evaluation_status,
                 reason_code=ev.reason_code,
+                reason_detail=describe_reason(
+                    ev.reason_code,
+                    evaluation_status=ev.evaluation_status,
+                ),
                 next_due_date=ev.next_due_date,
                 evaluated_at=ev.evaluated_at,
+                input_snapshot={
+                    "pathway": ev.pathway,
+                    "age_years": age_years,
+                    "age_months": age_months,
+                    "sex": ctx.sex,
+                    "thiqa_member": ctx.thiqa_member,
+                    "ever_smoked": ctx.ever_smoked,
+                    "history_status": h_status,
+                    "screening_consent_state": latest_consent,
+                    "has_prior_screening_or_visit": ev.rule_id in prior_rules,
+                    "has_referral": ev.rule_id in referral_rules,
+                },
                 reasons=[
                     EvaluationReasonOut(
                         reason_ordinal=i,
                         reason_code=r.reason_code,
+                        reason_detail=describe_reason(
+                            r.reason_code,
+                            r.guard_id,
+                            r.item_category,
+                            r.item_code,
+                        ),
                         guard_id=r.guard_id,
                         item_category=r.item_category,
                         item_code=r.item_code,

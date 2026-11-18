@@ -304,6 +304,101 @@ def get_cached_facilities() -> list[FacilityItemOut]:
     ]
 
 
+_REASON_DETAIL_TEMPLATES: dict[str, str] = {
+    "due": "Patient meets eligibility criteria and screening/visit is due now.",
+    "due_now": "Patient meets eligibility criteria and screening/visit is due now.",
+    "upcoming": "Patient meets eligibility criteria and next due date falls within the look-ahead window.",
+    "due_within_lookahead": "Patient meets eligibility criteria and next due date falls within the look-ahead window.",
+    "overdue": "Patient meets eligibility criteria and the approved overdue window has elapsed.",
+    "completed": "Screening/visit has documented completion within the active interval.",
+    "eligible": "Patient meets programme eligibility criteria.",
+    "not_eligible": "Patient does not meet eligibility criteria for this rule.",
+    "unknown": "Screening/visit history is unavailable; status cannot be assumed due.",
+    "insufficient_information": "Required patient demographic or clinical attributes are missing.",
+    "requires_clinical_review": "Rule or clinical state requires clinical review before recommendation.",
+    "history_not_available": "Screening/visit history for this pathway is not available; status remains unknown.",
+    "missing_required_attributes": "Required patient demographic or clinical attributes are missing.",
+    "rule_requires_clinical_review": "Rule or required open question is unresolved and requires clinical review.",
+    "consent_refused_valid": "Valid documented refusal on file for this screening or pathway.",
+    "referral_cancelled": "Linked referral was cancelled and requires clinical review.",
+    "referral_pending": "Linked referral is currently pending.",
+    "referral_upcoming": "Linked referral is initiated or scheduled.",
+    "referral_completed": "Linked referral has documented completion.",
+    "completed_within_interval": "Most recent screening/visit was completed within the active rule interval.",
+    "age_out_of_range": "Patient age is outside the rule's target age range.",
+    "sex_mismatch": "Rule applies to a different sex than recorded for the patient.",
+    "deceased": "Patient is recorded as deceased.",
+    "not_thiqa_member": "Rule requires Thiqa membership which is not recorded for the patient.",
+}
+
+
+def describe_reason(
+    reason_code: str | None,
+    guard_id: str | None = None,
+    item_category: str | None = None,
+    item_code: str | None = None,
+    evaluation_status: str | None = None,
+) -> str | None:
+    code = reason_code or evaluation_status
+    if not code:
+        return None
+    base = _REASON_DETAIL_TEMPLATES.get(
+        code, f"Evaluation reason '{code.replace('_', ' ')}'."
+    )
+    parts = [base]
+    if guard_id:
+        parts.append(f"guard={guard_id}")
+    if item_category or item_code:
+        parts.append(f"item={item_category or ''}:{item_code or ''}".strip(":"))
+    return " ".join(parts)
+
+
+def _compute_age_parts(dob: date | None, ref_date: date) -> tuple[int | None, int | None]:
+    if dob is None:
+        return None, None
+    years = ref_date.year - dob.year - ((ref_date.month, ref_date.day) < (dob.month, dob.day))
+    months = (ref_date.year - dob.year) * 12 + (ref_date.month - dob.month)
+    if ref_date.day < dob.day:
+        months -= 1
+    return max(years, 0), max(months, 0)
+
+
+def build_safe_input_snapshot(
+    *,
+    patient: dict[str, Any],
+    pathway: str,
+    history_status: str,
+    consents: list[dict[str, Any]],
+    has_prior_activity: bool,
+    has_referral: bool,
+    reference_date: date,
+) -> dict[str, Any]:
+    age_years, age_months = _compute_age_parts(patient.get("date_of_birth"), reference_date)
+    relevant_consents = [
+        c
+        for c in consents
+        if c.get("consent_type") == "screening_participation"
+        and c.get("scope_pathway") in (None, pathway)
+    ]
+    latest_consent = (
+        max(relevant_consents, key=lambda c: (c["recorded_at"], c["consent_id"]))["state"]
+        if relevant_consents
+        else "absent"
+    )
+    return {
+        "pathway": pathway,
+        "age_years": age_years,
+        "age_months": age_months,
+        "sex": patient.get("sex"),
+        "thiqa_member": patient.get("thiqa_member"),
+        "ever_smoked": patient.get("ever_smoked"),
+        "history_status": history_status,
+        "screening_consent_state": latest_consent,
+        "has_prior_screening_or_visit": has_prior_activity,
+        "has_referral": has_referral,
+    }
+
+
 def _build_patient_summary(
     p: dict[str, Any], history_map: dict[str, str]
 ) -> PatientSummaryOut:
@@ -542,17 +637,38 @@ class MemoryReadRepository:
     def get_patient_evaluations(self, patient_id: str) -> PatientEvaluationsOut | None:
         bundle = get_cached_bundle()
         idx = get_cached_index()
-        if patient_id not in idx.patients_by_id:
+        p = idx.patients_by_id.get(patient_id)
+        if p is None:
             return None
 
+        ds = idx.dataset
+        er = ds.evaluation_run
+        ref_date = er["reference_date"]
         rule_meta = {r["rule_id"]: r for r in bundle.rules}
+        hmap = idx.history_by_patient.get(patient_id, {})
+        consents = idx.consents_by_patient.get(patient_id, [])
+        prior_by_rule = {
+            s["rule_id"] for s in idx.ifhas_by_patient.get(patient_id, [])
+        } | {v["rule_id"] for v in idx.wcv_by_patient.get(patient_id, [])}
+        referral_by_rule = {
+            r["rule_id"] for r in idx.referrals_by_patient.get(patient_id, []) if r.get("rule_id")
+        }
+
         eval_items: list[EvaluationItemOut] = []
         for ev in idx.evaluations_by_patient.get(patient_id, []):
             rm = rule_meta[ev["rule_id"]]
+            pathway = rm["pathway"]
+            h_status = hmap.get(pathway, "not_available")
             reasons = [
                 EvaluationReasonOut(
                     reason_ordinal=r["reason_ordinal"],
                     reason_code=r["reason_code"],
+                    reason_detail=describe_reason(
+                        r["reason_code"],
+                        r["guard_id"],
+                        r["item_category"],
+                        r["item_code"],
+                    ),
                     guard_id=r["guard_id"],
                     item_category=r["item_category"],
                     item_code=r["item_code"],
@@ -565,12 +681,32 @@ class MemoryReadRepository:
                     patient_id=patient_id,
                     rule_id=ev["rule_id"],
                     rule_version=ev["rule_version"],
-                    pathway=rm["pathway"],
+                    pathway=pathway,
                     rule_type=rm.get("rule_type"),
+                    source_name=rm.get("source_name"),
+                    source_version=rm.get("source_version"),
+                    source_reference=rm.get("source_reference"),
+                    is_authoritative=bool(rm.get("is_authoritative", False)),
+                    requires_clinical_review=bool(rm.get("requires_clinical_review", False)),
+                    engine_version=er.get("engine_version"),
+                    look_ahead_days=er.get("look_ahead_days"),
                     evaluation_status=ev["evaluation_status"],
                     reason_code=ev["reason_code"],
+                    reason_detail=describe_reason(
+                        ev.get("reason_code"),
+                        evaluation_status=ev["evaluation_status"],
+                    ),
                     next_due_date=ev["next_due_date"],
                     evaluated_at=ev["evaluated_at"],
+                    input_snapshot=build_safe_input_snapshot(
+                        patient=p,
+                        pathway=pathway,
+                        history_status=h_status,
+                        consents=consents,
+                        has_prior_activity=ev["rule_id"] in prior_by_rule,
+                        has_referral=ev["rule_id"] in referral_by_rule,
+                        reference_date=ref_date,
+                    ),
                     reasons=reasons,
                 )
             )
@@ -1113,8 +1249,9 @@ class PostgresReadRepository:
             ).first()
             if p is None:
                 return None
-            _, er = self._latest_runs()
+            gr, er = self._latest_runs()
             rules = {r.rule_id: r for r in self._session.scalars(select(Rule)).all()}
+            standards = {s.standard_id: s for s in self._session.scalars(select(Standard)).all()}
             evals = self._session.scalars(
                 select(EligibilityEvaluation).where(
                     EligibilityEvaluation.patient_id == patient_id,
@@ -1131,34 +1268,105 @@ class PostgresReadRepository:
             gaps = self._session.scalars(
                 select(CareGap).where(CareGap.patient_id == patient_id)
             ).all()
+            hmap = self._patient_history_map([patient_id]).get(patient_id, {})
+            consents = [
+                _row_to_dict(c)
+                for c in self._session.scalars(
+                    select(Consent).where(
+                        Consent.run_id == gr.run_id,
+                        Consent.patient_id == patient_id,
+                    )
+                ).all()
+            ]
+            prior_by_rule = {
+                s.rule_id
+                for s in self._session.scalars(
+                    select(IfhasScreening).where(
+                        IfhasScreening.run_id == gr.run_id,
+                        IfhasScreening.patient_id == patient_id,
+                    )
+                ).all()
+            } | {
+                v.rule_id
+                for v in self._session.scalars(
+                    select(WellChildVisit).where(
+                        WellChildVisit.run_id == gr.run_id,
+                        WellChildVisit.patient_id == patient_id,
+                    )
+                ).all()
+            }
+            referral_by_rule = {
+                r.rule_id
+                for r in self._session.scalars(
+                    select(Referral).where(
+                        Referral.run_id == gr.run_id,
+                        Referral.patient_id == patient_id,
+                    )
+                ).all()
+                if r.rule_id
+            }
         except SQLAlchemyError as exc:
             raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
 
-        eval_items = [
-            EvaluationItemOut(
-                evaluation_id=ev.evaluation_id,
-                patient_id=patient_id,
-                rule_id=ev.rule_id,
-                rule_version=ev.rule_version,
-                pathway=rules[ev.rule_id].pathway,
-                rule_type=rules[ev.rule_id].rule_type,
-                evaluation_status=ev.evaluation_status,
-                reason_code=ev.reason_code,
-                next_due_date=ev.next_due_date,
-                evaluated_at=ev.evaluated_at,
-                reasons=[
-                    EvaluationReasonOut(
-                        reason_ordinal=r.reason_ordinal,
-                        reason_code=r.reason_code,
-                        guard_id=r.guard_id,
-                        item_category=r.item_category,
-                        item_code=r.item_code,
-                    )
-                    for r in reasons_by_eval.get(ev.evaluation_id, [])
-                ],
+        p_dict = _row_to_dict(p)
+        eval_items = []
+        for ev in evals:
+            rm = rules[ev.rule_id]
+            std = standards.get(rm.standard_id)
+            h_status = hmap.get(rm.pathway, "not_available")
+            eval_items.append(
+                EvaluationItemOut(
+                    evaluation_id=ev.evaluation_id,
+                    patient_id=patient_id,
+                    rule_id=ev.rule_id,
+                    rule_version=ev.rule_version,
+                    pathway=rm.pathway,
+                    rule_type=rm.rule_type,
+                    source_name=std.source_name if std else None,
+                    source_version=std.source_version if std else None,
+                    source_reference=rm.source_reference,
+                    is_authoritative=bool(rm.is_authoritative),
+                    requires_clinical_review=bool(rm.requires_clinical_review),
+                    engine_version=er.engine_version,
+                    look_ahead_days=er.look_ahead_days,
+                    evaluation_status=ev.evaluation_status,
+                    reason_code=ev.reason_code,
+                    reason_detail=describe_reason(
+                        ev.reason_code,
+                        evaluation_status=ev.evaluation_status,
+                    ),
+                    next_due_date=ev.next_due_date,
+                    evaluated_at=ev.evaluated_at,
+                    input_snapshot=build_safe_input_snapshot(
+                        patient=p_dict,
+                        pathway=rm.pathway,
+                        history_status=h_status,
+                        consents=consents,
+                        has_prior_activity=ev.rule_id in prior_by_rule,
+                        has_referral=ev.rule_id in referral_by_rule,
+                        reference_date=er.reference_date,
+                    ),
+                    reasons=[
+                        EvaluationReasonOut(
+                            reason_ordinal=r.reason_ordinal,
+                            reason_code=r.reason_code,
+                            reason_detail=describe_reason(
+                                r.reason_code,
+                                r.guard_id,
+                                r.item_category,
+                                r.item_code,
+                            ),
+                            guard_id=r.guard_id,
+                            item_category=r.item_category,
+                            item_code=r.item_code,
+                        )
+                        for r in sorted(
+                            reasons_by_eval.get(ev.evaluation_id, []),
+                            key=lambda x: x.reason_ordinal,
+                        )
+                    ],
+                )
             )
-            for ev in evals
-        ]
         return PatientEvaluationsOut(
             is_synthetic=True,
             patient_id=patient_id,
