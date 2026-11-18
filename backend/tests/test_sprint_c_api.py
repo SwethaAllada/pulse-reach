@@ -174,3 +174,35 @@ def test_patients_search_sort_filters_and_unknown_param_rejection():
 
     # Reject unsupported query parameters -> 422
     assert client.get("/api/v1/patients?unknown_param=123").status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# T-07: Care-gap detail & patient_id filter
+# ---------------------------------------------------------------------------
+
+
+def test_care_gap_patient_filter_and_detail_endpoint():
+    filtered = client.get("/api/v1/care-gaps?patient_id=SYNTH-PAT-000001")
+    assert filtered.status_code == 200
+    f_body = filtered.json()
+    assert f_body["total"] >= 1
+    assert all(g["patient_id"] == "SYNTH-PAT-000001" for g in f_body["items"])
+
+    gap_id = f_body["items"][0]["care_gap_id"]
+    det = client.get(f"/api/v1/care-gaps/{gap_id}")
+    assert det.status_code == 200
+    d_body = det.json()
+    assert d_body["care_gap_id"] == gap_id
+    assert d_body["patient"]["patient_id"] == "SYNTH-PAT-000001"
+    assert d_body["rule"]["rule_id"] == f_body["items"][0]["rule_id"]
+    assert d_body["rule"]["rule_version"]
+    assert d_body["rule"]["source_name"]
+    assert d_body["rule"]["source_reference"]
+    assert isinstance(d_body["reasons"], list)
+    assert isinstance(d_body["linked_appointments"], list)
+    assert isinstance(d_body["linked_referrals"], list)
+    assert isinstance(d_body["linked_outreach_events"], list)
+    assert "simulated" in d_body["facility_capability_notice"].lower()
+
+    # Unknown gap -> 404
+    assert client.get("/api/v1/care-gaps/SYNTH-GAP-999999").status_code == 404

@@ -23,6 +23,7 @@ from app.repositories.read_repo import (
     get_cached_engine,
 )
 from app.schemas.v1 import (
+    CareGapDetailOut,
     CareGapOut,
     DashboardSummaryOut,
     EvaluateRequestIn,
@@ -356,13 +357,30 @@ def list_care_gaps(
     ]
     | None = Query(default=None),
     rule_id: str | None = Query(default=None),
+    patient_id: str | None = Query(default=None),
     limit: int = Query(default=25, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     repo: ReadRepository = Depends(get_read_repository),
 ) -> PaginatedCareGapsOut:
     return repo.list_care_gaps(
-        status=status, gap_type=gap_type, rule_id=rule_id, limit=limit, offset=offset
+        status=status,
+        gap_type=gap_type,
+        rule_id=rule_id,
+        limit=limit,
+        offset=offset,
+        patient_id=patient_id,
     )
+
+
+@router.get("/care-gaps/{gap_id}", response_model=CareGapDetailOut)
+def get_care_gap_detail(
+    gap_id: str,
+    repo: ReadRepository = Depends(get_read_repository),
+) -> CareGapDetailOut:
+    detail = repo.get_care_gap_detail(gap_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail=f"Care gap '{gap_id}' not found")
+    return detail
 
 
 @router.get("/facilities", response_model=PaginatedFacilitiesOut)

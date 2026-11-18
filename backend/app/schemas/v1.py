@@ -352,3 +352,60 @@ class PatientConsentsOut(BaseModel):
     patient_id: str
     current_states: list[ConsentRecordOut] = Field(default_factory=list)
     history: list[ConsentRecordOut] = Field(default_factory=list)
+
+
+class AppointmentOut(BaseModel):
+    appointment_id: str
+    patient_id: str
+    profile_id: str
+    care_gap_id: str | None = None
+    appointment_type: str
+    scheduled_datetime: datetime
+    slot_type: str
+    status: str
+    booked_via: str
+    is_synthetic: bool = True
+
+
+class ReferralOut(BaseModel):
+    referral_id: str
+    patient_id: str
+    trigger_rule_id: str
+    trigger_rule_version: str
+    referral_target: str
+    target_profile_id: str | None = None
+    trigger_date: date
+    initiated_date: date | None = None
+    completed_date: date | None = None
+    status: str
+    is_synthetic: bool = True
+
+
+class OutreachEventOut(BaseModel):
+    outreach_id: str
+    patient_id: str
+    care_gap_id: str
+    guardian_id: str | None = None
+    recipient: str
+    event_type: str
+    channel: str
+    sent_datetime: datetime | None = None
+    delivery_status: str
+    suppression_reason: str | None = None
+    contact_consent_id: str | None = None
+    response: str | None = None
+    appointment_id: str | None = None
+    is_synthetic: bool = True
+
+
+class CareGapDetailOut(CareGapOut):
+    patient: PatientSummaryOut
+    rule: RuleSummaryOut
+    reasons: list[EvaluationReasonOut] = Field(default_factory=list)
+    linked_appointments: list[AppointmentOut] = Field(default_factory=list)
+    linked_referrals: list[ReferralOut] = Field(default_factory=list)
+    linked_outreach_events: list[OutreachEventOut] = Field(default_factory=list)
+    facility_capability_notice: str = (
+        "Facility capability and service profile references are simulated overlays only; "
+        "real facility IFHAS/WCV capabilities remain unknown unless backed by an approved source."
+    )

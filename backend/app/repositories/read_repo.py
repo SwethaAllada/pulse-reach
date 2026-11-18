@@ -22,6 +22,7 @@ from app.models.clinical import (
 )
 from app.models.official import Facility
 from app.models.synthetic import (
+    Appointment,
     Assessment,
     CareGap,
     ComponentResult,
@@ -33,12 +34,15 @@ from app.models.synthetic import (
     Guardian,
     HistoryAvailability,
     IfhasScreening,
+    OutreachEvent,
     Patient,
     Referral,
     WellChildVisit,
 )
 from app.schemas.v1 import (
+    AppointmentOut,
     AssessmentOut,
+    CareGapDetailOut,
     CareGapOut,
     ComponentResultOut,
     ConsentRecordOut,
@@ -49,6 +53,7 @@ from app.schemas.v1 import (
     GuardianOut,
     HistoryAvailabilityOut,
     IfhasScreeningOut,
+    OutreachEventOut,
     PaginatedCareGapsOut,
     PaginatedFacilitiesOut,
     PaginatedPatientsOut,
@@ -57,6 +62,7 @@ from app.schemas.v1 import (
     PatientEvaluationsOut,
     PatientHistoryOut,
     PatientSummaryOut,
+    ReferralOut,
     RuleDetailOut,
     RuleItemOut,
     RulesSummaryOut,
@@ -132,7 +138,9 @@ class ReadRepository(Protocol):
         rule_id: str | None,
         limit: int,
         offset: int,
+        patient_id: str | None = None,
     ) -> PaginatedCareGapsOut: ...
+    def get_care_gap_detail(self, gap_id: str) -> CareGapDetailOut | None: ...
     def list_facilities(self, limit: int, offset: int) -> PaginatedFacilitiesOut: ...
     def get_patient_outreach_inputs(
         self, patient_id: str
@@ -974,6 +982,7 @@ class MemoryReadRepository:
         rule_id: str | None,
         limit: int,
         offset: int,
+        patient_id: str | None = None,
     ) -> PaginatedCareGapsOut:
         gaps = get_cached_dataset().care_gaps
         if status is not None:
@@ -982,6 +991,8 @@ class MemoryReadRepository:
             gaps = [g for g in gaps if g["gap_type"] == gap_type]
         if rule_id is not None:
             gaps = [g for g in gaps if g["rule_id"] == rule_id]
+        if patient_id is not None:
+            gaps = [g for g in gaps if g["patient_id"] == patient_id]
         page = gaps[offset : offset + limit]
         return PaginatedCareGapsOut(
             is_synthetic=True,
@@ -989,6 +1000,63 @@ class MemoryReadRepository:
             limit=limit,
             offset=offset,
             items=[_build_care_gap_out(g) for g in page],
+        )
+
+    def get_care_gap_detail(self, gap_id: str) -> CareGapDetailOut | None:
+        idx = get_cached_index()
+        ds = idx.dataset
+        gap = next((g for g in ds.care_gaps if g["care_gap_id"] == gap_id), None)
+        if gap is None:
+            return None
+        pid = gap["patient_id"]
+        patient = self.get_patient(pid)
+        if patient is None:
+            return None
+        rule = self.get_rule_detail(gap["rule_id"])
+        if rule is None:
+            return None
+        reasons = [
+            EvaluationReasonOut(
+                reason_ordinal=r["reason_ordinal"],
+                reason_code=r["reason_code"],
+                reason_detail=describe_reason(
+                    r["reason_code"],
+                    r["guard_id"],
+                    r["item_category"],
+                    r["item_code"],
+                ),
+                guard_id=r["guard_id"],
+                item_category=r["item_category"],
+                item_code=r["item_code"],
+            )
+            for r in idx.reasons_by_eval.get(gap["evaluation_id"], [])
+        ]
+        appointments = [
+            a
+            for a in ds.appointments
+            if a["patient_id"] == pid and a.get("care_gap_id") == gap_id
+        ]
+        referrals = [
+            r
+            for r in idx.referrals_by_patient.get(pid, [])
+            if (
+                r["referral_id"] == gap.get("subject_referral_id")
+                or r.get("trigger_rule_id") == gap["rule_id"]
+            )
+        ]
+        outreach_events = [
+            o
+            for o in ds.outreach_events
+            if o["patient_id"] == pid and o["care_gap_id"] == gap_id
+        ]
+        return _build_care_gap_detail_out(
+            gap=gap,
+            patient=patient,
+            rule=rule,
+            reasons=reasons,
+            appointments=appointments,
+            referrals=referrals,
+            outreach_events=outreach_events,
         )
 
     def list_facilities(self, limit: int, offset: int) -> PaginatedFacilitiesOut:
@@ -1223,6 +1291,75 @@ def _build_patient_consents_out(
         patient_id=patient_id,
         current_states=[_to_out(c) for c in latest_by_scope.values()],
         history=[_to_out(c) for c in ordered],
+    )
+
+
+def _build_care_gap_detail_out(
+    *,
+    gap: dict[str, Any],
+    patient: PatientSummaryOut,
+    rule: RuleSummaryOut,
+    reasons: list[EvaluationReasonOut],
+    appointments: list[dict[str, Any]],
+    referrals: list[dict[str, Any]],
+    outreach_events: list[dict[str, Any]],
+) -> CareGapDetailOut:
+    base = _build_care_gap_out(gap)
+    return CareGapDetailOut(
+        **base.model_dump(),
+        patient=patient,
+        rule=RuleSummaryOut(**rule.model_dump(include=set(RuleSummaryOut.model_fields.keys()))),
+        reasons=reasons,
+        linked_appointments=[
+            AppointmentOut(
+                appointment_id=a["appointment_id"],
+                patient_id=a["patient_id"],
+                profile_id=a["profile_id"],
+                care_gap_id=a.get("care_gap_id"),
+                appointment_type=a["appointment_type"],
+                scheduled_datetime=a["scheduled_datetime"],
+                slot_type=a["slot_type"],
+                status=a["status"],
+                booked_via=a["booked_via"],
+                is_synthetic=bool(a.get("is_synthetic", True)),
+            )
+            for a in sorted(appointments, key=lambda x: x["scheduled_datetime"], reverse=True)
+        ],
+        linked_referrals=[
+            ReferralOut(
+                referral_id=r["referral_id"],
+                patient_id=r["patient_id"],
+                trigger_rule_id=r["trigger_rule_id"],
+                trigger_rule_version=r["trigger_rule_version"],
+                referral_target=r["referral_target"],
+                target_profile_id=r.get("target_profile_id"),
+                trigger_date=r["trigger_date"],
+                initiated_date=r.get("initiated_date"),
+                completed_date=r.get("completed_date"),
+                status=r["status"],
+                is_synthetic=bool(r.get("is_synthetic", True)),
+            )
+            for r in sorted(referrals, key=lambda x: x["trigger_date"], reverse=True)
+        ],
+        linked_outreach_events=[
+            OutreachEventOut(
+                outreach_id=o["outreach_id"],
+                patient_id=o["patient_id"],
+                care_gap_id=o["care_gap_id"],
+                guardian_id=o.get("guardian_id"),
+                recipient=o["recipient"],
+                event_type=o["event_type"],
+                channel=o["channel"],
+                sent_datetime=o.get("sent_datetime"),
+                delivery_status=o["delivery_status"],
+                suppression_reason=o.get("suppression_reason"),
+                contact_consent_id=o.get("contact_consent_id"),
+                response=o.get("response"),
+                appointment_id=o.get("appointment_id"),
+                is_synthetic=bool(o.get("is_synthetic", True)),
+            )
+            for o in sorted(outreach_events, key=lambda x: x["outreach_id"], reverse=True)
+        ],
     )
 
 
@@ -1840,6 +1977,7 @@ class PostgresReadRepository:
         rule_id: str | None,
         limit: int,
         offset: int,
+        patient_id: str | None = None,
     ) -> PaginatedCareGapsOut:
         try:
             gr, _ = self._latest_runs()
@@ -1850,6 +1988,8 @@ class PostgresReadRepository:
                 stmt = stmt.where(CareGap.gap_type == gap_type)
             if rule_id is not None:
                 stmt = stmt.where(CareGap.rule_id == rule_id)
+            if patient_id is not None:
+                stmt = stmt.where(CareGap.patient_id == patient_id)
             total = int(
                 self._session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
             )
@@ -1865,6 +2005,87 @@ class PostgresReadRepository:
             limit=limit,
             offset=offset,
             items=[_build_care_gap_out(_row_to_dict(g)) for g in page],
+        )
+
+    def get_care_gap_detail(self, gap_id: str) -> CareGapDetailOut | None:
+        try:
+            gr, _ = self._latest_runs()
+            g = self._session.scalars(
+                select(CareGap).where(
+                    CareGap.run_id == gr.run_id,
+                    CareGap.care_gap_id == gap_id,
+                )
+            ).first()
+            if g is None:
+                return None
+            patient = self.get_patient(g.patient_id)
+            rule = self.get_rule_detail(g.rule_id)
+            if patient is None or rule is None:
+                return None
+            reasons = [
+                EvaluationReasonOut(
+                    reason_ordinal=r.reason_ordinal,
+                    reason_code=r.reason_code,
+                    reason_detail=describe_reason(
+                        r.reason_code,
+                        r.guard_id,
+                        r.item_category,
+                        r.item_code,
+                    ),
+                    guard_id=r.guard_id,
+                    item_category=r.item_category,
+                    item_code=r.item_code,
+                )
+                for r in self._session.scalars(
+                    select(EvaluationReason)
+                    .where(EvaluationReason.evaluation_id == g.evaluation_id)
+                    .order_by(EvaluationReason.reason_ordinal)
+                ).all()
+            ]
+            appointments = [
+                _row_to_dict(a)
+                for a in self._session.scalars(
+                    select(Appointment).where(
+                        Appointment.run_id == gr.run_id,
+                        Appointment.patient_id == g.patient_id,
+                        Appointment.care_gap_id == gap_id,
+                    )
+                ).all()
+            ]
+            referrals = [
+                _row_to_dict(r)
+                for r in self._session.scalars(
+                    select(Referral).where(
+                        Referral.run_id == gr.run_id,
+                        Referral.patient_id == g.patient_id,
+                        or_(
+                            Referral.referral_id == g.subject_referral_id,
+                            Referral.trigger_rule_id == g.rule_id,
+                        ),
+                    )
+                ).all()
+            ]
+            outreach_events = [
+                _row_to_dict(o)
+                for o in self._session.scalars(
+                    select(OutreachEvent).where(
+                        OutreachEvent.run_id == gr.run_id,
+                        OutreachEvent.patient_id == g.patient_id,
+                        OutreachEvent.care_gap_id == gap_id,
+                    )
+                ).all()
+            ]
+        except SQLAlchemyError as exc:
+            raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
+
+        return _build_care_gap_detail_out(
+            gap=_row_to_dict(g),
+            patient=patient,
+            rule=rule,
+            reasons=reasons,
+            appointments=appointments,
+            referrals=referrals,
+            outreach_events=outreach_events,
         )
 
     def list_facilities(self, limit: int, offset: int) -> PaginatedFacilitiesOut:
