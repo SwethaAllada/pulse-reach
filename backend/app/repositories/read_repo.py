@@ -304,6 +304,7 @@ def get_cached_facilities() -> list[FacilityItemOut]:
             license_status="Active",
             simulated_ifhas_service=True,
             simulated_wcv_service=True,
+            capability_basis="simulated_overlay_only",
         ),
         FacilityItemOut(
             facility_id=2,
@@ -313,6 +314,7 @@ def get_cached_facilities() -> list[FacilityItemOut]:
             license_status="Active",
             simulated_ifhas_service=True,
             simulated_wcv_service=True,
+            capability_basis="simulated_overlay_only",
         ),
         FacilityItemOut(
             facility_id=3,
@@ -322,6 +324,7 @@ def get_cached_facilities() -> list[FacilityItemOut]:
             license_status="Active",
             simulated_ifhas_service=False,
             simulated_wcv_service=True,
+            capability_basis="simulated_overlay_only",
         ),
     ]
 

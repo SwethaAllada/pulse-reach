@@ -565,11 +565,11 @@ class EvaluationEngine:
             ):
                 return _result("not_eligible"), []
 
-            if patient.thiqa_member is None:
+            if not isinstance(patient.thiqa_member, bool):
                 r = FiredReason(
                     reason_code="missing_required_attribute",
                     guard_id="GUARD-MISSING-ATTRIBUTE",
-                    detail="Required programme attribute 'thiqa_member' is missing.",
+                    detail="Required programme attribute 'thiqa_member' is missing or not a boolean.",
                 )
                 return _result("insufficient_information", r.reason_code, (r,)), []
             if patient.thiqa_member is False:
@@ -581,14 +581,17 @@ class EvaluationEngine:
                     attr = cond["attribute"]
                     req_val = cond["required_value"]
                     if attr == "smoking_history.ever_smoked":
-                        if patient.ever_smoked is None:
+                        if not isinstance(patient.ever_smoked, bool):
                             r = FiredReason(
                                 reason_code="missing_required_attribute",
                                 guard_id="GUARD-MISSING-ATTRIBUTE",
-                                detail="Required attribute 'smoking_history.ever_smoked' is missing.",
+                                detail=(
+                                    "Required attribute 'smoking_history.ever_smoked' is missing "
+                                    "or not a boolean."
+                                ),
                             )
                             return _result("insufficient_information", r.reason_code, (r,)), []
-                        if patient.ever_smoked != req_val:
+                        if patient.ever_smoked is not req_val:
                             return _result("not_eligible"), []
 
             # Eligibility established; check screening history availability

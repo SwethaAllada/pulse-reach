@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -10,7 +11,7 @@ from sqlalchemy.engine import Engine
 
 
 @pytest.fixture(scope="session")
-def pg_test_engine() -> Engine:
+def pg_test_engine() -> Iterator[Engine]:
     """Session-scoped SQLAlchemy Engine for `TEST_DATABASE_URL` (skips if unset)."""
     url = os.environ.get("TEST_DATABASE_URL")
     if not url:

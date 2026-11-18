@@ -655,6 +655,22 @@ def test_engine_strict_boolean_rejects_truthy_non_bool_values(engine: Evaluation
             for e in engine.evaluate_patient(p, reference_date=REF_DATE).evaluations
         }
         assert evs["IFHAS-PROG-ELIG-THIQA"].evaluation_status == "insufficient_information"
+        assert evs["IFHAS-PKG-MAJOR-18-39"].evaluation_status == "insufficient_information"
+
+    # Non-bool ever_smoked=1 on AAA -> insufficient_information
+    p_smoke = PatientContext(
+        patient_id="SYNTH-PAT-000916",
+        date_of_birth=date(1958, 5, 10),
+        sex="male",
+        thiqa_member=True,
+        ever_smoked=1,  # type: ignore[arg-type]
+        history_by_pathway={"ifhas": "available"},
+    )
+    evs_smoke = {
+        e.rule_id: e
+        for e in engine.evaluate_patient(p_smoke, reference_date=REF_DATE).evaluations
+    }
+    assert evs_smoke["IFHAS-PKG-AAA-M-65-75"].evaluation_status == "insufficient_information"
 
     # Non-bool documented_in_record=1 / signature_on_file='true' must NOT close refusal gap
     p_ref = PatientContext(

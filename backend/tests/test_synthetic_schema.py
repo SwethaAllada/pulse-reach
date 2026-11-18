@@ -485,11 +485,11 @@ def test_live_synthetic_migration(monkeypatch):
     monkeypatch.setattr(session.settings, "database_url", SecretStr(url))
     cfg = Config(str(BACKEND / "alembic.ini"))
     cfg.set_main_option("script_location", str(BACKEND / "migrations"))
-    command.upgrade(cfg, "0007")
+    command.upgrade(cfg, "head")
     engine = create_engine(url)
     try:
         insp = inspect(engine)
-        assert set(insp.get_table_names(schema="synthetic")) == (TABLES - {"care_gap_follow_up_event"})
+        assert set(insp.get_table_names(schema="synthetic")) == TABLES
         assert set(insp.get_view_names(schema="synthetic")) >= {
             "v_consent_current",
             "v_history_availability_current",

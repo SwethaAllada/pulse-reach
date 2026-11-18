@@ -14,4 +14,4 @@ ENV PULSE_REACH_REPO_ROOT=/app \
     DATA_DIR=/app/data
 
 WORKDIR /app/backend
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --no-access-log"]

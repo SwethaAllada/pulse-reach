@@ -360,5 +360,7 @@ def test_committed_demo_fixture_50_patients():
     pids = {p["patient_id"] for p in payload["patients"]}
     for i in range(1, 28):
         assert f"SYNTH-PAT-{i:06d}" in pids
+    assert all(g["priority_score"] is None for g in payload["care_gaps"])
+    assert all(g["scored_by_model_version"] is None for g in payload["care_gaps"])
 
 
