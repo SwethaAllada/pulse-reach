@@ -18,18 +18,24 @@ from app.models.clinical import (
     Rule,
     RuleItem,
     RuleItemOpenQuestion,
+    RuleLoad,
     RuleOpenQuestion,
     Standard,
 )
 from app.models.synthetic import (
+    Appointment,
+    Assessment,
     CareGap,
+    ComponentResult,
     Consent,
     EligibilityEvaluation,
     EvaluationReason,
     EvaluationRun,
     GenerationRun,
+    Guardian,
     HistoryAvailability,
     IfhasScreening,
+    OutreachEvent,
     Patient,
     Referral,
     WellChildVisit,
@@ -89,6 +95,7 @@ def test_postgres_read_repository_matches_memory_repository_on_seeded_subset():
     engine = _sqlite_multi_schema_engine()
     tables_to_create = [
         Standard.__table__,
+        RuleLoad.__table__,
         Rule.__table__,
         RuleOpenQuestion.__table__,
         RuleItem.__table__,
@@ -97,14 +104,19 @@ def test_postgres_read_repository_matches_memory_repository_on_seeded_subset():
         GenerationRun.__table__,
         EvaluationRun.__table__,
         Patient.__table__,
+        Guardian.__table__,
         HistoryAvailability.__table__,
         Consent.__table__,
+        Appointment.__table__,
         IfhasScreening.__table__,
         WellChildVisit.__table__,
+        ComponentResult.__table__,
+        Assessment.__table__,
         Referral.__table__,
         EligibilityEvaluation.__table__,
         EvaluationReason.__table__,
         CareGap.__table__,
+        OutreachEvent.__table__,
     ]
     test_meta = MetaData()
     for tbl in tables_to_create:
@@ -161,15 +173,36 @@ def test_postgres_read_repository_matches_memory_repository_on_seeded_subset():
 
         session.add(GenerationRun(**_cols(GenerationRun, ds.generation_run)))
         session.add(EvaluationRun(**_cols(EvaluationRun, ds.evaluation_run)))
-        for p in ds.patients[:10]:
+        for p in ds.patients[:25]:
             session.add(Patient(**_cols(Patient, p)))
-        p_ids = {p["patient_id"] for p in ds.patients[:10]}
+        p_ids = {p["patient_id"] for p in ds.patients[:25]}
+        for gdn in ds.guardians:
+            if gdn["patient_id"] in p_ids:
+                session.add(Guardian(**_cols(Guardian, gdn)))
         for h in ds.history_availabilities:
             if h["patient_id"] in p_ids:
                 session.add(HistoryAvailability(**_cols(HistoryAvailability, h)))
         for c in ds.consents:
             if c["patient_id"] in p_ids:
                 session.add(Consent(**_cols(Consent, c)))
+        for ap in ds.appointments:
+            if ap["patient_id"] in p_ids:
+                session.add(Appointment(**_cols(Appointment, ap)))
+        for sc in ds.ifhas_screenings:
+            if sc["patient_id"] in p_ids:
+                session.add(IfhasScreening(**_cols(IfhasScreening, sc)))
+        for wv in ds.well_child_visits:
+            if wv["patient_id"] in p_ids:
+                session.add(WellChildVisit(**_cols(WellChildVisit, wv)))
+        for cr in ds.component_results:
+            if cr["patient_id"] in p_ids:
+                session.add(ComponentResult(**_cols(ComponentResult, cr)))
+        for asm in ds.assessments:
+            if asm["patient_id"] in p_ids:
+                session.add(Assessment(**_cols(Assessment, asm)))
+        for ref in ds.referrals:
+            if ref["patient_id"] in p_ids:
+                session.add(Referral(**_cols(Referral, ref)))
         ev_ids = set()
         for ev in ds.eligibility_evaluations:
             if ev["patient_id"] in p_ids:
@@ -181,6 +214,9 @@ def test_postgres_read_repository_matches_memory_repository_on_seeded_subset():
         for g in ds.care_gaps:
             if g["patient_id"] in p_ids:
                 session.add(CareGap(**_cols(CareGap, g)))
+        for oe in ds.outreach_events:
+            if oe["patient_id"] in p_ids:
+                session.add(OutreachEvent(**_cols(OutreachEvent, oe)))
         session.commit()
 
         db_repo = PostgresReadRepository(session)
@@ -199,6 +235,50 @@ def test_postgres_read_repository_matches_memory_repository_on_seeded_subset():
         assert ev_db is not None and ev_mem is not None
         assert len(ev_db.evaluations) == len(ev_mem.evaluations) == 54
         assert len(ev_db.care_gaps) == len(ev_mem.care_gaps)
+
+        # Sprint C DB coverage & parity checks
+        h_db = db_repo.get_patient_history("SYNTH-PAT-000013")
+        h_mem = mem_repo.get_patient_history("SYNTH-PAT-000013")
+        assert h_db is not None and h_mem is not None
+        assert h_db.model_dump() == h_mem.model_dump()
+
+        c_db = db_repo.get_patient_consents("SYNTH-PAT-000021")
+        c_mem = mem_repo.get_patient_consents("SYNTH-PAT-000021")
+        assert c_db is not None and c_mem is not None
+        assert [c.consent_id for c in c_db.current_states] == [
+            c.consent_id for c in c_mem.current_states
+        ]
+        assert [c.state for c in c_db.current_states] == [
+            c.state for c in c_mem.current_states
+        ]
+        assert [c.consent_id for c in c_db.history] == [c.consent_id for c in c_mem.history]
+
+        # Sorting & filtering on DB subset
+        db_sorted = db_repo.list_patients(10, 0, None, None, None, sort_by="age", sort_dir="asc")
+        assert db_sorted.total == 25
+        assert len(db_sorted.items) == 10
+
+        # Care-gap detail parity
+        first_gap_id = next(g["care_gap_id"] for g in ds.care_gaps if g["patient_id"] in p_ids)
+        gd_db = db_repo.get_care_gap_detail(first_gap_id)
+        gd_mem = mem_repo.get_care_gap_detail(first_gap_id)
+        assert gd_db is not None and gd_mem is not None
+        assert gd_db.model_dump() == gd_mem.model_dump()
+
+        # Dashboard summary in DB mode
+        dash_db = db_repo.get_dashboard_summary()
+        assert dash_db.total_patients == 25
+        assert sum(r.total_patients for r in dash_db.region_breakdown) == 25
+        assert sum(r.open_care_gaps_count for r in dash_db.region_breakdown) == dash_db.open_care_gaps_count
+
+        # Referral input_snapshot parity
+        ref_pid = next((r["patient_id"] for r in ds.referrals if r["patient_id"] in p_ids), None)
+        if ref_pid is not None:
+            ref_ev_db = db_repo.get_patient_evaluations(ref_pid)
+            ref_ev_mem = mem_repo.get_patient_evaluations(ref_pid)
+            assert ref_ev_db is not None and ref_ev_mem is not None
+            assert any(e.input_snapshot.get("has_referral") for e in ref_ev_db.evaluations)
+            assert any(e.input_snapshot.get("has_referral") for e in ref_ev_mem.evaluations)
 
 
 @pytest.mark.skipif(

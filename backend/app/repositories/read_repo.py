@@ -17,6 +17,7 @@ from app.models.clinical import (
     Rule,
     RuleItem,
     RuleItemOpenQuestion,
+    RuleLoad,
     RuleOpenQuestion,
     Standard,
 )
@@ -410,6 +411,41 @@ def build_safe_input_snapshot(
         "thiqa_member": patient.get("thiqa_member"),
         "ever_smoked": patient.get("ever_smoked"),
         "history_status": history_status,
+        "screening_consent_state": latest_consent,
+        "has_prior_screening_or_visit": has_prior_activity,
+        "has_referral": has_referral,
+    }
+
+
+def build_safe_input_snapshot_from_context(
+    *,
+    ctx: PatientContext,
+    pathway: str,
+    has_prior_activity: bool,
+    has_referral: bool,
+    reference_date: date,
+) -> dict[str, Any]:
+    age_years, age_months = _compute_age_parts(ctx.date_of_birth, reference_date)
+    h_status = ctx.history_by_pathway.get(pathway, "not_available")
+    relevant_consents = [
+        c
+        for c in ctx.consents
+        if c.consent_type == "screening_participation"
+        and c.scope_pathway in (None, pathway)
+    ]
+    latest_consent = (
+        max(relevant_consents, key=lambda c: (c.recorded_at, c.consent_id)).state
+        if relevant_consents
+        else "absent"
+    )
+    return {
+        "pathway": pathway,
+        "age_years": age_years,
+        "age_months": age_months,
+        "sex": ctx.sex,
+        "thiqa_member": ctx.thiqa_member,
+        "ever_smoked": ctx.ever_smoked,
+        "history_status": h_status,
         "screening_consent_state": latest_consent,
         "has_prior_screening_or_visit": has_prior_activity,
         "has_referral": has_referral,
@@ -826,15 +862,23 @@ class MemoryReadRepository:
                 reverse=reverse,
             )
         elif sort_by == "age":
-            # Older patients have earlier date_of_birth; missing DOB goes last
-            filtered = sorted(
-                [p for p in filtered if p["date_of_birth"] is not None],
-                key=lambda p: (p["date_of_birth"], p["patient_id"]),
-                reverse=not reverse,
-            ) + sorted(
+            # Older patients have earlier date_of_birth; missing DOB goes last; tie-break patient_id ASC
+            with_dob = [p for p in filtered if p["date_of_birth"] is not None]
+            without_dob = sorted(
                 [p for p in filtered if p["date_of_birth"] is None],
                 key=lambda p: p["patient_id"],
             )
+            if reverse:
+                with_dob = sorted(
+                    with_dob,
+                    key=lambda p: (p["date_of_birth"].toordinal(), p["patient_id"]),
+                )
+            else:
+                with_dob = sorted(
+                    with_dob,
+                    key=lambda p: (-p["date_of_birth"].toordinal(), p["patient_id"]),
+                )
+            filtered = with_dob + without_dob
         elif sort_by == "open_gaps":
             filtered = sorted(
                 filtered,
@@ -898,7 +942,9 @@ class MemoryReadRepository:
             s["rule_id"] for s in idx.ifhas_by_patient.get(patient_id, [])
         } | {v["rule_id"] for v in idx.wcv_by_patient.get(patient_id, [])}
         referral_by_rule = {
-            r["rule_id"] for r in idx.referrals_by_patient.get(patient_id, []) if r.get("rule_id")
+            r["trigger_rule_id"]
+            for r in idx.referrals_by_patient.get(patient_id, [])
+            if r.get("trigger_rule_id")
         }
 
         eval_items: list[EvaluationItemOut] = []
@@ -1548,8 +1594,10 @@ class PostgresReadRepository:
             )
             rules = self._session.scalars(select(Rule)).all()
             n_items = len(self._session.scalars(select(RuleItem.rule_id)).all())
-            std = self._session.scalars(select(Standard)).first()
-            clin_status = std.clinical_review_status if std is not None else "not_reviewed"
+            rl = self._session.scalars(
+                select(RuleLoad).order_by(RuleLoad.load_id.desc())
+            ).first()
+            clin_status = rl.clinical_review_status if rl is not None else "not_reviewed"
         except SQLAlchemyError as exc:
             raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
 
@@ -1574,28 +1622,33 @@ class PostgresReadRepository:
             ),
         )
 
-    def _patient_history_map(self, patient_ids: list[str]) -> dict[str, dict[str, str]]:
+    def _patient_history_map(
+        self, patient_ids: list[str], run_id: str | None = None
+    ) -> dict[str, dict[str, str]]:
         if not patient_ids:
             return {}
-        rows = self._session.scalars(
-            select(HistoryAvailability).where(HistoryAvailability.patient_id.in_(patient_ids))
-        ).all()
+        stmt = select(HistoryAvailability).where(HistoryAvailability.patient_id.in_(patient_ids))
+        if run_id is not None:
+            stmt = stmt.where(HistoryAvailability.run_id == run_id)
+        rows = self._session.scalars(stmt).all()
         out: dict[str, dict[str, str]] = {}
         for h in rows:
             out.setdefault(h.patient_id, {})[h.pathway] = h.history_status
         return out
 
     def _patient_rollups(
-        self, patient_ids: list[str], eval_run_id: str
+        self, patient_ids: list[str], eval_run_id: str, run_id: str | None = None
     ) -> tuple[dict[str, int], dict[str, dict[str, int]]]:
         if not patient_ids:
             return {}, {}
         open_gaps: dict[str, int] = {}
-        for pid, cnt in self._session.execute(
-            select(CareGap.patient_id, func.count(CareGap.care_gap_id))
-            .where(CareGap.patient_id.in_(patient_ids), CareGap.status == "open")
-            .group_by(CareGap.patient_id)
-        ).all():
+        gap_stmt = select(CareGap.patient_id, func.count(CareGap.care_gap_id)).where(
+            CareGap.patient_id.in_(patient_ids),
+            CareGap.status == "open",
+        )
+        if run_id is not None:
+            gap_stmt = gap_stmt.where(CareGap.run_id == run_id)
+        for pid, cnt in self._session.execute(gap_stmt.group_by(CareGap.patient_id)).all():
             open_gaps[pid] = int(cnt)
 
         eval_summaries: dict[str, dict[str, int]] = {}
@@ -1662,7 +1715,10 @@ class PostgresReadRepository:
                 )
                 stmt = stmt.where(Patient.patient_id.in_(ev_subq))
             if has_open_care_gaps is not None:
-                gap_subq = select(CareGap.patient_id).where(CareGap.status == "open")
+                gap_subq = select(CareGap.patient_id).where(
+                    CareGap.run_id == gr.run_id,
+                    CareGap.status == "open",
+                )
                 if has_open_care_gaps:
                     stmt = stmt.where(Patient.patient_id.in_(gap_subq))
                 else:
@@ -1690,8 +1746,12 @@ class PostgresReadRepository:
             desc = sort_dir == "desc"
             if sort_by == "family_name":
                 order_cols = [
-                    Patient.family_name.desc() if desc else Patient.family_name.asc(),
-                    Patient.given_name.desc() if desc else Patient.given_name.asc(),
+                    func.lower(Patient.family_name).desc()
+                    if desc
+                    else func.lower(Patient.family_name).asc(),
+                    func.lower(Patient.given_name).desc()
+                    if desc
+                    else func.lower(Patient.given_name).asc(),
                     Patient.patient_id.desc() if desc else Patient.patient_id.asc(),
                 ]
             elif sort_by == "age":
@@ -1704,6 +1764,7 @@ class PostgresReadRepository:
                 gap_cnt = (
                     select(func.count(CareGap.care_gap_id))
                     .where(
+                        CareGap.run_id == gr.run_id,
                         CareGap.patient_id == Patient.patient_id,
                         CareGap.status == "open",
                     )
@@ -1723,8 +1784,10 @@ class PostgresReadRepository:
                 stmt.order_by(*order_cols).limit(limit).offset(offset)
             ).all()
             pids = [p.patient_id for p in page]
-            hmap = self._patient_history_map(pids)
-            open_gaps_map, eval_summaries = self._patient_rollups(pids, er.evaluation_run_id)
+            hmap = self._patient_history_map(pids, run_id=gr.run_id)
+            open_gaps_map, eval_summaries = self._patient_rollups(
+                pids, er.evaluation_run_id, run_id=gr.run_id
+            )
         except SQLAlchemyError as exc:
             raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
 
@@ -1746,15 +1809,18 @@ class PostgresReadRepository:
 
     def get_patient(self, patient_id: str) -> PatientSummaryOut | None:
         try:
+            gr, er = self._latest_runs()
             p = self._session.scalars(
-                select(Patient).where(Patient.patient_id == patient_id)
+                select(Patient).where(
+                    Patient.run_id == gr.run_id,
+                    Patient.patient_id == patient_id,
+                )
             ).first()
             if p is None:
                 return None
-            _, er = self._latest_runs()
-            hmap = self._patient_history_map([patient_id])
+            hmap = self._patient_history_map([patient_id], run_id=gr.run_id)
             open_gaps_map, eval_summaries = self._patient_rollups(
-                [patient_id], er.evaluation_run_id
+                [patient_id], er.evaluation_run_id, run_id=gr.run_id
             )
         except SQLAlchemyError as exc:
             raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
@@ -1767,12 +1833,15 @@ class PostgresReadRepository:
 
     def get_patient_evaluations(self, patient_id: str) -> PatientEvaluationsOut | None:
         try:
+            gr, er = self._latest_runs()
             p = self._session.scalars(
-                select(Patient).where(Patient.patient_id == patient_id)
+                select(Patient).where(
+                    Patient.run_id == gr.run_id,
+                    Patient.patient_id == patient_id,
+                )
             ).first()
             if p is None:
                 return None
-            gr, er = self._latest_runs()
             rules = {r.rule_id: r for r in self._session.scalars(select(Rule)).all()}
             standards = {s.standard_id: s for s in self._session.scalars(select(Standard)).all()}
             evals = self._session.scalars(
@@ -1789,9 +1858,12 @@ class PostgresReadRepository:
                 ).all():
                     reasons_by_eval.setdefault(er_row.evaluation_id, []).append(er_row)
             gaps = self._session.scalars(
-                select(CareGap).where(CareGap.patient_id == patient_id)
+                select(CareGap).where(
+                    CareGap.run_id == gr.run_id,
+                    CareGap.patient_id == patient_id,
+                )
             ).all()
-            hmap = self._patient_history_map([patient_id]).get(patient_id, {})
+            hmap = self._patient_history_map([patient_id], run_id=gr.run_id).get(patient_id, {})
             consents = [
                 _row_to_dict(c)
                 for c in self._session.scalars(
@@ -1819,14 +1891,14 @@ class PostgresReadRepository:
                 ).all()
             }
             referral_by_rule = {
-                r.rule_id
+                r.trigger_rule_id
                 for r in self._session.scalars(
                     select(Referral).where(
                         Referral.run_id == gr.run_id,
                         Referral.patient_id == patient_id,
                     )
                 ).all()
-                if r.rule_id
+                if r.trigger_rule_id
             }
         except SQLAlchemyError as exc:
             raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
@@ -2346,7 +2418,7 @@ class PostgresReadRepository:
             gr, _ = self._latest_runs()
             p = self._session.scalars(
                 select(Patient).where(
-                    Patient.run_id == gr.generation_run_id,
+                    Patient.run_id == gr.run_id,
                     Patient.patient_id == patient_id,
                 )
             ).first()
@@ -2356,7 +2428,7 @@ class PostgresReadRepository:
                 _row_to_dict(g)
                 for g in self._session.scalars(
                     select(Guardian).where(
-                        Guardian.run_id == gr.generation_run_id,
+                        Guardian.run_id == gr.run_id,
                         Guardian.patient_id == patient_id,
                     )
                 ).all()
@@ -2365,7 +2437,7 @@ class PostgresReadRepository:
                 _row_to_dict(h)
                 for h in self._session.scalars(
                     select(HistoryAvailability).where(
-                        HistoryAvailability.run_id == gr.generation_run_id,
+                        HistoryAvailability.run_id == gr.run_id,
                         HistoryAvailability.patient_id == patient_id,
                     )
                 ).all()
@@ -2374,7 +2446,7 @@ class PostgresReadRepository:
                 _row_to_dict(s)
                 for s in self._session.scalars(
                     select(IfhasScreening).where(
-                        IfhasScreening.run_id == gr.generation_run_id,
+                        IfhasScreening.run_id == gr.run_id,
                         IfhasScreening.patient_id == patient_id,
                     )
                 ).all()
@@ -2383,7 +2455,7 @@ class PostgresReadRepository:
                 _row_to_dict(v)
                 for v in self._session.scalars(
                     select(WellChildVisit).where(
-                        WellChildVisit.run_id == gr.generation_run_id,
+                        WellChildVisit.run_id == gr.run_id,
                         WellChildVisit.patient_id == patient_id,
                     )
                 ).all()
@@ -2392,7 +2464,7 @@ class PostgresReadRepository:
                 _row_to_dict(c)
                 for c in self._session.scalars(
                     select(ComponentResult).where(
-                        ComponentResult.run_id == gr.generation_run_id,
+                        ComponentResult.run_id == gr.run_id,
                         ComponentResult.patient_id == patient_id,
                     )
                 ).all()
@@ -2401,7 +2473,7 @@ class PostgresReadRepository:
                 _row_to_dict(a)
                 for a in self._session.scalars(
                     select(Assessment).where(
-                        Assessment.run_id == gr.generation_run_id,
+                        Assessment.run_id == gr.run_id,
                         Assessment.patient_id == patient_id,
                     )
                 ).all()
@@ -2424,7 +2496,7 @@ class PostgresReadRepository:
             gr, _ = self._latest_runs()
             p = self._session.scalars(
                 select(Patient).where(
-                    Patient.run_id == gr.generation_run_id,
+                    Patient.run_id == gr.run_id,
                     Patient.patient_id == patient_id,
                 )
             ).first()
@@ -2434,7 +2506,7 @@ class PostgresReadRepository:
                 _row_to_dict(c)
                 for c in self._session.scalars(
                     select(Consent).where(
-                        Consent.run_id == gr.generation_run_id,
+                        Consent.run_id == gr.run_id,
                         Consent.patient_id == patient_id,
                     )
                 ).all()
