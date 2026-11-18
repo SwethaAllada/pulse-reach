@@ -56,9 +56,9 @@ from app.services.evaluation import (
 from app.services.explanation import (
     BoundedExplanationInput,
     ExplanationService,
-    OutreachPreviewInput,
     PrivacyViolationError,
 )
+from app.services.outreach import OutreachRuleNotFoundError, OutreachService
 from app.services.official_loader import parse as official_parse
 from app.services.synthetic_generator import (
     SyntheticDataset,
@@ -226,6 +226,7 @@ def _get_facilities() -> list[FacilityItemOut]:
 
 
 _explanation_service = ExplanationService(llm_provider=None)
+_outreach_service = OutreachService()
 
 
 def _build_patient_summary(
@@ -828,36 +829,22 @@ def preview_outreach(req: OutreachPreviewRequestIn) -> OutreachPreviewOut:
             status_code=404, detail=f"Synthetic patient '{req.patient_id}' not found"
         )
 
-    contact_consents = [
-        c
-        for c in idx.consents_by_patient.get(req.patient_id, [])
-        if c["consent_type"] == "contact"
-    ]
-    c_state = contact_consents[-1]["state"] if contact_consents else None
-
-    gap = next(
-        (
-            g
-            for g in idx.care_gaps_by_patient.get(req.patient_id, [])
-            if g["rule_id"] == req.rule_id
-        ),
-        None,
-    )
+    bundle = _get_bundle()
+    rule = next((r for r in bundle.rules if r["rule_id"] == req.rule_id), None)
 
     try:
-        res = _explanation_service.preview_outreach(
-            OutreachPreviewInput(
-                synthetic_patient_id=req.patient_id,
-                care_gap_id=gap["care_gap_id"] if gap else None,
-                rule_id=req.rule_id,
-                rule_version="1.0.0",
-                channel=req.channel,
-                language=req.language,
-                contact_consent_state=c_state,
-                contact_status=p["contact_status"],
-                is_deceased=p["date_of_death"] is not None,
-            )
+        res = _outreach_service.preview_outreach(
+            patient=p,
+            rule=rule,
+            rule_id=req.rule_id,
+            evaluations=idx.evaluations_by_patient.get(req.patient_id, []),
+            care_gaps=idx.care_gaps_by_patient.get(req.patient_id, []),
+            consents=idx.consents_by_patient.get(req.patient_id, []),
+            channel=req.channel,
+            language=req.language,
         )
+    except OutreachRuleNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     except PrivacyViolationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
