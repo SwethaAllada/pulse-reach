@@ -655,7 +655,7 @@ def test_engine_strict_boolean_rejects_truthy_non_bool_values(engine: Evaluation
             for e in engine.evaluate_patient(p, reference_date=REF_DATE).evaluations
         }
         assert evs["IFHAS-PROG-ELIG-THIQA"].evaluation_status == "insufficient_information"
-        assert evs["IFHAS-PKG-MAJOR-18-39"].evaluation_status == "insufficient_information"
+        assert evs["IFHAS-PKG-MAJOR-40-64"].evaluation_status == "insufficient_information"
 
     # Non-bool ever_smoked=1 on AAA -> insufficient_information
     p_smoke = PatientContext(
