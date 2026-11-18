@@ -225,3 +225,118 @@ class OutreachPreviewOut(BaseModel):
     blocked_reason: str | None
     preview_message: str | None
     disclaimer: str
+
+
+class GuardianOut(BaseModel):
+    guardian_id: str
+    patient_id: str
+    relationship: str
+    given_name: str
+    family_name: str
+    preferred_language: str
+    preferred_channel: str
+    contact_status: str
+    is_synthetic: bool = True
+
+
+class HistoryAvailabilityOut(BaseModel):
+    history_id: str
+    pathway: str
+    history_status: str
+    as_of_date: date
+    note: str | None = None
+    is_synthetic: bool = True
+
+
+class IfhasScreeningOut(BaseModel):
+    screening_id: str
+    rule_id: str
+    rule_version: str
+    profile_id: str
+    appointment_id: str | None = None
+    performed_date: date | None = None
+    completion_status: str
+    results_communicated_date: date | None = None
+    journey_reported_date: date | None = None
+    has_abnormal_finding: bool | None = None
+    is_synthetic: bool = True
+
+
+class WellChildVisitOut(BaseModel):
+    visit_id: str
+    rule_id: str
+    rule_version: str
+    guardian_id: str
+    profile_id: str
+    appointment_id: str | None = None
+    performed_date: date | None = None
+    attendance_status: str
+    is_catch_up_visit: bool
+    is_synthetic: bool = True
+
+
+class ComponentResultOut(BaseModel):
+    component_result_id: str
+    rule_id: str
+    rule_version: str
+    ifhas_screening_id: str | None = None
+    well_child_visit_id: str | None = None
+    item_category: str
+    item_code: str
+    result_status: str
+    performed_date: date | None = None
+    documented_in_record: bool | None = None
+    signature_on_file: bool | None = None
+    refused_by_guardian_id: str | None = None
+    refusal_reason: str | None = None
+    is_synthetic: bool = True
+
+
+class AssessmentOut(BaseModel):
+    assessment_id: str
+    ifhas_screening_id: str | None = None
+    well_child_visit_id: str | None = None
+    instrument: str
+    instrument_version: str | None = None
+    administered_date: date
+    raw_score: float | None = None
+    item_responses: dict[str, Any] | None = None
+    rule_id: str | None = None
+    rule_version: str | None = None
+    is_synthetic: bool = True
+
+
+class PatientHistoryOut(BaseModel):
+    is_synthetic: bool = True
+    patient_id: str
+    guardians: list[GuardianOut] = Field(default_factory=list)
+    history_availability: list[HistoryAvailabilityOut] = Field(default_factory=list)
+    ifhas_screenings: list[IfhasScreeningOut] = Field(default_factory=list)
+    well_child_visits: list[WellChildVisitOut] = Field(default_factory=list)
+    component_results: list[ComponentResultOut] = Field(default_factory=list)
+    assessments: list[AssessmentOut] = Field(default_factory=list)
+
+
+class ConsentRecordOut(BaseModel):
+    consent_id: str
+    patient_id: str
+    guardian_id: str | None = None
+    consent_type: str
+    state: str
+    applies_to: str
+    scope_pathway: str | None = None
+    scope_rule_id: str | None = None
+    scope_rule_version: str | None = None
+    recorded_at: datetime
+    recorded_by: str
+    documented_in_record: bool | None = None
+    signature_on_file: bool | None = None
+    refusal_reason: str | None = None
+    is_synthetic: bool = True
+
+
+class PatientConsentsOut(BaseModel):
+    is_synthetic: bool = True
+    patient_id: str
+    current_states: list[ConsentRecordOut] = Field(default_factory=list)
+    history: list[ConsentRecordOut] = Field(default_factory=list)

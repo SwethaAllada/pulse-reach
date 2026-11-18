@@ -30,6 +30,7 @@ from app.models.synthetic import (
     EvaluationReason,
     EvaluationRun,
     GenerationRun,
+    Guardian,
     HistoryAvailability,
     IfhasScreening,
     Patient,
@@ -37,21 +38,30 @@ from app.models.synthetic import (
     WellChildVisit,
 )
 from app.schemas.v1 import (
+    AssessmentOut,
     CareGapOut,
+    ComponentResultOut,
+    ConsentRecordOut,
     DashboardSummaryOut,
     EvaluationItemOut,
     EvaluationReasonOut,
     FacilityItemOut,
+    GuardianOut,
+    HistoryAvailabilityOut,
+    IfhasScreeningOut,
     PaginatedCareGapsOut,
     PaginatedFacilitiesOut,
     PaginatedPatientsOut,
     PaginatedRulesOut,
+    PatientConsentsOut,
     PatientEvaluationsOut,
+    PatientHistoryOut,
     PatientSummaryOut,
     RuleDetailOut,
     RuleItemOut,
     RulesSummaryOut,
     RuleSummaryOut,
+    WellChildVisitOut,
 )
 from app.services.clinical_loader.parse import (
     ParsedClinicalBundle,
@@ -123,13 +133,17 @@ class ReadRepository(Protocol):
     def get_explanation_inputs(
         self, patient_id: str, rule_id: str
     ) -> tuple[dict[str, Any] | None, dict[str, Any] | None, str, list[dict[str, Any]], list[str]]: ...
+    def get_patient_history(self, patient_id: str) -> PatientHistoryOut | None: ...
+    def get_patient_consents(self, patient_id: str) -> PatientConsentsOut | None: ...
 
 
 @dataclass(frozen=True)
 class _DatasetIndex:
     dataset: SyntheticDataset
     patients_by_id: dict[str, dict[str, Any]]
+    guardians_by_patient: dict[str, list[dict[str, Any]]]
     history_by_patient: dict[str, dict[str, str]]
+    history_availabilities_by_patient: dict[str, list[dict[str, Any]]]
     evaluations_by_patient: dict[str, list[dict[str, Any]]]
     reasons_by_eval: dict[str, list[dict[str, Any]]]
     care_gaps_by_patient: dict[str, list[dict[str, Any]]]
@@ -160,9 +174,15 @@ def get_cached_dataset() -> SyntheticDataset:
 def get_cached_index() -> _DatasetIndex:
     ds = get_cached_dataset()
     patients_by_id = {p["patient_id"]: p for p in ds.patients}
+    guardians_by_patient: dict[str, list[dict[str, Any]]] = {}
+    for g in ds.guardians:
+        guardians_by_patient.setdefault(g["patient_id"], []).append(g)
+
     history_by_patient: dict[str, dict[str, str]] = {}
+    history_availabilities_by_patient: dict[str, list[dict[str, Any]]] = {}
     for h in ds.history_availabilities:
         history_by_patient.setdefault(h["patient_id"], {})[h["pathway"]] = h["history_status"]
+        history_availabilities_by_patient.setdefault(h["patient_id"], []).append(h)
 
     evaluations_by_patient: dict[str, list[dict[str, Any]]] = {}
     for ev in ds.eligibility_evaluations:
@@ -203,7 +223,9 @@ def get_cached_index() -> _DatasetIndex:
     return _DatasetIndex(
         dataset=ds,
         patients_by_id=patients_by_id,
+        guardians_by_patient=guardians_by_patient,
         history_by_patient=history_by_patient,
+        history_availabilities_by_patient=history_availabilities_by_patient,
         evaluations_by_patient=evaluations_by_patient,
         reasons_by_eval=reasons_by_eval,
         care_gaps_by_patient=care_gaps_by_patient,
@@ -750,6 +772,193 @@ class MemoryReadRepository:
             if roq["rule_id"] == rule_id and roq["rule_version"] == r_meta["rule_version"]
         ]
         return ev_match, r_meta, h_status, eval_reasons, rule_oqs
+
+    def get_patient_history(self, patient_id: str) -> PatientHistoryOut | None:
+        idx = get_cached_index()
+        if patient_id not in idx.patients_by_id:
+            return None
+        return _build_patient_history_out(
+            patient_id=patient_id,
+            guardians=idx.guardians_by_patient.get(patient_id, []),
+            history_availabilities=idx.history_availabilities_by_patient.get(patient_id, []),
+            ifhas_screenings=idx.ifhas_by_patient.get(patient_id, []),
+            well_child_visits=idx.wcv_by_patient.get(patient_id, []),
+            component_results=idx.crs_by_patient.get(patient_id, []),
+            assessments=idx.assessments_by_patient.get(patient_id, []),
+        )
+
+    def get_patient_consents(self, patient_id: str) -> PatientConsentsOut | None:
+        idx = get_cached_index()
+        if patient_id not in idx.patients_by_id:
+            return None
+        return _build_patient_consents_out(
+            patient_id=patient_id,
+            consents=idx.consents_by_patient.get(patient_id, []),
+        )
+
+
+def _build_patient_history_out(
+    *,
+    patient_id: str,
+    guardians: list[dict[str, Any]],
+    history_availabilities: list[dict[str, Any]],
+    ifhas_screenings: list[dict[str, Any]],
+    well_child_visits: list[dict[str, Any]],
+    component_results: list[dict[str, Any]],
+    assessments: list[dict[str, Any]],
+) -> PatientHistoryOut:
+    return PatientHistoryOut(
+        is_synthetic=True,
+        patient_id=patient_id,
+        guardians=[
+            GuardianOut(
+                guardian_id=g["guardian_id"],
+                patient_id=g["patient_id"],
+                relationship=g["relationship"],
+                given_name=g["given_name"],
+                family_name=g["family_name"],
+                preferred_language=g["preferred_language"],
+                preferred_channel=g["preferred_channel"],
+                contact_status=g["contact_status"],
+                is_synthetic=bool(g.get("is_synthetic", True)),
+            )
+            for g in sorted(guardians, key=lambda x: x["guardian_id"])
+        ],
+        history_availability=[
+            HistoryAvailabilityOut(
+                history_id=h["history_id"],
+                pathway=h["pathway"],
+                history_status=h["history_status"],
+                as_of_date=h["as_of_date"],
+                note=h.get("note"),
+                is_synthetic=bool(h.get("is_synthetic", True)),
+            )
+            for h in sorted(history_availabilities, key=lambda x: (x["pathway"], x["as_of_date"]))
+        ],
+        ifhas_screenings=[
+            IfhasScreeningOut(
+                screening_id=s["screening_id"],
+                rule_id=s["rule_id"],
+                rule_version=s["rule_version"],
+                profile_id=s["profile_id"],
+                appointment_id=s.get("appointment_id"),
+                performed_date=s.get("performed_date"),
+                completion_status=s["completion_status"],
+                results_communicated_date=s.get("results_communicated_date"),
+                journey_reported_date=s.get("journey_reported_date"),
+                has_abnormal_finding=s.get("has_abnormal_finding"),
+                is_synthetic=bool(s.get("is_synthetic", True)),
+            )
+            for s in sorted(
+                ifhas_screenings,
+                key=lambda x: (x.get("performed_date") or date.min, x["screening_id"]),
+                reverse=True,
+            )
+        ],
+        well_child_visits=[
+            WellChildVisitOut(
+                visit_id=v["visit_id"],
+                rule_id=v["rule_id"],
+                rule_version=v["rule_version"],
+                guardian_id=v["guardian_id"],
+                profile_id=v["profile_id"],
+                appointment_id=v.get("appointment_id"),
+                performed_date=v.get("performed_date"),
+                attendance_status=v["attendance_status"],
+                is_catch_up_visit=bool(v["is_catch_up_visit"]),
+                is_synthetic=bool(v.get("is_synthetic", True)),
+            )
+            for v in sorted(
+                well_child_visits,
+                key=lambda x: (x.get("performed_date") or date.min, x["visit_id"]),
+                reverse=True,
+            )
+        ],
+        component_results=[
+            ComponentResultOut(
+                component_result_id=c["component_result_id"],
+                rule_id=c["rule_id"],
+                rule_version=c["rule_version"],
+                ifhas_screening_id=c.get("ifhas_screening_id"),
+                well_child_visit_id=c.get("well_child_visit_id"),
+                item_category=c["item_category"],
+                item_code=c["item_code"],
+                result_status=c["result_status"],
+                performed_date=c.get("performed_date"),
+                documented_in_record=c.get("documented_in_record"),
+                signature_on_file=c.get("signature_on_file"),
+                refused_by_guardian_id=c.get("refused_by_guardian_id"),
+                refusal_reason=c.get("refusal_reason"),
+                is_synthetic=bool(c.get("is_synthetic", True)),
+            )
+            for c in sorted(component_results, key=lambda x: x["component_result_id"])
+        ],
+        assessments=[
+            AssessmentOut(
+                assessment_id=a["assessment_id"],
+                ifhas_screening_id=a.get("ifhas_screening_id"),
+                well_child_visit_id=a.get("well_child_visit_id"),
+                instrument=a["instrument"],
+                instrument_version=a.get("instrument_version"),
+                administered_date=a["administered_date"],
+                raw_score=float(a["raw_score"]) if a.get("raw_score") is not None else None,
+                item_responses=a.get("item_responses"),
+                rule_id=a.get("rule_id"),
+                rule_version=a.get("rule_version"),
+                is_synthetic=bool(a.get("is_synthetic", True)),
+            )
+            for a in sorted(
+                assessments,
+                key=lambda x: (x["administered_date"], x["assessment_id"]),
+                reverse=True,
+            )
+        ],
+    )
+
+
+def _build_patient_consents_out(
+    *, patient_id: str, consents: list[dict[str, Any]]
+) -> PatientConsentsOut:
+    ordered = sorted(
+        consents,
+        key=lambda c: (c["recorded_at"], c["consent_id"]),
+        reverse=True,
+    )
+    latest_by_scope: dict[tuple[str, str, str | None, str | None], dict[str, Any]] = {}
+    for c in ordered:
+        key = (
+            c["consent_type"],
+            c["applies_to"],
+            c.get("scope_pathway"),
+            c.get("scope_rule_id"),
+        )
+        latest_by_scope.setdefault(key, c)
+
+    def _to_out(c: dict[str, Any]) -> ConsentRecordOut:
+        return ConsentRecordOut(
+            consent_id=c["consent_id"],
+            patient_id=c["patient_id"],
+            guardian_id=c.get("guardian_id"),
+            consent_type=c["consent_type"],
+            state=c["state"],
+            applies_to=c["applies_to"],
+            scope_pathway=c.get("scope_pathway"),
+            scope_rule_id=c.get("scope_rule_id"),
+            scope_rule_version=c.get("scope_rule_version"),
+            recorded_at=c["recorded_at"],
+            recorded_by=c["recorded_by"],
+            documented_in_record=c.get("documented_in_record"),
+            signature_on_file=c.get("signature_on_file"),
+            refusal_reason=c.get("refusal_reason"),
+            is_synthetic=bool(c.get("is_synthetic", True)),
+        )
+
+    return PatientConsentsOut(
+        is_synthetic=True,
+        patient_id=patient_id,
+        current_states=[_to_out(c) for c in latest_by_scope.values()],
+        history=[_to_out(c) for c in ordered],
+    )
 
 
 def _row_to_dict(obj: Any) -> dict[str, Any]:
@@ -1316,3 +1525,106 @@ class PostgresReadRepository:
         except SQLAlchemyError as exc:
             raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
         return _row_to_dict(ev), meta, h_status, eval_reasons, rule_oqs
+
+    def get_patient_history(self, patient_id: str) -> PatientHistoryOut | None:
+        try:
+            gr, _ = self._latest_runs()
+            p = self._session.scalars(
+                select(Patient).where(
+                    Patient.run_id == gr.generation_run_id,
+                    Patient.patient_id == patient_id,
+                )
+            ).first()
+            if p is None:
+                return None
+            guardians = [
+                _row_to_dict(g)
+                for g in self._session.scalars(
+                    select(Guardian).where(
+                        Guardian.run_id == gr.generation_run_id,
+                        Guardian.patient_id == patient_id,
+                    )
+                ).all()
+            ]
+            history_availabilities = [
+                _row_to_dict(h)
+                for h in self._session.scalars(
+                    select(HistoryAvailability).where(
+                        HistoryAvailability.run_id == gr.generation_run_id,
+                        HistoryAvailability.patient_id == patient_id,
+                    )
+                ).all()
+            ]
+            ifhas_screenings = [
+                _row_to_dict(s)
+                for s in self._session.scalars(
+                    select(IfhasScreening).where(
+                        IfhasScreening.run_id == gr.generation_run_id,
+                        IfhasScreening.patient_id == patient_id,
+                    )
+                ).all()
+            ]
+            well_child_visits = [
+                _row_to_dict(v)
+                for v in self._session.scalars(
+                    select(WellChildVisit).where(
+                        WellChildVisit.run_id == gr.generation_run_id,
+                        WellChildVisit.patient_id == patient_id,
+                    )
+                ).all()
+            ]
+            component_results = [
+                _row_to_dict(c)
+                for c in self._session.scalars(
+                    select(ComponentResult).where(
+                        ComponentResult.run_id == gr.generation_run_id,
+                        ComponentResult.patient_id == patient_id,
+                    )
+                ).all()
+            ]
+            assessments = [
+                _row_to_dict(a)
+                for a in self._session.scalars(
+                    select(Assessment).where(
+                        Assessment.run_id == gr.generation_run_id,
+                        Assessment.patient_id == patient_id,
+                    )
+                ).all()
+            ]
+        except SQLAlchemyError as exc:
+            raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
+
+        return _build_patient_history_out(
+            patient_id=patient_id,
+            guardians=guardians,
+            history_availabilities=history_availabilities,
+            ifhas_screenings=ifhas_screenings,
+            well_child_visits=well_child_visits,
+            component_results=component_results,
+            assessments=assessments,
+        )
+
+    def get_patient_consents(self, patient_id: str) -> PatientConsentsOut | None:
+        try:
+            gr, _ = self._latest_runs()
+            p = self._session.scalars(
+                select(Patient).where(
+                    Patient.run_id == gr.generation_run_id,
+                    Patient.patient_id == patient_id,
+                )
+            ).first()
+            if p is None:
+                return None
+            consents = [
+                _row_to_dict(c)
+                for c in self._session.scalars(
+                    select(Consent).where(
+                        Consent.run_id == gr.generation_run_id,
+                        Consent.patient_id == patient_id,
+                    )
+                ).all()
+            ]
+        except SQLAlchemyError as exc:
+            raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
+
+        return _build_patient_consents_out(patient_id=patient_id, consents=consents)

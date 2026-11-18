@@ -33,7 +33,9 @@ from app.schemas.v1 import (
     PaginatedFacilitiesOut,
     PaginatedPatientsOut,
     PaginatedRulesOut,
+    PatientConsentsOut,
     PatientEvaluationsOut,
+    PatientHistoryOut,
     PatientSummaryOut,
     RuleDetailOut,
 )
@@ -97,6 +99,28 @@ def get_patient_evaluations(
     repo: ReadRepository = Depends(get_read_repository),
 ) -> PatientEvaluationsOut:
     res = repo.get_patient_evaluations(patient_id)
+    if res is None:
+        raise HTTPException(status_code=404, detail=f"Synthetic patient '{patient_id}' not found")
+    return res
+
+
+@router.get("/patients/{patient_id}/history", response_model=PatientHistoryOut)
+def get_patient_history(
+    patient_id: str,
+    repo: ReadRepository = Depends(get_read_repository),
+) -> PatientHistoryOut:
+    res = repo.get_patient_history(patient_id)
+    if res is None:
+        raise HTTPException(status_code=404, detail=f"Synthetic patient '{patient_id}' not found")
+    return res
+
+
+@router.get("/patients/{patient_id}/consents", response_model=PatientConsentsOut)
+def get_patient_consents(
+    patient_id: str,
+    repo: ReadRepository = Depends(get_read_repository),
+) -> PatientConsentsOut:
+    res = repo.get_patient_consents(patient_id)
     if res is None:
         raise HTTPException(status_code=404, detail=f"Synthetic patient '{patient_id}' not found")
     return res
