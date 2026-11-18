@@ -843,7 +843,7 @@ class EvaluationEngine:
             ]
             pending_refs = [ref for ref in matching_referrals if ref.status == "pending"]
             if pending_refs:
-                ref = pending_refs[-1]
+                ref = max(pending_refs, key=lambda r: (r.trigger_date, r.referral_id))
                 gap = self._make_care_gap(
                     patient=patient,
                     pathway=pathway,
@@ -863,7 +863,8 @@ class EvaluationEngine:
                 )
 
             if matching_referrals:
-                return _evaluate_non_pending_referral(matching_referrals[-1], _result), []
+                latest_ref = max(matching_referrals, key=lambda r: (r.trigger_date, r.referral_id))
+                return _evaluate_non_pending_referral(latest_ref, _result), []
 
             target_months = (rule.get("spec") or {}).get("administered_at_months") or []
             if age_months in target_months:
@@ -925,7 +926,7 @@ class EvaluationEngine:
         if matching_referrals:
             pending_refs = [ref for ref in matching_referrals if ref.status == "pending"]
             if pending_refs:
-                ref = pending_refs[-1]
+                ref = max(pending_refs, key=lambda r: (r.trigger_date, r.referral_id))
                 t_val = rule.get("timing_value")
                 t_unit = rule.get("timing_unit")
                 deadline_days = 7
@@ -948,7 +949,8 @@ class EvaluationEngine:
                     )
                     return _result("due", next_due_date=ref.trigger_date), [gap]
                 return _result("upcoming", next_due_date=ref.trigger_date), []
-            return _evaluate_non_pending_referral(matching_referrals[-1], _result), []
+            latest_ref = max(matching_referrals, key=lambda r: (r.trigger_date, r.referral_id))
+            return _evaluate_non_pending_referral(latest_ref, _result), []
 
         if age_years is None or age_months is None:
             r = FiredReason(

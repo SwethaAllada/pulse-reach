@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db.session import DatabaseNotConfigured, get_engine
@@ -36,7 +37,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         seed_database(seed=args.seed, total_patients=args.total_patients, replace=not args.no_replace)
-    except DatabaseNotConfigured as exc:
+    except (DatabaseNotConfigured, SQLAlchemyError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
     print(f"Seeded clinical bundle + {args.total_patients} synthetic patients (seed={args.seed}).")

@@ -9,7 +9,7 @@ from functools import lru_cache
 from typing import Any, Protocol
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -862,15 +862,22 @@ class PostgresReadRepository:
                     HistoryAvailability.pathway == pathway,
                 )
                 stmt = stmt.where(Patient.patient_id.in_(subq))
-            rows = self._session.scalars(stmt.order_by(Patient.patient_id)).all()
-            page = rows[offset : offset + limit]
+            total = int(
+                self._session.scalar(
+                    select(func.count()).select_from(stmt.subquery())
+                )
+                or 0
+            )
+            page = self._session.scalars(
+                stmt.order_by(Patient.patient_id).limit(limit).offset(offset)
+            ).all()
             hmap = self._patient_history_map([p.patient_id for p in page])
         except SQLAlchemyError as exc:
             raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
 
         return PaginatedPatientsOut(
             is_synthetic=True,
-            total=len(rows),
+            total=total,
             limit=limit,
             offset=offset,
             items=[
@@ -995,7 +1002,9 @@ class PostgresReadRepository:
             referral_rows = [
                 _row_to_dict(r)
                 for r in self._session.scalars(
-                    select(Referral).where(Referral.patient_id == patient_id)
+                    select(Referral)
+                    .where(Referral.patient_id == patient_id)
+                    .order_by(Referral.trigger_date, Referral.referral_id)
                 ).all()
             ]
             consent_rows = [
@@ -1171,14 +1180,18 @@ class PostgresReadRepository:
                 stmt = stmt.where(CareGap.gap_type == gap_type)
             if rule_id is not None:
                 stmt = stmt.where(CareGap.rule_id == rule_id)
-            rows = self._session.scalars(stmt.order_by(CareGap.care_gap_id)).all()
-            page = rows[offset : offset + limit]
+            total = int(
+                self._session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+            )
+            page = self._session.scalars(
+                stmt.order_by(CareGap.care_gap_id).limit(limit).offset(offset)
+            ).all()
         except SQLAlchemyError as exc:
             raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
 
         return PaginatedCareGapsOut(
             is_synthetic=True,
-            total=len(rows),
+            total=total,
             limit=limit,
             offset=offset,
             items=[_build_care_gap_out(_row_to_dict(g)) for g in page],
@@ -1186,19 +1199,20 @@ class PostgresReadRepository:
 
     def list_facilities(self, limit: int, offset: int) -> PaginatedFacilitiesOut:
         try:
-            rows = self._session.scalars(
-                select(Facility)
-                .where(
-                    Facility.identity_status == "identified",
-                    Facility.geo_quality.in_(("ok", "swapped_repaired")),
-                    Facility.license_status_raw.in_(("Active", "Temporary Closure")),
-                )
-                .order_by(Facility.facility_id)
+            stmt = select(Facility).where(
+                Facility.identity_status == "identified",
+                Facility.geo_quality == "ok",
+                Facility.license_status_raw.in_(("Active", "Temporary Closure")),
+            )
+            total = int(
+                self._session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+            )
+            page = self._session.scalars(
+                stmt.order_by(Facility.facility_id).limit(limit).offset(offset)
             ).all()
         except SQLAlchemyError as exc:
             raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
 
-        page = rows[offset : offset + limit]
         items = [
             FacilityItemOut(
                 facility_id=f.facility_id,
@@ -1214,7 +1228,7 @@ class PostgresReadRepository:
         ]
         return PaginatedFacilitiesOut(
             governance_notice=_FACILITY_NOTICE,
-            total=len(rows),
+            total=total,
             limit=limit,
             offset=offset,
             items=items,
@@ -1292,6 +1306,13 @@ class PostgresReadRepository:
                     )
                 ).all()
             ]
+            std = self._session.scalars(
+                select(Standard).where(Standard.standard_id == r_meta.standard_id)
+            ).first()
+            meta = _row_to_dict(r_meta)
+            if std is not None:
+                meta["source_name"] = std.source_name
+                meta["source_version"] = std.source_version
         except SQLAlchemyError as exc:
             raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
-        return _row_to_dict(ev), self.get_rule_meta(rule_id), h_status, eval_reasons, rule_oqs
+        return _row_to_dict(ev), meta, h_status, eval_reasons, rule_oqs
