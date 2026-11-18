@@ -189,6 +189,38 @@ class PatientEvaluationSummary:
     care_gaps: tuple[CareGapFact, ...]
 
 
+def _evaluate_non_pending_referral(
+    latest_ref: ReferralFact,
+    result_fn: Any,
+) -> RuleEvaluationResult:
+    """Map non-pending referral statuses without ever falsely marking incomplete referrals completed."""
+    if latest_ref.status == "completed":
+        if latest_ref.completed_date is None:
+            r = FiredReason(
+                reason_code="missing_completion_evidence",
+                guard_id="GUARD-CONFLICTING-RECORDS",
+                detail="Referral is marked completed without a documented completion date.",
+            )
+            return result_fn("requires_clinical_review", r.reason_code, (r,))
+        return result_fn("completed", last_completed_date=latest_ref.completed_date)
+    if latest_ref.status == "cancelled":
+        r = FiredReason(
+            reason_code="referral_cancelled",
+            detail="Referral was cancelled; requires clinical review.",
+        )
+        return result_fn("requires_clinical_review", r.reason_code, (r,))
+    if latest_ref.status in ("initiated", "scheduled"):
+        return result_fn(
+            "upcoming",
+            next_due_date=latest_ref.initiated_date or latest_ref.trigger_date,
+        )
+    r = FiredReason(
+        reason_code="referral_status_unresolved",
+        detail=f"Referral status '{latest_ref.status}' requires clinical review.",
+    )
+    return result_fn("requires_clinical_review", r.reason_code, (r,))
+
+
 class EvaluationEngine:
     """Deterministic clinical evaluation engine backed by `ParsedClinicalBundle`."""
 
@@ -830,6 +862,9 @@ class EvaluationEngine:
                     [],
                 )
 
+            if matching_referrals:
+                return _evaluate_non_pending_referral(matching_referrals[-1], _result), []
+
             target_months = (rule.get("spec") or {}).get("administered_at_months") or []
             if age_months in target_months:
                 if history_state == "not_available":
@@ -913,16 +948,7 @@ class EvaluationEngine:
                     )
                     return _result("due", next_due_date=ref.trigger_date), [gap]
                 return _result("upcoming", next_due_date=ref.trigger_date), []
-            latest_ref = matching_referrals[-1]
-            return (
-                _result(
-                    "completed",
-                    last_completed_date=latest_ref.completed_date
-                    or latest_ref.initiated_date
-                    or latest_ref.trigger_date,
-                ),
-                [],
-            )
+            return _evaluate_non_pending_referral(matching_referrals[-1], _result), []
 
         if age_years is None or age_months is None:
             r = FiredReason(

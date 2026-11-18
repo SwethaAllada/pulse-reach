@@ -526,3 +526,54 @@ def test_workflow_results_communication_10d_and_journey_completion_15d(engine):
     assert "IFHAS-WF-RESULTS-COMMUNICATION-10D" not in gaps_ok
     assert "IFHAS-WF-JOURNEY-COMPLETION-15D" not in gaps_ok
 
+
+@pytest.mark.parametrize(
+    ("status", "initiated_date", "completed_date", "expected_eval_status", "expected_reason"),
+    [
+        ("pending", None, None, "due", None),
+        ("initiated", date(2026, 10, 25), None, "upcoming", None),
+        ("initiated", None, None, "upcoming", None),
+        ("scheduled", date(2026, 10, 26), None, "upcoming", None),
+        ("scheduled", None, None, "upcoming", None),
+        ("cancelled", date(2026, 10, 26), None, "requires_clinical_review", "referral_cancelled"),
+        ("completed", date(2026, 10, 26), date(2026, 11, 2), "completed", None),
+        ("completed", date(2026, 10, 26), None, "requires_clinical_review", "missing_completion_evidence"),
+    ],
+)
+def test_referral_status_mapping_never_falsely_completes(
+    engine: EvaluationEngine,
+    status: str,
+    initiated_date: date | None,
+    completed_date: date | None,
+    expected_eval_status: str,
+    expected_reason: str | None,
+):
+    patient = PatientContext(
+        patient_id="SYNTH-PAT-000910",
+        date_of_birth=date(1980, 5, 10),
+        sex="female",
+        thiqa_member=True,
+        ever_smoked=False,
+        history_by_pathway={"ifhas": "available"},
+        referrals=(
+            ReferralFact(
+                referral_id="SYNTH-REF-000910",
+                trigger_rule_id="IFHAS-WF-REFERRAL-15WD",
+                trigger_rule_version="1.0.0",
+                trigger_date=date(2026, 10, 1),
+                initiated_date=initiated_date,
+                completed_date=completed_date,
+                status=status,
+            ),
+        ),
+    )
+    res = engine.evaluate_patient(patient, reference_date=REF_DATE)
+    ev = {e.rule_id: e for e in res.evaluations}["IFHAS-WF-REFERRAL-15WD"]
+    assert ev.evaluation_status == expected_eval_status
+    if expected_reason is not None:
+        assert ev.reason_code == expected_reason
+        assert any(r.reason_code == expected_reason for r in ev.reasons)
+    if expected_eval_status == "completed":
+        assert ev.last_completed_date == completed_date
+
+
