@@ -110,6 +110,24 @@
   --ink-review: #b89af0;
   --ink-insufficient: #e0b04f;
   --ink-unknown: #9aa4a0;
+
+  /* Population segments (evidence state of a person within a programme). */
+  --ink-segment-gap: var(--ink-due);
+  --ink-segment-available: var(--ink-accent-2);
+  --ink-segment-partial: var(--ink-insufficient);
+  --ink-segment-unavailable: var(--ink-unknown);
+  --ink-programme-ifhas: var(--ink-accent);
+  --ink-programme-well-child: var(--ink-review);
+}
+
+/* Theme-aware segment / programme colours for paper surfaces (resolve per [data-theme]). */
+:root {
+  --segment-gap: var(--status-due);
+  --segment-available: var(--status-upcoming);
+  --segment-partial: var(--status-insufficient);
+  --segment-unavailable: var(--status-unknown);
+  --programme-ifhas: var(--cohort-1);
+  --programme-well-child: var(--cohort-4);
 }
 
 @theme inline {
@@ -159,6 +177,12 @@
   --color-ink-review: var(--ink-review);
   --color-ink-insufficient: var(--ink-insufficient);
   --color-ink-unknown: var(--ink-unknown);
+  --color-segment-gap: var(--segment-gap);
+  --color-segment-available: var(--segment-available);
+  --color-segment-partial: var(--segment-partial);
+  --color-segment-unavailable: var(--segment-unavailable);
+  --color-programme-ifhas: var(--programme-ifhas);
+  --color-programme-well-child: var(--programme-well-child);
   --font-sans: var(--font-geist-sans);
   --font-display: var(--font-space-grotesk);
   --font-mono: var(--font-geist-mono);

@@ -1,26 +1,22 @@
-import { COHORTS } from "./constellation-visualization";
+import { SEGMENT_META, SEGMENT_ORDER } from "@/lib/population/model";
+import { SegmentGlyph } from "@/components/population/segment-glyph";
 
+/** Shape + colour key for the constellation marks (ink surface). */
 export function CohortLegend() {
   return (
     <figure>
-      <ul className="flex flex-col gap-2.5">
-        {COHORTS.map((c) => (
-          <li key={c.id} className="flex items-center gap-2.5 text-sm">
-            <span
-              aria-hidden="true"
-              className="size-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: c.colorVar }}
-            />
-            <span className="text-ink-text">{c.label}</span>
-            <span className="ml-auto font-mono text-xs tabular-nums text-ink-muted">
-              {c.count}
-            </span>
+      <ul className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Constellation legend">
+        {SEGMENT_ORDER.map((seg) => (
+          <li key={seg} className="flex items-center gap-2 text-xs text-ink-muted">
+            <SegmentGlyph segment={seg} surface="ink" size={12} />
+            {SEGMENT_META[seg].label}
           </li>
         ))}
       </ul>
-      <figcaption className="mt-4 border-t border-ink-line pt-3 text-[11px] leading-relaxed text-ink-faint">
-        Each point is one synthetic person. Clusters are labelled cohort territories; positions and
-        counts are illustrative demo values, not statistics or clinical relationships.
+      <figcaption className="mt-2 text-[11px] leading-relaxed text-ink-faint">
+        Each mark is one synthetic person. Dashed territories are programmes; clusters are evidence
+        segments sized by real head-count. Position within a cluster is a fixed pattern and implies
+        no clinical similarity or risk.
       </figcaption>
     </figure>
   );

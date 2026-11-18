@@ -6,7 +6,7 @@ export function SyntheticBanner() {
     <div className="flex items-center justify-center gap-2 border-b border-border bg-surface-sunken px-4 py-1.5 text-center">
       <FlaskConical size={13} aria-hidden="true" className="shrink-0 text-faint" />
       <p className="text-[11px] font-medium text-faint">
-        Synthetic demonstration data — no real people. Illustrative values only.
+        Synthetic demonstration data — no real people. Not clinically validated.
       </p>
     </div>
   );
