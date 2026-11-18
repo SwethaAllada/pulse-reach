@@ -1,4 +1,6 @@
-from pydantic import SecretStr
+from typing import Literal
+
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -6,6 +8,15 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     app_name: str = "PulseReach API"
+    # Explicit data source for read APIs: 'memory' (default demo) or 'db' (PostgreSQL).
+    data_source: Literal["memory", "db"] = "memory"
+
+    @field_validator("data_source", mode="before")
+    @classmethod
+    def _normalize_data_source(cls, v: object) -> object:
+        if isinstance(v, str):
+            return v.strip().lower()
+        return v
     # No default: credentials come from the environment (.env is git-ignored).
     # When unset the API still starts; database features report "not configured".
     database_url: SecretStr | None = None
