@@ -51,6 +51,8 @@ class PatientSummaryOut(BaseModel):
     contact_status: str
     date_of_death: date | None
     history_by_pathway: dict[str, str]
+    open_care_gaps_count: int = 0
+    evaluation_summary: dict[str, int] = Field(default_factory=dict)
 
 
 class PaginatedPatientsOut(BaseModel):

@@ -116,3 +116,61 @@ def test_post_evaluations_includes_evidence_trace_with_custom_look_ahead():
     assert wcv18["source_reference"]
     assert wcv18["reason_detail"]
     assert "age_months" in wcv18["input_snapshot"]
+
+
+# ---------------------------------------------------------------------------
+# T-06: People search, sorting, filters, and per-person roll-up
+# ---------------------------------------------------------------------------
+
+
+def test_patients_search_sort_filters_and_unknown_param_rejection():
+    # Search by synthetic ID
+    by_id = client.get("/api/v1/patients?q=SYNTH-PAT-000001")
+    assert by_id.status_code == 200
+    assert by_id.json()["total"] == 1
+    p1 = by_id.json()["items"][0]
+    assert p1["patient_id"] == "SYNTH-PAT-000001"
+    assert "open_care_gaps_count" in p1
+    assert "evaluation_summary" in p1
+    assert isinstance(p1["evaluation_summary"], dict)
+
+    # Search by synthetic family/given name
+    by_name = client.get(f"/api/v1/patients?q={p1['given_name']}")
+    assert by_name.status_code == 200
+    assert any(it["patient_id"] == "SYNTH-PAT-000001" for it in by_name.json()["items"])
+
+    # Filter by evaluation_status & has_open_care_gaps
+    filtered = client.get(
+        "/api/v1/patients?evaluation_status=due&has_open_care_gaps=true&limit=10"
+    )
+    assert filtered.status_code == 200
+    f_body = filtered.json()
+    assert f_body["total"] > 0
+    assert all(it["open_care_gaps_count"] > 0 for it in f_body["items"])
+    assert all(it["evaluation_summary"].get("due", 0) > 0 for it in f_body["items"])
+
+    # Filter by history_status=not_available
+    missing_h = client.get("/api/v1/patients?history_status=not_available&limit=10")
+    assert missing_h.status_code == 200
+    assert missing_h.json()["total"] > 0
+    assert all(
+        "not_available" in it["history_by_pathway"].values()
+        for it in missing_h.json()["items"]
+    )
+
+    # Filter by age_band=child
+    children = client.get("/api/v1/patients?age_band=child&limit=10")
+    assert children.status_code == 200
+    assert children.json()["total"] > 0
+
+    # Stable pagination across pages when sorting by open_gaps desc
+    p_page1 = client.get("/api/v1/patients?sort_by=open_gaps&sort_dir=desc&limit=5&offset=0").json()
+    p_page2 = client.get("/api/v1/patients?sort_by=open_gaps&sort_dir=desc&limit=5&offset=5").json()
+    ids1 = [it["patient_id"] for it in p_page1["items"]]
+    ids2 = [it["patient_id"] for it in p_page2["items"]]
+    assert len(set(ids1) & set(ids2)) == 0
+    gaps_seq = [it["open_care_gaps_count"] for it in p_page1["items"] + p_page2["items"]]
+    assert gaps_seq == sorted(gaps_seq, reverse=True)
+
+    # Reject unsupported query parameters -> 422
+    assert client.get("/api/v1/patients?unknown_param=123").status_code == 422

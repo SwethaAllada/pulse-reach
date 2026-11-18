@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.core.config import settings
 from app.db.deps import get_db_session
@@ -72,17 +72,72 @@ def get_dashboard_summary(
     return repo.get_dashboard_summary()
 
 
+_ALLOWED_PATIENTS_QUERY_PARAMS = frozenset(
+    {
+        "limit",
+        "offset",
+        "sex",
+        "region_id",
+        "pathway",
+        "q",
+        "sort_by",
+        "sort_dir",
+        "evaluation_status",
+        "has_open_care_gaps",
+        "history_status",
+        "age_band",
+    }
+)
+
+
 @router.get("/patients", response_model=PaginatedPatientsOut)
 def list_patients(
+    request: Request,
     limit: int = Query(default=25, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     sex: Literal["female", "male"] | None = Query(default=None),
     region_id: int | None = Query(default=None, ge=1, le=3),
     pathway: Literal["ifhas", "well_child"] | None = Query(default=None),
+    q: str | None = Query(default=None),
+    sort_by: Literal["patient_id", "family_name", "age", "open_gaps"] = Query(default="patient_id"),
+    sort_dir: Literal["asc", "desc"] = Query(default="asc"),
+    evaluation_status: Literal[
+        "eligible",
+        "not_eligible",
+        "due",
+        "upcoming",
+        "overdue",
+        "completed",
+        "unknown",
+        "insufficient_information",
+        "requires_clinical_review",
+    ] | None = Query(default=None),
+    has_open_care_gaps: bool | None = Query(default=None),
+    history_status: Literal["available", "partial", "not_available"] | None = Query(default=None),
+    age_band: Literal["child", "adult_18_39", "adult_40_59", "adult_60_plus"] | None = Query(
+        default=None
+    ),
     repo: ReadRepository = Depends(get_read_repository),
 ) -> PaginatedPatientsOut:
+    extra = set(request.query_params.keys()) - _ALLOWED_PATIENTS_QUERY_PARAMS
+    if extra:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unsupported query parameters: {sorted(extra)}",
+        )
     return repo.list_patients(
-        limit=limit, offset=offset, sex=sex, region_id=region_id, pathway=pathway
+        limit=limit,
+        offset=offset,
+        sex=sex,
+        region_id=region_id,
+        pathway=pathway,
+        q=q,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        evaluation_status=evaluation_status,
+        has_open_care_gaps=has_open_care_gaps,
+        history_status=history_status,
+        age_band=age_band,
     )
 
 

@@ -9,7 +9,7 @@ from functools import lru_cache
 from typing import Any, Protocol
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -105,6 +105,13 @@ class ReadRepository(Protocol):
         sex: str | None,
         region_id: int | None,
         pathway: str | None,
+        q: str | None = None,
+        sort_by: str = "patient_id",
+        sort_dir: str = "asc",
+        evaluation_status: str | None = None,
+        has_open_care_gaps: bool | None = None,
+        history_status: str | None = None,
+        age_band: str | None = None,
     ) -> PaginatedPatientsOut: ...
     def get_patient(self, patient_id: str) -> PatientSummaryOut | None: ...
     def get_patient_evaluations(self, patient_id: str) -> PatientEvaluationsOut | None: ...
@@ -399,8 +406,26 @@ def build_safe_input_snapshot(
     }
 
 
+def _age_band_bounds(age_band: str, ref_date: date) -> tuple[date | None, date | None]:
+    """Return `(dob_gt, dob_lte)` bounds for an age band relative to `ref_date`."""
+    from app.services.evaluation.engine import _add_years
+
+    if age_band == "child":
+        return _add_years(ref_date, -18), None
+    if age_band == "adult_18_39":
+        return _add_years(ref_date, -40), _add_years(ref_date, -18)
+    if age_band == "adult_40_59":
+        return _add_years(ref_date, -60), _add_years(ref_date, -40)
+    if age_band == "adult_60_plus":
+        return None, _add_years(ref_date, -60)
+    return None, None
+
+
 def _build_patient_summary(
-    p: dict[str, Any], history_map: dict[str, str]
+    p: dict[str, Any],
+    history_map: dict[str, str],
+    open_care_gaps_count: int = 0,
+    evaluation_summary: dict[str, int] | None = None,
 ) -> PatientSummaryOut:
     return PatientSummaryOut(
         patient_id=p["patient_id"],
@@ -421,6 +446,8 @@ def _build_patient_summary(
         contact_status=p["contact_status"],
         date_of_death=p["date_of_death"],
         history_by_pathway=history_map,
+        open_care_gaps_count=open_care_gaps_count,
+        evaluation_summary=evaluation_summary or {},
     )
 
 
@@ -604,8 +631,30 @@ class MemoryReadRepository:
         sex: str | None,
         region_id: int | None,
         pathway: str | None,
+        q: str | None = None,
+        sort_by: str = "patient_id",
+        sort_dir: str = "asc",
+        evaluation_status: str | None = None,
+        has_open_care_gaps: bool | None = None,
+        history_status: str | None = None,
+        age_band: str | None = None,
     ) -> PaginatedPatientsOut:
         idx = get_cached_index()
+        ref_date = idx.dataset.evaluation_run["reference_date"]
+        dob_gt, dob_lte = _age_band_bounds(age_band, ref_date) if age_band else (None, None)
+        q_norm = q.strip().lower() if q else None
+
+        open_gaps_map: dict[str, int] = {}
+        eval_summary_map: dict[str, dict[str, int]] = {}
+        for p in idx.dataset.patients:
+            pid = p["patient_id"]
+            open_gaps_map[pid] = sum(
+                1 for g in idx.care_gaps_by_patient.get(pid, []) if g["status"] == "open"
+            )
+            eval_summary_map[pid] = dict(
+                Counter(e["evaluation_status"] for e in idx.evaluations_by_patient.get(pid, []))
+            )
+
         filtered = idx.dataset.patients
         if sex is not None:
             filtered = [p for p in filtered if p["sex"] == sex]
@@ -615,6 +664,70 @@ class MemoryReadRepository:
             filtered = [
                 p for p in filtered if pathway in idx.history_by_patient.get(p["patient_id"], {})
             ]
+        if q_norm:
+            filtered = [
+                p
+                for p in filtered
+                if q_norm in p["patient_id"].lower()
+                or q_norm in p["emirates_id_synthetic"].lower()
+                or q_norm in p["given_name"].lower()
+                or q_norm in p["family_name"].lower()
+            ]
+        if evaluation_status is not None:
+            filtered = [
+                p
+                for p in filtered
+                if eval_summary_map[p["patient_id"]].get(evaluation_status, 0) > 0
+            ]
+        if has_open_care_gaps is not None:
+            filtered = [
+                p
+                for p in filtered
+                if (open_gaps_map[p["patient_id"]] > 0) is has_open_care_gaps
+            ]
+        if history_status is not None:
+            filtered = [
+                p
+                for p in filtered
+                if history_status in idx.history_by_patient.get(p["patient_id"], {}).values()
+            ]
+        if age_band is not None:
+            filtered = [
+                p
+                for p in filtered
+                if p["date_of_birth"] is not None
+                and (dob_gt is None or p["date_of_birth"] > dob_gt)
+                and (dob_lte is None or p["date_of_birth"] <= dob_lte)
+            ]
+
+        reverse = sort_dir == "desc"
+        if sort_by == "family_name":
+            filtered = sorted(
+                filtered,
+                key=lambda p: (p["family_name"].lower(), p["given_name"].lower(), p["patient_id"]),
+                reverse=reverse,
+            )
+        elif sort_by == "age":
+            # Older patients have earlier date_of_birth; missing DOB goes last
+            filtered = sorted(
+                [p for p in filtered if p["date_of_birth"] is not None],
+                key=lambda p: (p["date_of_birth"], p["patient_id"]),
+                reverse=not reverse,
+            ) + sorted(
+                [p for p in filtered if p["date_of_birth"] is None],
+                key=lambda p: p["patient_id"],
+            )
+        elif sort_by == "open_gaps":
+            filtered = sorted(
+                filtered,
+                key=lambda p: (
+                    open_gaps_map[p["patient_id"]] if not reverse else -open_gaps_map[p["patient_id"]],
+                    p["patient_id"],
+                ),
+            )
+        else:
+            filtered = sorted(filtered, key=lambda p: p["patient_id"], reverse=reverse)
+
         page = filtered[offset : offset + limit]
         return PaginatedPatientsOut(
             is_synthetic=True,
@@ -622,7 +735,12 @@ class MemoryReadRepository:
             limit=limit,
             offset=offset,
             items=[
-                _build_patient_summary(p, idx.history_by_patient.get(p["patient_id"], {}))
+                _build_patient_summary(
+                    p,
+                    idx.history_by_patient.get(p["patient_id"], {}),
+                    open_care_gaps_count=open_gaps_map[p["patient_id"]],
+                    evaluation_summary=eval_summary_map[p["patient_id"]],
+                )
                 for p in page
             ],
         )
@@ -632,7 +750,18 @@ class MemoryReadRepository:
         p = idx.patients_by_id.get(patient_id)
         if p is None:
             return None
-        return _build_patient_summary(p, idx.history_by_patient.get(patient_id, {}))
+        open_gaps = sum(
+            1 for g in idx.care_gaps_by_patient.get(patient_id, []) if g["status"] == "open"
+        )
+        eval_summary = dict(
+            Counter(e["evaluation_status"] for e in idx.evaluations_by_patient.get(patient_id, []))
+        )
+        return _build_patient_summary(
+            p,
+            idx.history_by_patient.get(patient_id, {}),
+            open_care_gaps_count=open_gaps,
+            evaluation_summary=eval_summary,
+        )
 
     def get_patient_evaluations(self, patient_id: str) -> PatientEvaluationsOut | None:
         bundle = get_cached_bundle()
@@ -1186,6 +1315,38 @@ class PostgresReadRepository:
             out.setdefault(h.patient_id, {})[h.pathway] = h.history_status
         return out
 
+    def _patient_rollups(
+        self, patient_ids: list[str], eval_run_id: str
+    ) -> tuple[dict[str, int], dict[str, dict[str, int]]]:
+        if not patient_ids:
+            return {}, {}
+        open_gaps: dict[str, int] = {}
+        for pid, cnt in self._session.execute(
+            select(CareGap.patient_id, func.count(CareGap.care_gap_id))
+            .where(CareGap.patient_id.in_(patient_ids), CareGap.status == "open")
+            .group_by(CareGap.patient_id)
+        ).all():
+            open_gaps[pid] = int(cnt)
+
+        eval_summaries: dict[str, dict[str, int]] = {}
+        for pid, st, cnt in self._session.execute(
+            select(
+                EligibilityEvaluation.patient_id,
+                EligibilityEvaluation.evaluation_status,
+                func.count(EligibilityEvaluation.evaluation_id),
+            )
+            .where(
+                EligibilityEvaluation.patient_id.in_(patient_ids),
+                EligibilityEvaluation.evaluation_run_id == eval_run_id,
+            )
+            .group_by(
+                EligibilityEvaluation.patient_id,
+                EligibilityEvaluation.evaluation_status,
+            )
+        ).all():
+            eval_summaries.setdefault(pid, {})[st] = int(cnt)
+        return open_gaps, eval_summaries
+
     def list_patients(
         self,
         limit: int,
@@ -1193,9 +1354,16 @@ class PostgresReadRepository:
         sex: str | None,
         region_id: int | None,
         pathway: str | None,
+        q: str | None = None,
+        sort_by: str = "patient_id",
+        sort_dir: str = "asc",
+        evaluation_status: str | None = None,
+        has_open_care_gaps: bool | None = None,
+        history_status: str | None = None,
+        age_band: str | None = None,
     ) -> PaginatedPatientsOut:
         try:
-            gr, _ = self._latest_runs()
+            gr, er = self._latest_runs()
             stmt = select(Patient).where(Patient.run_id == gr.run_id)
             if sex is not None:
                 stmt = stmt.where(Patient.sex == sex)
@@ -1207,16 +1375,86 @@ class PostgresReadRepository:
                     HistoryAvailability.pathway == pathway,
                 )
                 stmt = stmt.where(Patient.patient_id.in_(subq))
+            if q and q.strip():
+                pat = f"%{q.strip()}%"
+                stmt = stmt.where(
+                    or_(
+                        Patient.patient_id.ilike(pat),
+                        Patient.emirates_id_synthetic.ilike(pat),
+                        Patient.given_name.ilike(pat),
+                        Patient.family_name.ilike(pat),
+                    )
+                )
+            if evaluation_status is not None:
+                ev_subq = select(EligibilityEvaluation.patient_id).where(
+                    EligibilityEvaluation.evaluation_run_id == er.evaluation_run_id,
+                    EligibilityEvaluation.evaluation_status == evaluation_status,
+                )
+                stmt = stmt.where(Patient.patient_id.in_(ev_subq))
+            if has_open_care_gaps is not None:
+                gap_subq = select(CareGap.patient_id).where(CareGap.status == "open")
+                if has_open_care_gaps:
+                    stmt = stmt.where(Patient.patient_id.in_(gap_subq))
+                else:
+                    stmt = stmt.where(~Patient.patient_id.in_(gap_subq))
+            if history_status is not None:
+                hs_subq = select(HistoryAvailability.patient_id).where(
+                    HistoryAvailability.run_id == gr.run_id,
+                    HistoryAvailability.history_status == history_status,
+                )
+                stmt = stmt.where(Patient.patient_id.in_(hs_subq))
+            if age_band is not None:
+                dob_gt, dob_lte = _age_band_bounds(age_band, er.reference_date)
+                stmt = stmt.where(Patient.date_of_birth.is_not(None))
+                if dob_gt is not None:
+                    stmt = stmt.where(Patient.date_of_birth > dob_gt)
+                if dob_lte is not None:
+                    stmt = stmt.where(Patient.date_of_birth <= dob_lte)
+
             total = int(
                 self._session.scalar(
                     select(func.count()).select_from(stmt.subquery())
                 )
                 or 0
             )
+            desc = sort_dir == "desc"
+            if sort_by == "family_name":
+                order_cols = [
+                    Patient.family_name.desc() if desc else Patient.family_name.asc(),
+                    Patient.given_name.desc() if desc else Patient.given_name.asc(),
+                    Patient.patient_id.desc() if desc else Patient.patient_id.asc(),
+                ]
+            elif sort_by == "age":
+                order_cols = [
+                    Patient.date_of_birth.is_(None).asc(),
+                    Patient.date_of_birth.asc() if desc else Patient.date_of_birth.desc(),
+                    Patient.patient_id.asc(),
+                ]
+            elif sort_by == "open_gaps":
+                gap_cnt = (
+                    select(func.count(CareGap.care_gap_id))
+                    .where(
+                        CareGap.patient_id == Patient.patient_id,
+                        CareGap.status == "open",
+                    )
+                    .correlate(Patient)
+                    .scalar_subquery()
+                )
+                order_cols = [
+                    gap_cnt.desc() if desc else gap_cnt.asc(),
+                    Patient.patient_id.asc(),
+                ]
+            else:
+                order_cols = [
+                    Patient.patient_id.desc() if desc else Patient.patient_id.asc()
+                ]
+
             page = self._session.scalars(
-                stmt.order_by(Patient.patient_id).limit(limit).offset(offset)
+                stmt.order_by(*order_cols).limit(limit).offset(offset)
             ).all()
-            hmap = self._patient_history_map([p.patient_id for p in page])
+            pids = [p.patient_id for p in page]
+            hmap = self._patient_history_map(pids)
+            open_gaps_map, eval_summaries = self._patient_rollups(pids, er.evaluation_run_id)
         except SQLAlchemyError as exc:
             raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
 
@@ -1226,7 +1464,13 @@ class PostgresReadRepository:
             limit=limit,
             offset=offset,
             items=[
-                _build_patient_summary(_row_to_dict(p), hmap.get(p.patient_id, {})) for p in page
+                _build_patient_summary(
+                    _row_to_dict(p),
+                    hmap.get(p.patient_id, {}),
+                    open_care_gaps_count=open_gaps_map.get(p.patient_id, 0),
+                    evaluation_summary=eval_summaries.get(p.patient_id, {}),
+                )
+                for p in page
             ],
         )
 
@@ -1237,10 +1481,19 @@ class PostgresReadRepository:
             ).first()
             if p is None:
                 return None
+            _, er = self._latest_runs()
             hmap = self._patient_history_map([patient_id])
+            open_gaps_map, eval_summaries = self._patient_rollups(
+                [patient_id], er.evaluation_run_id
+            )
         except SQLAlchemyError as exc:
             raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
-        return _build_patient_summary(_row_to_dict(p), hmap.get(patient_id, {}))
+        return _build_patient_summary(
+            _row_to_dict(p),
+            hmap.get(patient_id, {}),
+            open_care_gaps_count=open_gaps_map.get(patient_id, 0),
+            evaluation_summary=eval_summaries.get(patient_id, {}),
+        )
 
     def get_patient_evaluations(self, patient_id: str) -> PatientEvaluationsOut | None:
         try:
