@@ -16,15 +16,25 @@
 |---|---|---|
 | `GET /health` | Service health check | `{"status": "ok"}` |
 | `GET /health/db` | Database connectivity status (`200` when connected, `503` when degraded) | `{"status": "ok" \| "degraded", "database": "connected" \| "not_configured" \| "unreachable"}` |
-| `GET /api/v1/dashboard/summary` | Population, evaluation-status, care-gap, and clinical rule summary | `DashboardSummaryOut` |
-| `GET /api/v1/patients` | Paginated synthetic patient list (`limit`, `offset`, `sex` in `female\|male`, `region_id` in `1..3`, `pathway` in `ifhas\|well_child`) | `PaginatedPatientsOut` |
+| `GET /api/v1/dashboard/summary` | Population, per-person status, pathway, gap, region, and clinical rule breakdowns | `DashboardSummaryOut` |
+| `GET /api/v1/patients` | Paginated synthetic patient list with search (`q`), sorting (`sort_by`, `sort_dir`), and filters (`sex`, `region_id`, `pathway`, `evaluation_status`, `has_open_care_gaps`, `history_status`, `age_band`) | `PaginatedPatientsOut` |
 | `GET /api/v1/patients/{patient_id}` | Single synthetic patient detail and pathway history availability | `PatientSummaryOut` |
-| `GET /api/v1/patients/{patient_id}/evaluations` | All 54 deterministic rule evaluations, fired reasons/guards, and care gaps | `PatientEvaluationsOut` |
+| `GET /api/v1/patients/{patient_id}/history` | Clinical history, screenings, well-child visits, component results, assessments, and referrals | `PatientHistoryOut` |
+| `GET /api/v1/patients/{patient_id}/consents` | Recorded consent history and current effective consent state | `PatientConsentsOut` |
+| `GET /api/v1/patients/{patient_id}/evaluations` | All 54 deterministic rule evaluations, fired reasons/guards, rule citations, zero-PII `input_snapshot`, and care gaps | `PatientEvaluationsOut` |
 | `POST /api/v1/evaluations` | Run dynamic deterministic evaluation for a synthetic patient (`patient_id`, `look_ahead_days` `0..365`) | `PatientEvaluationsOut` |
 | `GET /api/v1/rules` | List/filter clinical rules (`pathway` in `ifhas\|well_child`, `verification_status` in `verified\|reported\|unresolved`, `is_authoritative`) | `PaginatedRulesOut` |
 | `GET /api/v1/rules/{rule_id}` | Full rule detail, partial-date triples, items (`effective_authority`), and open questions | `RuleDetailOut` |
-| `GET /api/v1/care-gaps` | Paginated evidence-backed care gaps (`status`, `gap_type`, `rule_id`, `limit`, `offset`) | `PaginatedCareGapsOut` |
-| `GET /api/v1/facilities` | Usable official Abu Dhabi SDI facilities enriched with simulated IFHAS/Well-Child service capability overlays (`capability_basis: "simulated_overlay_only"`, Decision D13) | `PaginatedFacilitiesOut` |
+| `GET /api/v1/care-gaps` | Paginated evidence-backed care gaps (`patient_id`, `status`, `gap_type`, `rule_id`, `limit`, `offset`) | `PaginatedCareGapsOut` |
+| `GET /api/v1/care-gaps/{gap_id}` | Single care gap detail with linked appointments, referrals, outreach events, and follow-up events | `CareGapDetailOut` |
+| `POST /api/v1/care-gaps/{gap_id}/follow-ups` | Append-only follow-up event (`outreach_attempted`, `completion_documented`, `note_recorded`) with consent & evidence enforcement | `FollowUpEventOut` |
+| `GET /api/v1/appointments` | Paginated synthetic appointments (`patient_id`, `care_gap_id`, `status`, `limit`, `offset`) | `PaginatedAppointmentsOut` |
+| `POST /api/v1/appointments` | Schedule a synthetic appointment (`AppointmentCreateIn`) | `AppointmentOut` |
+| `PATCH /api/v1/appointments/{appointment_id}` | Validated appointment status/reschedule update (`AppointmentPatchIn`) | `AppointmentOut` |
+| `GET /api/v1/referrals` | Paginated synthetic referrals (`patient_id`, `status`, `limit`, `offset`) | `PaginatedReferralsOut` |
+| `POST /api/v1/referrals` | Create a synthetic referral linked to screening/visit/assessment (`ReferralCreateIn`) | `ReferralOut` |
+| `PATCH /api/v1/referrals/{referral_id}` | Validated referral status/date transition (`ReferralPatchIn`) | `ReferralOut` |
+| `GET /api/v1/facilities` | Raw official Abu Dhabi SDI facility facts (`capability_basis: "unverified_sdi_facts_only"`, capability fields `null`) | `PaginatedFacilitiesOut` |
 | `POST /api/v1/explanations` | Bounded plain-language explanation of a precomputed evaluation with deterministic fallback | `ExplanationOut` |
 | `POST /api/v1/outreach/preview` | Permission-checked simulated outreach message preview (never sends real messages) | `OutreachPreviewOut` |
 
@@ -124,15 +134,20 @@ Response (blocked because contact consent was withdrawn):
 
 ## 3. Implementation & Verification Summary
 
-- **Schemas & Migrations (`0001`–`0007`):**
+- **Schemas & Migrations (`0001`–`0008`):**
   - `official` schema (9 tables, migrations `0001`–`0005`).
   - `clinical` schema (12 tables + 2 authority views, migration `0006`).
-  - `synthetic` schema (18 tables + append-only triggers with transaction-local reset guard `pulsereach.allow_synthetic_reset`, migration `0007`).
+  - `synthetic` schema (19 tables + append-only triggers with transaction-local reset guard `pulsereach.allow_synthetic_reset`; migration `0007` frozen with static DDL, migration `0008` adding append-only `synthetic.care_gap_follow_up_event`).
 - **Clinical & Synthetic Pipeline:**
   - `54` clinical rules (`47` authoritative, `7` review-flagged, `3` unresolved), `249` rule items, and `23` open questions parsed from `data-pipeline/rules/*.yaml`.
-  - `550` deterministic synthetic patients (`411` adults, `139` children; seed `20261116`), `29,700` rule evaluations, `1,451` care gaps (`1,450` open, `1` `closed_refused`), and `50`-patient demo fixture (`data/synthetic/fixtures/demo_patients_50.json`).
-  - `2,985` usable Abu Dhabi SDI health facilities served by `GET /api/v1/facilities` with `capability_basis: "simulated_overlay_only"`.
+  - Deterministic evaluation engine (`app.services.evaluation.engine`) derives IFHAS/Well-Child age and month bounds from YAML rule specs, enforces strict Boolean attribute/evidence checks, and never treats `declined`/`cancelled`/`expired`/`pending` referrals as completed.
+  - `550` deterministic synthetic patients (seed `20261116`, `SPEC_VERSION = "2.6.0"`) with enriched background operational journeys (`T-10`), `scoring_suppressed_reason="model_not_implemented"` (no fabricated priority scores, `T-13`), and regenerated `50`-patient demo fixture (`data/synthetic/fixtures/demo_patients_50.json`).
+  - Raw official Abu Dhabi SDI health facilities served by `GET /api/v1/facilities` with `capability_basis: "unverified_sdi_facts_only"` and null capability fields (`T-11`).
+- **Backend Architecture, Observability & Packaging:**
+  - Explicit `DATA_SOURCE=memory|db` repository parity (`app.repositories.read_repo` and `app.repositories.followup_repo`) plus `python -m app.cli.seed`.
+  - `X-Request-ID` correlation middleware, PII-redacted JSON logging omitting query parameters, and `llm_enabled=False` by default (`T-16`).
+  - CI workflow (`.github/workflows/ci.yml`) with PostgreSQL 16 + `TEST_DATABASE_URL`, and `backend/Dockerfile` + `infrastructure/docker-compose.yml` packaging/mounting `data-pipeline/rules` and `data/` (`T-14`, `T-17`).
 - **Automated Test Verification:**
   - `data-pipeline`: `122 passed`
-  - `backend`: `143 passed, 84 skipped` (PostgreSQL `@live` tests gated on `TEST_DATABASE_URL`)
+  - `backend`: `187 passed, 85 skipped` (PostgreSQL `@live` tests gated on `TEST_DATABASE_URL`)
 
