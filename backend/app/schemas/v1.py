@@ -203,14 +203,17 @@ class PaginatedCareGapsOut(BaseModel):
 
 
 class FacilityItemOut(BaseModel):
-    facility_id: int
-    facility_name: str
-    region_id: int
-    facility_type: str
-    license_status: str
+    facility_id: int | None = None
+    ch_fid: str | None = None
+    source_object_id: int | None = None
+    source_layer: str | None = None
+    facility_name: str | None = None
+    region_id: int | None = None
+    facility_type: str | None = None
+    license_status: str | None = None
     simulated_ifhas_service: bool | None = None
     simulated_wcv_service: bool | None = None
-    capability_basis: str = "simulated_overlay_only"
+    capability_basis: str = "unverified_sdi_facts_only"
 
 
 class PaginatedFacilitiesOut(BaseModel):

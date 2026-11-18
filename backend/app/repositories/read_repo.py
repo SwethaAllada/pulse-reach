@@ -277,18 +277,20 @@ def get_cached_facilities() -> list[FacilityItemOut]:
             and r["license_status_raw"] in ("Active", "Temporary Closure")
         ]
         items: list[FacilityItemOut] = []
-        for idx, r in enumerate(usable, 1):
-            is_primary = r["source_layer"] in ("center", "clinic", "hospital")
+        for r in usable:
             items.append(
                 FacilityItemOut(
-                    facility_id=idx,
-                    facility_name=r["facility_name_en"] or f"SDI Facility {idx}",
-                    region_id=r["region_id"] or 1,
+                    facility_id=None,
+                    ch_fid=r["ch_fid"],
+                    source_object_id=r["source_object_id"],
+                    source_layer=r["source_layer"],
+                    facility_name=r["facility_name_en"],
+                    region_id=r["region_id"],
                     facility_type=r["type"] or r["source_layer"],
-                    license_status=r["license_status_raw"] or "Active",
-                    simulated_ifhas_service=is_primary and (r["region_id"] != 3 or idx % 2 == 1),
-                    simulated_wcv_service=is_primary,
-                    capability_basis="simulated_overlay_only",
+                    license_status=r["license_status_raw"],
+                    simulated_ifhas_service=None,
+                    simulated_wcv_service=None,
+                    capability_basis="unverified_sdi_facts_only",
                 )
             )
         return items
@@ -2354,13 +2356,16 @@ class PostgresReadRepository:
         items = [
             FacilityItemOut(
                 facility_id=f.facility_id,
-                facility_name=f.facility_name_en or f"SDI Facility {f.facility_id}",
-                region_id=f.region_id or 1,
+                ch_fid=f.ch_fid,
+                source_object_id=f.source_object_id,
+                source_layer=f.source_layer,
+                facility_name=f.facility_name_en,
+                region_id=f.region_id,
                 facility_type=f.type or f.source_layer,
-                license_status=f.license_status_raw or "Active",
-                simulated_ifhas_service=f.source_layer in ("health_centres", "clinics", "hospitals"),
-                simulated_wcv_service=f.source_layer in ("health_centres", "clinics", "hospitals"),
-                capability_basis="simulated_overlay_only",
+                license_status=f.license_status_raw,
+                simulated_ifhas_service=None,
+                simulated_wcv_service=None,
+                capability_basis="unverified_sdi_facts_only",
             )
             for f in page
         ]

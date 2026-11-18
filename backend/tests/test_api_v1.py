@@ -172,13 +172,19 @@ def test_post_evaluations_respects_dynamic_look_ahead_days():
     assert by_rule_120["WCV-VISIT-18M"]["evaluation_status"] == "upcoming"
 
 
-def test_facilities_serves_real_sdi_facilities_with_simulated_overlay():
+def test_facilities_serves_real_sdi_facts_without_fabricated_capabilities():
     resp = client.get("/api/v1/facilities?limit=50&offset=0")
     assert resp.status_code == 200
     body = resp.json()
     assert body["total"] > 100
     assert len(body["items"]) == 50
-    assert all(it["capability_basis"] == "simulated_overlay_only" for it in body["items"])
+    for it in body["items"]:
+        assert it["capability_basis"] == "unverified_sdi_facts_only"
+        assert it["simulated_ifhas_service"] is None
+        assert it["simulated_wcv_service"] is None
+        assert it["facility_id"] is None
+        assert it["ch_fid"]
+        assert it["source_object_id"] is not None
 
 
 def test_cors_headers_and_enum_query_validation():
