@@ -6,11 +6,14 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.health import router as health_router
 from app.api.v1 import router as v1_router
 from app.core.config import settings
+from app.core.errors import INTERNAL_ERROR_MESSAGE, error_body, install_error_handlers
 from app.core.logging import configure_logging, request_id_var
+from app.core.startup import validate_startup
 
 configure_logging(settings.log_level)
 logger = logging.getLogger("pulsereach.startup")
@@ -26,10 +29,23 @@ async def _lifespan(_app: FastAPI):
         settings.database_url is not None,
         settings.llm_enabled,
     )
+    if settings.startup_validation:
+        report = validate_startup(settings)
+        logger.info(
+            "Startup validation passed (bundle_sha256=%s, rules=%d, authoritative=%d, db_rule_load_id=%s)",
+            report.bundle_sha256[:12],
+            report.rules,
+            report.authoritative_rules,
+            report.db_rule_load_id,
+        )
+    from app.services.ai import get_ai_service
+
+    logger.info("AI service: %s", get_ai_service().status())
     yield
 
 
 app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=_lifespan)
+install_error_handlers(app)
 
 
 @app.middleware("http")
@@ -69,7 +85,11 @@ async def request_id_and_logging_middleware(request: Request, call_next):
                 "duration_ms": duration_ms,
             },
         )
-        raise
+        return JSONResponse(
+            error_body(500, INTERNAL_ERROR_MESSAGE),
+            status_code=500,
+            headers={"X-Request-ID": req_id},
+        )
     finally:
         request_id_var.reset(token)
 app.add_middleware(

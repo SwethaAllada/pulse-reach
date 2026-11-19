@@ -40,7 +40,9 @@ cd backend
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 alembic upgrade head          # needs DATABASE_URL in backend/.env; creates the official/clinical/synthetic schemas
-uvicorn app.main:app --reload --port 8000
+python -m app.services.official_loader                 # official sources and facility register
+python -m app.services.synthetic_generator.seed        # clinical rules + synthetic data; exit 2 on failure
+DATA_SOURCE=db uvicorn app.main:app --reload --port 8000   # omit DATA_SOURCE for the in-memory demo
 pytest                        # set TEST_DATABASE_URL to also run the live-PostgreSQL test
 ```
 Health check: <http://localhost:8000/health> (process) · <http://localhost:8000/health/db> (database, 503 if unavailable) · Swagger: <http://localhost:8000/docs>

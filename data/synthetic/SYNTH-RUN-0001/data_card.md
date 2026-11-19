@@ -9,7 +9,7 @@
 - **Generation Run ID:** `SYNTH-RUN-0001`
 - **Evaluation Run ID:** `SYNTH-EVR-000001`
 - **Generator Version:** `0.1.0`
-- **Specification Version:** `2.5.0`
+- **Specification Version:** `2.6.0`
 - **Random Seed:** `20261116`
 - **Reference Date:** `2026-11-16`
 - **Population Profile:** `labelled_alternative`
@@ -22,19 +22,19 @@
 | `synthetic.facility_service_profile` | 3 |
 | `synthetic.patient` | 550 (411 adults, 139 children) |
 | `synthetic.guardian` | 139 |
-| `synthetic.consent` | 9 |
+| `synthetic.consent` | 162 |
 | `synthetic.history_availability` | 550 |
 | `synthetic.eligibility_evaluation` | 29700 |
 | `synthetic.evaluation_reason` | 10413 |
-| `synthetic.appointment` | 1 |
-| `synthetic.ifhas_screening` | 96 |
+| `synthetic.appointment` | 6 |
+| `synthetic.ifhas_screening` | 101 |
 | `synthetic.well_child_visit` | 5 |
-| `synthetic.component_result` | 0 |
+| `synthetic.component_result` | 5 |
 | `synthetic.assessment` | 4 |
-| `synthetic.referral` | 1 |
+| `synthetic.referral` | 3 |
 | `synthetic.care_gap` | 1451 |
 | `synthetic.care_gap_review` | 1 |
-| `synthetic.outreach_event` | 4 |
+| `synthetic.outreach_event` | 9 |
 
 ## 3. Safety & Governance Guarantees
 - Every primary key begins with `SYNTH-<CODE>-`.

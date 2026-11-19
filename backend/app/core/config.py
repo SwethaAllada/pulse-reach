@@ -23,8 +23,20 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
     rules_dir: str | None = None
     data_dir: str | None = None
-    llm_enabled: bool = False
     log_level: str = "INFO"
+    # Refuse to start when the clinical bundle (and, in db mode, the matching seeded load) is
+    # unavailable (BE-22). Disable only for tooling that imports the app without serving it.
+    startup_validation: bool = True
+
+    # AI assistance (explanations, outreach drafts, population summaries). Off by default; the
+    # deterministic templates are always used when disabled, misconfigured or failing.
+    llm_enabled: bool = False
+    llm_provider: Literal["openai_compatible", "anthropic"] = "openai_compatible"
+    llm_api_key: SecretStr | None = None
+    llm_base_url: str | None = None  # default per provider
+    llm_model: str | None = None
+    llm_timeout_seconds: float = 20.0
+    llm_max_output_tokens: int = 400
 
     # Connection pool (SQLAlchemy QueuePool)
     db_pool_size: int = 5

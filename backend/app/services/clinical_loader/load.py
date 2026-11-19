@@ -211,8 +211,14 @@ def run(
     engine: Engine | None = None,
     rules_dir: Path | None = None,
     manifest_path: Path | None = None,
+    *,
+    reuse_unchanged_load: bool = False,
 ) -> ClinicalLoadSummary:
-    """Validate and load the clinical YAML bundle into `clinical.*` in a single transaction."""
+    """Validate and load the clinical YAML bundle into `clinical.*` in a single transaction.
+
+    With `reuse_unchanged_load`, a bundle identical to the latest `clinical.rule_load`
+    (same `bundle_sha256`, no new rules) is verified but not re-recorded; the latest load is reused.
+    """
     bundle = parse_clinical_bundle(rules_dir=rules_dir, manifest_path=manifest_path)
     eng = engine or get_engine()
 
@@ -225,8 +231,20 @@ def run(
         new_rules = check_version_and_hash_guards(existing_map, bundle)
         new_keys = {(r["rule_id"], r["rule_version"]) for r in new_rules}
 
+        latest = conn.execute(
+            select(m.RuleLoad.load_id, m.RuleLoad.bundle_sha256)
+            .order_by(m.RuleLoad.load_id.desc())
+            .limit(1)
+        ).first()
+        reuse = (
+            reuse_unchanged_load
+            and not new_rules
+            and latest is not None
+            and latest.bundle_sha256 == bundle.bundle_sha256
+        )
+
         # Insert rule_load row
-        load_id = int(
+        load_id = int(latest.load_id) if reuse else int(
             conn.execute(
                 insert(m.RuleLoad)
                 .values(

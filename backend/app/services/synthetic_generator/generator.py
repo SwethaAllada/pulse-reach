@@ -12,6 +12,7 @@ in `data/metadata/synthetic_data_spec.md`.
 
 from __future__ import annotations
 
+import dataclasses
 import random
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
@@ -35,6 +36,11 @@ from app.services.evaluation import (
     ReferralFact,
     ScreeningEventFact,
     VisitEventFact,
+)
+from app.services.followup.completion import (
+    CompletionEvidence,
+    evaluate_current_rule,
+    validate_completion_evidence,
 )
 
 GENERATOR_VERSION = "0.1.0"
@@ -204,6 +210,7 @@ def generate_synthetic_dataset(
     gap_seq = 0
     rev_seq = 0
     out_seq = 0
+    ctx_by_patient: dict[str, PatientContext] = {}
 
     def _next_id(prefix: str, seq: int) -> str:
         return f"SYNTH-{prefix}-{seq:06d}"
@@ -856,6 +863,7 @@ def generate_synthetic_dataset(
             referrals=tuple(patient_referrals),
             consents=tuple(patient_consents),
         )
+        ctx_by_patient[pid] = ctx
         summary = engine.evaluate_patient(
             ctx, reference_date=reference_date, look_ahead_days=30, evaluated_at=eval_ts
         )
@@ -997,7 +1005,7 @@ def generate_synthetic_dataset(
                         "delivery_status": "delivered",
                         "suppression_reason": None,
                         "contact_consent_id": contact_consent_id,
-                        "response": "accepted",
+                        "response": "booked",
                         "appointment_id": aid,
                         "triggered_by_ai_score": True,
                         "clinician_approved_by": "coord.salama.synthetic",
@@ -1196,6 +1204,7 @@ def generate_synthetic_dataset(
             break
 
     # 5 background patients with documented completion + component_result + closed_completed gap
+    rules_by_key = {(r["rule_id"], r["rule_version"]): r for r in clinical_bundle.rules}
     seen_completed: set[str] = set()
     for g in open_gaps_bg:
         pid = g["patient_id"]
@@ -1238,12 +1247,58 @@ def generate_synthetic_dataset(
                 "item_code": item_code,
                 "result_status": "completed",
                 "performed_date": reference_date - timedelta(days=2),
-                "documented_in_record": True,
-                "signature_on_file": True,
+                "documented_in_record": None,
+                "signature_on_file": None,
                 "refused_by_guardian_id": None,
                 "refusal_reason": None,
             }
         )
+        new_scr = ifhas_screenings[-1]
+        completed_ctx = dataclasses.replace(
+            ctx_by_patient[pid],
+            ifhas_screenings=ctx_by_patient[pid].ifhas_screenings
+            + (
+                ScreeningEventFact(
+                    scr_id,
+                    g["rule_id"],
+                    g["rule_version"],
+                    "complete",
+                    new_scr["performed_date"],
+                    new_scr["results_communicated_date"],
+                    new_scr["journey_reported_date"],
+                ),
+            ),
+            component_results=ctx_by_patient[pid].component_results
+            + (
+                ComponentResultFact(
+                    cr_id,
+                    g["rule_id"],
+                    g["rule_version"],
+                    item_cat,
+                    item_code,
+                    "completed",
+                    datetime.combine(new_scr["performed_date"], datetime.min.time(), timezone.utc),
+                ),
+            ),
+        )
+        completion = validate_completion_evidence(
+            gap=g,
+            rule=rules_by_key.get((g["rule_id"], g["rule_version"])),
+            evidence=CompletionEvidence.from_screening(new_scr),
+            documented_evidence=True,
+            evidence_reference=scr_id,
+            as_of=reference_date,
+            current_evaluation=evaluate_current_rule(
+                engine,
+                completed_ctx,
+                rule_id=g["rule_id"],
+                rule_version=g["rule_version"],
+                as_of=reference_date,
+                look_ahead_days=30,
+            ),
+        )
+        if not completion.accepted:
+            raise ValueError(f"Synthetic completion scenario is invalid: {completion.message}")
         g["status"] = "closed_completed"
         g["closed_date"] = reference_date
         g["closed_by_ifhas_screening_id"] = scr_id

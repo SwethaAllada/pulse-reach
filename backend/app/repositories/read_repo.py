@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
@@ -14,6 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.models.clinical import (
+    OpenQuestion,
     Rule,
     RuleItem,
     RuleItemOpenQuestion,
@@ -27,6 +29,8 @@ from app.models.synthetic import (
     Assessment,
     CareGap,
     CareGapFollowUpEvent,
+    CareGapReview,
+    WorkflowStatusEvent,
     ComponentResult,
     Consent,
     EligibilityEvaluation,
@@ -42,6 +46,11 @@ from app.models.synthetic import (
     WellChildVisit,
 )
 from app.schemas.v1 import (
+    CareGapReviewOut,
+    FacilityDetailOut,
+    OpenQuestionOut,
+    PaginatedOpenQuestionsOut,
+    RecommendedPathwayOut,
     AppointmentOut,
     AssessmentOut,
     CareGapDetailOut,
@@ -90,10 +99,25 @@ from app.services.evaluation import (
     VisitEventFact,
 )
 from app.services.official_loader import parse as official_parse
+from app.services.care_pathway import (
+    recommended_pathway,
+    review_origin,
+    rule_applicability,
+    rules_index,
+)
 from app.services.synthetic_generator import (
     SyntheticDataset,
     generate_synthetic_dataset,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _db_query_failed(exc: Exception) -> HTTPException:
+    """Generic 503 for a failed read; the database error is logged, never returned (F-19)."""
+    logger.error("PostgreSQL read failed: %s", type(exc).__name__, exc_info=exc)
+    return HTTPException(status_code=503, detail="PostgreSQL query failed.")
+
 
 _GOVERNANCE_DISCLAIMER = (
     "All patient records shown are 100% synthetic (`is_synthetic=true`). Clinical rules are "
@@ -101,9 +125,10 @@ _GOVERNANCE_DISCLAIMER = (
     "and require healthcare-professional review."
 )
 _FACILITY_NOTICE = (
-    "Official SDI facility register contains point locations and licence status only; "
-    "preventive-programme service capabilities (IFHAS / Well-Child) are a SIMULATED overlay "
-    "(Decision D13 pending external licensing/governance confirmation)."
+    "Official SDI facility register: names, types, regions, licence status and point locations "
+    "as published (usable coordinates only where geo_quality is 'ok'). Preventive-programme "
+    "service capability (IFHAS / Well-Child) is not published by this source and is unknown "
+    "(Decision D13 pending)."
 )
 
 
@@ -146,7 +171,20 @@ class ReadRepository(Protocol):
         patient_id: str | None = None,
     ) -> PaginatedCareGapsOut: ...
     def get_care_gap_detail(self, gap_id: str) -> CareGapDetailOut | None: ...
-    def list_facilities(self, limit: int, offset: int) -> PaginatedFacilitiesOut: ...
+    def list_facilities(
+        self,
+        limit: int,
+        offset: int,
+        region_id: int | None = None,
+        facility_type: str | None = None,
+        source_layer: str | None = None,
+        q: str | None = None,
+    ) -> PaginatedFacilitiesOut: ...
+    def get_facility(self, ch_fid: str) -> FacilityDetailOut | None: ...
+    def list_open_questions(
+        self, status: str | None = None, category: str | None = None
+    ) -> PaginatedOpenQuestionsOut: ...
+    def get_open_question(self, oq_id: str) -> OpenQuestionOut | None: ...
     def get_patient_outreach_inputs(
         self, patient_id: str
     ) -> tuple[dict[str, Any] | None, list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]: ...
@@ -258,75 +296,123 @@ def get_cached_index() -> _DatasetIndex:
     )
 
 
+_USABLE_LICENSE_STATUSES = ("Active", "Temporary Closure")
+
+
 @lru_cache(maxsize=1)
-def get_cached_facilities() -> list[FacilityItemOut]:
+def get_cached_facilities() -> list[dict[str, Any]]:
+    """Usable SDI facility rows as published (no invented facilities if the files are absent)."""
     root = repo_root()
     sdi_dir = root / "data" / "raw" / "abudhabi_sdi"
-    if (sdi_dir / "acquisition_log.json").exists():
-        sdi_to_region = {r[3]: r[0] for r in official_parse.REGIONS}
-        file_rels = {
-            layer: f"data/raw/abudhabi_sdi/{layer}.geojson"
-            for layer in official_parse.SDI_LAYERS
-        }
-        fac_unit = official_parse.parse_facilities(root, sdi_to_region, file_rels)
-        usable = [
-            r
-            for r in fac_unit.rows
-            if r["identity_status"] == "identified"
-            and r["geo_quality"] == "ok"
-            and r["license_status_raw"] in ("Active", "Temporary Closure")
-        ]
-        items: list[FacilityItemOut] = []
-        for r in usable:
-            items.append(
-                FacilityItemOut(
-                    facility_id=None,
-                    ch_fid=r["ch_fid"],
-                    source_object_id=r["source_object_id"],
-                    source_layer=r["source_layer"],
-                    facility_name=r["facility_name_en"],
-                    region_id=r["region_id"],
-                    facility_type=r["type"] or r["source_layer"],
-                    license_status=r["license_status_raw"],
-                    simulated_ifhas_service=None,
-                    simulated_wcv_service=None,
-                    capability_basis="unverified_sdi_facts_only",
-                )
-            )
-        return items
-
+    if not (sdi_dir / "acquisition_log.json").exists():
+        return []
+    sdi_to_region = {r[3]: r[0] for r in official_parse.REGIONS}
+    file_rels = {
+        layer: f"data/raw/abudhabi_sdi/{layer}.geojson" for layer in official_parse.SDI_LAYERS
+    }
+    fac_unit = official_parse.parse_facilities(root, sdi_to_region, file_rels)
     return [
-        FacilityItemOut(
-            facility_id=1,
-            facility_name="Abu Dhabi Preventive Care Center (Simulated Overlay)",
-            region_id=1,
-            facility_type="Center",
-            license_status="Active",
-            simulated_ifhas_service=True,
-            simulated_wcv_service=True,
-            capability_basis="simulated_overlay_only",
-        ),
-        FacilityItemOut(
-            facility_id=2,
-            facility_name="Al Ain Family Screening Clinic (Simulated Overlay)",
-            region_id=2,
-            facility_type="Clinic",
-            license_status="Active",
-            simulated_ifhas_service=True,
-            simulated_wcv_service=True,
-            capability_basis="simulated_overlay_only",
-        ),
-        FacilityItemOut(
-            facility_id=3,
-            facility_name="Al Dhafra Community Maternal & Child Clinic (Simulated Overlay)",
-            region_id=3,
-            facility_type="Clinic",
-            license_status="Active",
-            simulated_ifhas_service=False,
-            simulated_wcv_service=True,
-            capability_basis="simulated_overlay_only",
-        ),
+        {"facility_id": None, **r}
+        for r in fac_unit.rows
+        if r["identity_status"] == "identified"
+        and r["geo_quality"] == "ok"
+        and r["license_status_raw"] in _USABLE_LICENSE_STATUSES
     ]
+
+
+_FACILITY_DETAIL_FIELDS = (
+    "facility_name_ar",
+    "subtype",
+    "license_no",
+    "has_insurance",
+    "inpatient_bed_capacity",
+    "specialities_raw",
+    "professionals_raw",
+    "emergency_department",
+    "pediatric_emergency_department",
+    "maternity_emergency_care",
+    "home_care_services",
+    "source_effective_date",
+)
+
+
+def _facility_item(r: dict[str, Any]) -> FacilityItemOut:
+    return FacilityItemOut(
+        facility_id=r.get("facility_id"),
+        ch_fid=r["ch_fid"],
+        source_object_id=r["source_object_id"],
+        source_layer=r["source_layer"],
+        facility_name=r["facility_name_en"],
+        region_id=r["region_id"],
+        city=r.get("city"),
+        facility_type=r["type"] or r["source_layer"],
+        category=r.get("category"),
+        license_status=r["license_status_raw"],
+        is_public=r.get("is_public"),
+        latitude=r.get("latitude"),
+        longitude=r.get("longitude"),
+        geo_quality=r.get("geo_quality"),
+        simulated_ifhas_service=None,
+        simulated_wcv_service=None,
+        capability_basis="unverified_sdi_facts_only",
+    )
+
+
+def _facility_detail(r: dict[str, Any]) -> FacilityDetailOut:
+    return FacilityDetailOut(
+        **_facility_item(r).model_dump(),
+        governance_notice=_FACILITY_NOTICE,
+        **{k: r.get(k) for k in _FACILITY_DETAIL_FIELDS},
+    )
+
+
+def _facility_matches(
+    r: dict[str, Any],
+    region_id: int | None,
+    facility_type: str | None,
+    source_layer: str | None,
+    q: str | None,
+) -> bool:
+    if region_id is not None and r["region_id"] != region_id:
+        return False
+    if facility_type is not None and (r["type"] or r["source_layer"]).lower() != facility_type.lower():
+        return False
+    if source_layer is not None and r["source_layer"] != source_layer:
+        return False
+    if q and q.strip():
+        hay = " ".join(str(r.get(k) or "") for k in ("facility_name_en", "facility_name_ar", "city"))
+        if q.strip().lower() not in hay.lower():
+            return False
+    return True
+
+
+def _open_question_out(oq: dict[str, Any], rule_ids: list[str]) -> OpenQuestionOut:
+    return OpenQuestionOut(
+        oq_id=oq["oq_id"],
+        category=oq["category"],
+        status=oq["status"],
+        title=oq["title"],
+        detail=oq["detail"],
+        affects=list(oq.get("affects_raw") or []),
+        resolve_via=oq.get("resolve_via"),
+        resolution=oq.get("resolution"),
+        resolved_on=oq.get("resolved_on"),
+        rule_ids=sorted(set(rule_ids)),
+    )
+
+
+def _review_out(r: dict[str, Any]) -> CareGapReviewOut:
+    return CareGapReviewOut(
+        review_id=r["review_id"],
+        care_gap_id=r["care_gap_id"],
+        reviewer=r["reviewer"],
+        action=r["action"],
+        previous_priority=float(r["previous_priority"]) if r.get("previous_priority") is not None else None,
+        new_priority=float(r["new_priority"]) if r.get("new_priority") is not None else None,
+        reason=r["reason"],
+        reviewed_at=r["reviewed_at"],
+        is_synthetic=True,
+    )
 
 
 _REASON_DETAIL_TEMPLATES: dict[str, str] = {
@@ -376,6 +462,32 @@ def describe_reason(
     if item_category or item_code:
         parts.append(f"item={item_category or ''}:{item_code or ''}".strip(":"))
     return " ".join(parts)
+
+
+@lru_cache(maxsize=1)
+def _bundle_rules_by_id() -> dict[str, Any]:
+    return rules_index(get_cached_bundle().rules)
+
+
+def evaluation_markers(
+    rule_id: str,
+    evaluation_status: str,
+    reason_code: str | None,
+    *,
+    date_of_birth: date | None,
+    sex: str | None,
+    reference_date: date,
+) -> dict[str, Any]:
+    """Applicability (BE-21) and review-origin (H-7) markers for one evaluation."""
+    rules = _bundle_rules_by_id()
+    applicability, basis = rule_applicability(
+        rules.get(rule_id), rules, date_of_birth=date_of_birth, sex=sex, reference_date=reference_date
+    )
+    return {
+        "applicability": applicability,
+        "applicability_basis": basis,
+        "review_origin": review_origin(evaluation_status, reason_code),
+    }
 
 
 def _compute_age_parts(dob: date | None, ref_date: date) -> tuple[int | None, int | None]:
@@ -517,6 +629,9 @@ def _build_care_gap_out(g: dict[str, Any]) -> CareGapOut:
         closed_date=g["closed_date"],
         closed_by_consent_id=g["closed_by_consent_id"],
         closed_by_component_result_id=g["closed_by_component_result_id"],
+        closed_by_ifhas_screening_id=g.get("closed_by_ifhas_screening_id"),
+        closed_by_well_child_visit_id=g.get("closed_by_well_child_visit_id"),
+        closed_by_referral_id=g.get("closed_by_referral_id"),
         subject_ifhas_screening_id=g["subject_ifhas_screening_id"],
         subject_well_child_visit_id=g["subject_well_child_visit_id"],
         subject_referral_id=g["subject_referral_id"],
@@ -525,6 +640,13 @@ def _build_care_gap_out(g: dict[str, Any]) -> CareGapOut:
         scoring_suppressed_reason=g["scoring_suppressed_reason"],
         is_synthetic=True,
     )
+
+
+def _completed_gap_by_evaluation(gaps: list[dict[str, Any]]) -> dict[str, str]:
+    """Map evaluation_id -> care_gap_id for gaps later closed as completed."""
+    return {
+        g["evaluation_id"]: g["care_gap_id"] for g in gaps if g["status"] == "closed_completed"
+    }
 
 
 def _build_patient_context_from_dicts(
@@ -954,6 +1076,8 @@ class MemoryReadRepository:
             if r.get("trigger_rule_id")
         }
 
+        patient_gaps = idx.care_gaps_by_patient.get(patient_id, [])
+        completed_gap_by_eval = _completed_gap_by_evaluation(patient_gaps)
         eval_items: list[EvaluationItemOut] = []
         for ev in idx.evaluations_by_patient.get(patient_id, []):
             rm = rule_meta[ev["rule_id"]]
@@ -1008,9 +1132,19 @@ class MemoryReadRepository:
                         reference_date=ref_date,
                     ),
                     reasons=reasons,
+                    superseded_by_completion=ev["evaluation_id"] in completed_gap_by_eval,
+                    superseded_by_care_gap_id=completed_gap_by_eval.get(ev["evaluation_id"]),
+                    **evaluation_markers(
+                        ev["rule_id"],
+                        ev["evaluation_status"],
+                        ev["reason_code"],
+                        date_of_birth=p["date_of_birth"],
+                        sex=p["sex"],
+                        reference_date=ref_date,
+                    ),
                 )
             )
-        gap_items = [_build_care_gap_out(g) for g in idx.care_gaps_by_patient.get(patient_id, [])]
+        gap_items = [_build_care_gap_out(g) for g in patient_gaps]
         return PatientEvaluationsOut(
             is_synthetic=True,
             patient_id=patient_id,
@@ -1199,12 +1333,23 @@ class MemoryReadRepository:
             for a in ds.appointments
             if a["patient_id"] == pid and a.get("care_gap_id") == gap_id
         ]
+        from app.repositories.followup_repo import (
+            get_memory_follow_up_events,
+            get_memory_workflow_events,
+        )
+
+        gap_linked_refs = {
+            e["referral_id"]
+            for e in get_memory_workflow_events(care_gap_id=gap_id, patient_id=pid)
+            if e["referral_id"]
+        }
         referrals = [
             r
             for r in idx.referrals_by_patient.get(pid, [])
             if (
                 r["referral_id"] == gap.get("subject_referral_id")
                 or r.get("trigger_rule_id") == gap["rule_id"]
+                or r["referral_id"] in gap_linked_refs
             )
         ]
         outreach_events = [
@@ -1212,11 +1357,16 @@ class MemoryReadRepository:
             for o in ds.outreach_events
             if o["patient_id"] == pid and o["care_gap_id"] == gap_id
         ]
-        from app.repositories.followup_repo import get_memory_follow_up_events
-
         follow_up_events = get_memory_follow_up_events(
             gap_id, run_id=gap["run_id"], patient_id=pid
         )
+        workflow_events = get_memory_workflow_events(
+            appointment_ids={a["appointment_id"] for a in appointments},
+            referral_ids={r["referral_id"] for r in referrals},
+            care_gap_id=gap_id,
+            patient_id=pid,
+        )
+        reviews = [r for r in ds.care_gap_reviews if r["care_gap_id"] == gap_id]
         return _build_care_gap_detail_out(
             gap=gap,
             patient=patient,
@@ -1226,17 +1376,53 @@ class MemoryReadRepository:
             referrals=referrals,
             outreach_events=outreach_events,
             follow_up_events=follow_up_events,
+            workflow_events=workflow_events,
+            reviews=reviews,
         )
 
-    def list_facilities(self, limit: int, offset: int) -> PaginatedFacilitiesOut:
-        ref_facilities = get_cached_facilities()
+    def list_facilities(
+        self,
+        limit: int,
+        offset: int,
+        region_id: int | None = None,
+        facility_type: str | None = None,
+        source_layer: str | None = None,
+        q: str | None = None,
+    ) -> PaginatedFacilitiesOut:
+        rows = [
+            r
+            for r in get_cached_facilities()
+            if _facility_matches(r, region_id, facility_type, source_layer, q)
+        ]
         return PaginatedFacilitiesOut(
             governance_notice=_FACILITY_NOTICE,
-            total=len(ref_facilities),
+            total=len(rows),
             limit=limit,
             offset=offset,
-            items=ref_facilities[offset : offset + limit],
+            items=[_facility_item(r) for r in rows[offset : offset + limit]],
         )
+
+    def get_facility(self, ch_fid: str) -> FacilityDetailOut | None:
+        row = next((r for r in get_cached_facilities() if r["ch_fid"] == ch_fid), None)
+        return _facility_detail(row) if row is not None else None
+
+    def list_open_questions(
+        self, status: str | None = None, category: str | None = None
+    ) -> PaginatedOpenQuestionsOut:
+        bundle = get_cached_bundle()
+        links: dict[str, list[str]] = {}
+        for link in (*bundle.rule_open_questions, *bundle.rule_item_open_questions):
+            links.setdefault(link["oq_id"], []).append(link["rule_id"])
+        items = [
+            _open_question_out(oq, links.get(oq["oq_id"], []))
+            for oq in sorted(bundle.open_questions, key=lambda o: o["oq_id"])
+            if (status is None or oq["status"] == status)
+            and (category is None or oq["category"] == category)
+        ]
+        return PaginatedOpenQuestionsOut(total=len(items), items=items)
+
+    def get_open_question(self, oq_id: str) -> OpenQuestionOut | None:
+        return next((o for o in self.list_open_questions().items if o.oq_id == oq_id), None)
 
     def get_patient_outreach_inputs(
         self, patient_id: str
@@ -1473,7 +1659,11 @@ def _build_care_gap_detail_out(
     referrals: list[dict[str, Any]],
     outreach_events: list[dict[str, Any]],
     follow_up_events: list[dict[str, Any]] | None = None,
+    workflow_events: list[dict[str, Any]] | None = None,
+    reviews: list[dict[str, Any]] | None = None,
 ) -> CareGapDetailOut:
+    from app.repositories.followup_repo import _sorted_follow_ups, _sorted_workflow
+
     base = _build_care_gap_out(gap)
     return CareGapDetailOut(
         **base.model_dump(),
@@ -1530,28 +1720,13 @@ def _build_care_gap_detail_out(
             )
             for o in sorted(outreach_events, key=lambda x: x["outreach_id"], reverse=True)
         ],
-        follow_up_events=[
-            FollowUpEventOut(
-                follow_up_id=f["follow_up_id"],
-                patient_id=f["patient_id"],
-                care_gap_id=f["care_gap_id"],
-                event_type=f["event_type"],
-                outcome_status=f.get("outcome_status"),
-                documented_evidence=bool(f.get("documented_evidence", False)),
-                evidence_reference=f.get("evidence_reference"),
-                contact_consent_id=f.get("contact_consent_id"),
-                suppression_reason=f.get("suppression_reason"),
-                recorded_by=f["recorded_by"],
-                recorded_at=f["recorded_at"],
-                note=f.get("note"),
-                is_synthetic=bool(f.get("is_synthetic", True)),
-            )
-            for f in sorted(
-                follow_up_events or [],
-                key=lambda x: (x["recorded_at"], x["follow_up_id"]),
-                reverse=True,
-            )
+        follow_up_events=_sorted_follow_ups(follow_up_events or []),
+        workflow_events=_sorted_workflow(workflow_events or []),
+        reviews=[
+            _review_out(r)
+            for r in sorted(reviews or [], key=lambda x: (x["reviewed_at"], x["review_id"]))
         ],
+        recommended_pathway=RecommendedPathwayOut(**recommended_pathway(gap, rule.model_dump())),
     )
 
 
@@ -1635,7 +1810,7 @@ class PostgresReadRepository:
             ).first()
             clin_status = rl.clinical_review_status if rl is not None else "not_reviewed"
         except SQLAlchemyError as exc:
-            raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
+            raise _db_query_failed(exc) from exc
 
         return _build_dashboard_summary_out(
             run_id=gr.run_id,
@@ -1825,7 +2000,7 @@ class PostgresReadRepository:
                 pids, er.evaluation_run_id, run_id=gr.run_id
             )
         except SQLAlchemyError as exc:
-            raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
+            raise _db_query_failed(exc) from exc
 
         return PaginatedPatientsOut(
             is_synthetic=True,
@@ -1859,7 +2034,7 @@ class PostgresReadRepository:
                 [patient_id], er.evaluation_run_id, run_id=gr.run_id
             )
         except SQLAlchemyError as exc:
-            raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
+            raise _db_query_failed(exc) from exc
         return _build_patient_summary(
             _row_to_dict(p),
             hmap.get(patient_id, {}),
@@ -1881,10 +2056,12 @@ class PostgresReadRepository:
             rules = {r.rule_id: r for r in self._session.scalars(select(Rule)).all()}
             standards = {s.standard_id: s for s in self._session.scalars(select(Standard)).all()}
             evals = self._session.scalars(
-                select(EligibilityEvaluation).where(
+                select(EligibilityEvaluation)
+                .where(
                     EligibilityEvaluation.patient_id == patient_id,
                     EligibilityEvaluation.evaluation_run_id == er.evaluation_run_id,
                 )
+                .order_by(EligibilityEvaluation.evaluation_id)
             ).all()
             eval_ids = [ev.evaluation_id for ev in evals]
             reasons_by_eval: dict[str, list[EvaluationReason]] = {}
@@ -1894,10 +2071,12 @@ class PostgresReadRepository:
                 ).all():
                     reasons_by_eval.setdefault(er_row.evaluation_id, []).append(er_row)
             gaps = self._session.scalars(
-                select(CareGap).where(
+                select(CareGap)
+                .where(
                     CareGap.run_id == gr.run_id,
                     CareGap.patient_id == patient_id,
                 )
+                .order_by(CareGap.care_gap_id)
             ).all()
             hmap = self._patient_history_map([patient_id], run_id=gr.run_id).get(patient_id, {})
             consents = [
@@ -1937,9 +2116,11 @@ class PostgresReadRepository:
                 if r.trigger_rule_id
             }
         except SQLAlchemyError as exc:
-            raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
+            raise _db_query_failed(exc) from exc
 
         p_dict = _row_to_dict(p)
+        gap_dicts = [_row_to_dict(g) for g in gaps]
+        completed_gap_by_eval = _completed_gap_by_evaluation(gap_dicts)
         eval_items = []
         for ev in evals:
             rm = rules[ev.rule_id]
@@ -1996,6 +2177,16 @@ class PostgresReadRepository:
                             key=lambda x: x.reason_ordinal,
                         )
                     ],
+                    superseded_by_completion=ev.evaluation_id in completed_gap_by_eval,
+                    superseded_by_care_gap_id=completed_gap_by_eval.get(ev.evaluation_id),
+                    **evaluation_markers(
+                        ev.rule_id,
+                        ev.evaluation_status,
+                        ev.reason_code,
+                        date_of_birth=p_dict["date_of_birth"],
+                        sex=p_dict["sex"],
+                        reference_date=er.reference_date,
+                    ),
                 )
             )
         return PatientEvaluationsOut(
@@ -2004,7 +2195,7 @@ class PostgresReadRepository:
             evaluation_run_id=er.evaluation_run_id,
             reference_date=er.reference_date,
             evaluations=eval_items,
-            care_gaps=[_build_care_gap_out(_row_to_dict(g)) for g in gaps],
+            care_gaps=[_build_care_gap_out(g) for g in gap_dicts],
         )
 
     def get_evaluation_run_info(self) -> tuple[str, date, int]:
@@ -2012,7 +2203,7 @@ class PostgresReadRepository:
             _, er = self._latest_runs()
             return er.evaluation_run_id, er.reference_date, er.look_ahead_days
         except SQLAlchemyError as exc:
-            raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
+            raise _db_query_failed(exc) from exc
 
     def get_patient_context(self, patient_id: str) -> PatientContext | None:
         try:
@@ -2062,7 +2253,7 @@ class PostgresReadRepository:
                 ).all()
             ]
         except SQLAlchemyError as exc:
-            raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
+            raise _db_query_failed(exc) from exc
 
         return _build_patient_context_from_dicts(
             _row_to_dict(p),
@@ -2094,7 +2285,7 @@ class PostgresReadRepository:
             standards = {s.standard_id: s for s in self._session.scalars(select(Standard)).all()}
             roqs = self._session.scalars(select(RuleOpenQuestion)).all()
         except SQLAlchemyError as exc:
-            raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
+            raise _db_query_failed(exc) from exc
 
         oqs_by_rule: dict[tuple[str, str], list[str]] = {}
         for roq in roqs:
@@ -2152,7 +2343,7 @@ class PostgresReadRepository:
                 .order_by(RuleItem.ordinal)
             ).all()
         except SQLAlchemyError as exc:
-            raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
+            raise _db_query_failed(exc) from exc
 
         item_oqs_map: dict[tuple[str, str], list[str]] = {}
         for ioq in ioqs:
@@ -2209,7 +2400,7 @@ class PostgresReadRepository:
                 meta["source_version"] = std.source_version
             return meta
         except SQLAlchemyError as exc:
-            raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
+            raise _db_query_failed(exc) from exc
 
     def list_care_gaps(
         self,
@@ -2238,7 +2429,7 @@ class PostgresReadRepository:
                 stmt.order_by(CareGap.care_gap_id).limit(limit).offset(offset)
             ).all()
         except SQLAlchemyError as exc:
-            raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
+            raise _db_query_failed(exc) from exc
 
         return PaginatedCareGapsOut(
             is_synthetic=True,
@@ -2302,6 +2493,13 @@ class PostgresReadRepository:
                         or_(
                             Referral.referral_id == g.subject_referral_id,
                             Referral.trigger_rule_id == g.rule_id,
+                            Referral.referral_id.in_(
+                                select(WorkflowStatusEvent.referral_id).where(
+                                    WorkflowStatusEvent.run_id == gr.run_id,
+                                    WorkflowStatusEvent.care_gap_id == gap_id,
+                                    WorkflowStatusEvent.referral_id.is_not(None),
+                                )
+                            ),
                         ),
                     )
                 ).all()
@@ -2326,8 +2524,25 @@ class PostgresReadRepository:
                     )
                 ).all()
             ]
+            from app.repositories.followup_repo import postgres_gap_workflow_events
+
+            reviews = [
+                _row_to_dict(r)
+                for r in self._session.scalars(
+                    select(CareGapReview).where(
+                        CareGapReview.run_id == gr.run_id, CareGapReview.care_gap_id == gap_id
+                    )
+                ).all()
+            ]
+            workflow_events = postgres_gap_workflow_events(
+                self._session,
+                run_id=gr.run_id,
+                care_gap_id=gap_id,
+                appointment_ids={a["appointment_id"] for a in appointments},
+                referral_ids={r["referral_id"] for r in referrals},
+            )
         except SQLAlchemyError as exc:
-            raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
+            raise _db_query_failed(exc) from exc
 
         return _build_care_gap_detail_out(
             gap=_row_to_dict(g),
@@ -2338,40 +2553,55 @@ class PostgresReadRepository:
             referrals=referrals,
             outreach_events=outreach_events,
             follow_up_events=follow_up_events,
+            workflow_events=workflow_events,
+            reviews=reviews,
         )
 
-    def list_facilities(self, limit: int, offset: int) -> PaginatedFacilitiesOut:
+    def _facility_stmt(self):
+        return select(Facility).where(
+            Facility.identity_status == "identified",
+            Facility.geo_quality == "ok",
+            Facility.license_status_raw.in_(_USABLE_LICENSE_STATUSES),
+        )
+
+    def list_facilities(
+        self,
+        limit: int,
+        offset: int,
+        region_id: int | None = None,
+        facility_type: str | None = None,
+        source_layer: str | None = None,
+        q: str | None = None,
+    ) -> PaginatedFacilitiesOut:
         try:
-            stmt = select(Facility).where(
-                Facility.identity_status == "identified",
-                Facility.geo_quality == "ok",
-                Facility.license_status_raw.in_(("Active", "Temporary Closure")),
-            )
+            stmt = self._facility_stmt()
+            if region_id is not None:
+                stmt = stmt.where(Facility.region_id == region_id)
+            if facility_type is not None:
+                stmt = stmt.where(
+                    func.lower(func.coalesce(Facility.type, Facility.source_layer))
+                    == facility_type.lower()
+                )
+            if source_layer is not None:
+                stmt = stmt.where(Facility.source_layer == source_layer)
+            if q and q.strip():
+                pat = f"%{q.strip()}%"
+                stmt = stmt.where(
+                    or_(
+                        Facility.facility_name_en.ilike(pat),
+                        Facility.facility_name_ar.ilike(pat),
+                        Facility.city.ilike(pat),
+                    )
+                )
             total = int(
                 self._session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
             )
             page = self._session.scalars(
                 stmt.order_by(Facility.facility_id).limit(limit).offset(offset)
             ).all()
+            items = [_facility_item(_row_to_dict(f)) for f in page]
         except SQLAlchemyError as exc:
-            raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
-
-        items = [
-            FacilityItemOut(
-                facility_id=f.facility_id,
-                ch_fid=f.ch_fid,
-                source_object_id=f.source_object_id,
-                source_layer=f.source_layer,
-                facility_name=f.facility_name_en,
-                region_id=f.region_id,
-                facility_type=f.type or f.source_layer,
-                license_status=f.license_status_raw,
-                simulated_ifhas_service=None,
-                simulated_wcv_service=None,
-                capability_basis="unverified_sdi_facts_only",
-            )
-            for f in page
-        ]
+            raise _db_query_failed(exc) from exc
         return PaginatedFacilitiesOut(
             governance_notice=_FACILITY_NOTICE,
             total=total,
@@ -2379,6 +2609,36 @@ class PostgresReadRepository:
             offset=offset,
             items=items,
         )
+
+    def get_facility(self, ch_fid: str) -> FacilityDetailOut | None:
+        try:
+            f = self._session.scalars(self._facility_stmt().where(Facility.ch_fid == ch_fid)).first()
+            row = _row_to_dict(f) if f is not None else None
+        except SQLAlchemyError as exc:
+            raise _db_query_failed(exc) from exc
+        return _facility_detail(row) if row is not None else None
+
+    def list_open_questions(
+        self, status: str | None = None, category: str | None = None
+    ) -> PaginatedOpenQuestionsOut:
+        try:
+            stmt = select(OpenQuestion).order_by(OpenQuestion.oq_id)
+            if status is not None:
+                stmt = stmt.where(OpenQuestion.status == status)
+            if category is not None:
+                stmt = stmt.where(OpenQuestion.category == category)
+            oqs = [_row_to_dict(o) for o in self._session.scalars(stmt).all()]
+            links: dict[str, list[str]] = {}
+            for model in (RuleOpenQuestion, RuleItemOpenQuestion):
+                for oq_id, rule_id in self._session.execute(select(model.oq_id, model.rule_id)).all():
+                    links.setdefault(oq_id, []).append(rule_id)
+        except SQLAlchemyError as exc:
+            raise _db_query_failed(exc) from exc
+        items = [_open_question_out(o, links.get(o["oq_id"], [])) for o in oqs]
+        return PaginatedOpenQuestionsOut(total=len(items), items=items)
+
+    def get_open_question(self, oq_id: str) -> OpenQuestionOut | None:
+        return next((o for o in self.list_open_questions().items if o.oq_id == oq_id), None)
 
     def get_patient_outreach_inputs(
         self, patient_id: str
@@ -2412,7 +2672,7 @@ class PostgresReadRepository:
                 ).all()
             ]
         except SQLAlchemyError as exc:
-            raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
+            raise _db_query_failed(exc) from exc
         return _row_to_dict(p), evals, gaps, consents
 
     def get_explanation_inputs(
@@ -2460,7 +2720,7 @@ class PostgresReadRepository:
                 meta["source_name"] = std.source_name
                 meta["source_version"] = std.source_version
         except SQLAlchemyError as exc:
-            raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
+            raise _db_query_failed(exc) from exc
         return _row_to_dict(ev), meta, h_status, eval_reasons, rule_oqs
 
     def get_patient_history(self, patient_id: str) -> PatientHistoryOut | None:
@@ -2529,7 +2789,7 @@ class PostgresReadRepository:
                 ).all()
             ]
         except SQLAlchemyError as exc:
-            raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
+            raise _db_query_failed(exc) from exc
 
         return _build_patient_history_out(
             patient_id=patient_id,
@@ -2562,6 +2822,6 @@ class PostgresReadRepository:
                 ).all()
             ]
         except SQLAlchemyError as exc:
-            raise HTTPException(status_code=503, detail=f"PostgreSQL query failed: {exc}") from exc
+            raise _db_query_failed(exc) from exc
 
         return _build_patient_consents_out(patient_id=patient_id, consents=consents)

@@ -1640,6 +1640,15 @@ class CareGapFollowUpEvent(Base):
         TIMESTAMP(timezone=True), nullable=False
     )
     note: Mapped[str | None] = mapped_column(Text)
+    appointment_id: Mapped[str | None] = mapped_column(Text)
+    referral_id: Mapped[str | None] = mapped_column(Text)
+    contact_consent_marker: Mapped[bool | None] = mapped_column(
+        Boolean,
+        Computed(
+            "CASE WHEN contact_consent_id IS NOT NULL THEN TRUE END",
+            persisted=True,
+        ),
+    )
 
     __table_args__ = (
         _fk(
@@ -1647,7 +1656,46 @@ class CareGapFollowUpEvent(Base):
             ["care_gap.run_id", "care_gap.patient_id", "care_gap.care_gap_id"],
             "fk_care_gap_follow_up_event_care_gap",
         ),
+        _fk(
+            ["run_id", "patient_id", "contact_consent_id", "contact_consent_marker"],
+            [
+                "consent.run_id",
+                "consent.patient_id",
+                "consent.consent_id",
+                "consent.grants_contact",
+            ],
+            "fk_care_gap_follow_up_event_contact_consent_id_consent",
+        ),
+        _fk(
+            ["run_id", "patient_id", "appointment_id"],
+            ["appointment.run_id", "appointment.patient_id", "appointment.appointment_id"],
+            "fk_care_gap_follow_up_event_appointment_id_appointment",
+        ),
+        _fk(
+            ["run_id", "patient_id", "referral_id"],
+            ["referral.run_id", "referral.patient_id", "referral.referral_id"],
+            "fk_care_gap_follow_up_event_referral_id_referral",
+        ),
         *_synth_checks("follow_up_id", "FUP"),
+        CheckConstraint(
+            "outcome_status IS NULL OR outcome_status IN ('noted', 'completed', 'suppressed', "
+            "'simulated_not_sent', 'status_recorded')",
+            name="outcome_status",
+        ),
+        CheckConstraint(
+            "event_type <> 'completion_documented' OR (documented_evidence AND "
+            "evidence_reference IS NOT NULL AND outcome_status = 'completed')",
+            name="completion_requires_evidence",
+        ),
+        CheckConstraint(
+            "(event_type IN ('appointment_scheduled', 'appointment_updated')) = "
+            "(appointment_id IS NOT NULL)",
+            name="appointment_link",
+        ),
+        CheckConstraint(
+            "(event_type IN ('referral_created', 'referral_updated')) = (referral_id IS NOT NULL)",
+            name="referral_link",
+        ),
         CheckConstraint(
             "event_type IN ('outreach_attempted', 'outreach_suppressed', 'appointment_scheduled', "
             "'appointment_updated', 'referral_created', 'referral_updated', "
@@ -1664,5 +1712,71 @@ class CareGapFollowUpEvent(Base):
         ),
         Index("ix_care_gap_follow_up_event_gap_recorded", "care_gap_id", "recorded_at"),
         Index("ix_care_gap_follow_up_event_patient", "patient_id", "recorded_at"),
+        {"schema": SCHEMA},
+    )
+
+
+class WorkflowStatusEvent(Base):
+    """Append-only appointment/referral status history (migration 0009)."""
+
+    __tablename__ = "workflow_status_event"
+
+    status_event_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    run_id: Mapped[str] = mapped_column(Text, nullable=False)
+    patient_id: Mapped[str] = mapped_column(Text, nullable=False)
+    is_synthetic: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    entity_type: Mapped[str] = mapped_column(Text, nullable=False)
+    appointment_id: Mapped[str | None] = mapped_column(Text)
+    referral_id: Mapped[str | None] = mapped_column(Text)
+    care_gap_id: Mapped[str | None] = mapped_column(Text)
+    from_status: Mapped[str | None] = mapped_column(Text)
+    to_status: Mapped[str] = mapped_column(Text, nullable=False)
+    scheduled_datetime: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    initiated_date: Mapped[date | None] = mapped_column(Date)
+    completed_date: Mapped[date | None] = mapped_column(Date)
+    recorded_by: Mapped[str] = mapped_column(Text, nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    note: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (
+        _fk(
+            ["run_id", "patient_id", "appointment_id"],
+            ["appointment.run_id", "appointment.patient_id", "appointment.appointment_id"],
+            "fk_workflow_status_event_appointment_id_appointment",
+        ),
+        _fk(
+            ["run_id", "patient_id", "referral_id"],
+            ["referral.run_id", "referral.patient_id", "referral.referral_id"],
+            "fk_workflow_status_event_referral_id_referral",
+        ),
+        _fk(
+            ["run_id", "patient_id", "care_gap_id"],
+            ["care_gap.run_id", "care_gap.patient_id", "care_gap.care_gap_id"],
+            "fk_workflow_status_event_care_gap_id_care_gap",
+        ),
+        *_synth_checks("status_event_id", "WSE"),
+        CheckConstraint(
+            "(entity_type = 'appointment' AND appointment_id IS NOT NULL AND referral_id IS NULL) "
+            "OR (entity_type = 'referral' AND referral_id IS NOT NULL AND appointment_id IS NULL)",
+            name="entity_link",
+        ),
+        CheckConstraint(
+            "(entity_type = 'appointment' AND to_status IN ('scheduled', 'attended', 'no_show', "
+            "'cancelled_by_patient', 'cancelled_by_facility', 'rescheduled') AND (from_status IS "
+            "NULL OR from_status IN ('scheduled', 'rescheduled'))) OR (entity_type = 'referral' "
+            "AND to_status IN ('pending', 'initiated', 'completed', 'declined', 'cancelled') AND "
+            "(from_status IS NULL OR from_status IN ('pending', 'initiated')))",
+            name="status_vocabulary",
+        ),
+        CheckConstraint(
+            "from_status IS NOT NULL OR to_status IN ('scheduled', 'pending', 'initiated')",
+            name="creation_status",
+        ),
+        CheckConstraint("length(btrim(recorded_by)) > 0", name="recorded_by_nonempty"),
+        Index("ix_workflow_status_event_appointment", "appointment_id", "recorded_at"),
+        Index("ix_workflow_status_event_referral", "referral_id", "recorded_at"),
+        Index("ix_workflow_status_event_patient", "patient_id", "recorded_at"),
         {"schema": SCHEMA},
     )

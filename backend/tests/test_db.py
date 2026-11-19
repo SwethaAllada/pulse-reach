@@ -47,7 +47,8 @@ def test_pool_settings_applied():
     assert pool._pre_ping is True
 
 
-def test_build_engine_without_url_raises():
+def test_build_engine_without_url_raises(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     with pytest.raises(DatabaseNotConfigured):
         build_engine(make_settings())
 

@@ -24,6 +24,7 @@ from app.repositories.read_repo import (
     ReadRepository,
     build_safe_input_snapshot_from_context,
     describe_reason,
+    evaluation_markers,
     get_cached_bundle,
     get_cached_engine,
 )
@@ -37,7 +38,13 @@ from app.schemas.v1 import (
     EvaluateRequestIn,
     EvaluationItemOut,
     EvaluationReasonOut,
+    AIAuditOut,
+    AIAuditRecordOut,
+    AIGenerationOut,
+    AIStatusOut,
     ExplanationOut,
+    OutreachDraftOut,
+    PopulationInsightOut,
     ExplanationRequestIn,
     FollowUpCreateIn,
     FollowUpEventOut,
@@ -45,11 +52,19 @@ from app.schemas.v1 import (
     OutreachPreviewRequestIn,
     PaginatedAppointmentsOut,
     PaginatedCareGapsOut,
+    FacilityDetailOut,
+    OpenQuestionOut,
     PaginatedFacilitiesOut,
+    PaginatedOpenQuestionsOut,
+    CareGapReviewIn,
+    CareGapReviewOut,
+    CareGapReviewsOut,
+    PaginatedFollowUpEventsOut,
     PaginatedPatientsOut,
     PaginatedReferralsOut,
     PaginatedRulesOut,
     PatientConsentsOut,
+    PatientActivityOut,
     PatientEvaluationsOut,
     PatientHistoryOut,
     PatientSummaryOut,
@@ -57,19 +72,32 @@ from app.schemas.v1 import (
     ReferralOut,
     ReferralPatchIn,
     RuleDetailOut,
+    WorkflowHistoryOut,
 )
 from app.services.evaluation.engine import ENGINE_VERSION
-from app.services.explanation import (
-    BoundedExplanationInput,
-    ExplanationService,
-    PrivacyViolationError,
-)
+from app.services.ai import AIGenerationMeta, AIService, get_ai_service
+from app.services.explanation import BoundedExplanationInput, PrivacyViolationError
 from app.services.outreach import OutreachRuleNotFoundError, OutreachService
 
 router = APIRouter(prefix="/api/v1", tags=["v1"])
 
-_explanation_service = ExplanationService(llm_provider=None)
 _outreach_service = OutreachService()
+_INSIGHT_DISCLAIMER = (
+    "Aggregates of synthetic records computed deterministically by the backend; any narrative is "
+    "a restatement of these counts, not an analysis, prediction or clinical finding."
+)
+
+
+def _ai_out(meta: AIGenerationMeta) -> AIGenerationOut:
+    return AIGenerationOut(
+        generation_mode=meta.generation_mode,
+        prompt_version=meta.prompt_version,
+        provider=meta.provider,
+        model=meta.model,
+        fallback_reason=meta.fallback_reason,
+        violations=list(meta.violations),
+        audit_id=meta.audit_id,
+    )
 
 
 def get_read_repository() -> Iterator[ReadRepository]:
@@ -289,6 +317,14 @@ def run_evaluation(
                     )
                     for i, r in enumerate(ev.reasons, 1)
                 ],
+                **evaluation_markers(
+                    ev.rule_id,
+                    ev.evaluation_status,
+                    ev.reason_code,
+                    date_of_birth=ctx.date_of_birth,
+                    sex=ctx.sex,
+                    reference_date=ref_date,
+                ),
             )
         )
     gap_items = [
@@ -389,19 +425,75 @@ def get_care_gap_detail(
     return detail
 
 
+_FACILITY_LAYERS = Literal[
+    "hospitals",
+    "health_centres",
+    "clinics",
+    "pharmacy",
+    "rehabilitation_center",
+    "provision_health_service",
+    "diagnostic_centers",
+    "mobile_health_unit",
+    "dialysis_centre",
+]
+
+
 @router.get("/facilities", response_model=PaginatedFacilitiesOut)
 def list_facilities(
     limit: int = Query(default=25, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    region_id: int | None = Query(default=None, ge=1, le=3),
+    facility_type: str | None = Query(default=None, min_length=1, max_length=64),
+    source_layer: _FACILITY_LAYERS | None = Query(default=None),
+    q: str | None = Query(default=None, max_length=100),
     repo: ReadRepository = Depends(get_read_repository),
 ) -> PaginatedFacilitiesOut:
-    return repo.list_facilities(limit=limit, offset=offset)
+    return repo.list_facilities(
+        limit=limit,
+        offset=offset,
+        region_id=region_id,
+        facility_type=facility_type,
+        source_layer=source_layer,
+        q=q,
+    )
+
+
+@router.get("/facilities/{ch_fid}", response_model=FacilityDetailOut)
+def get_facility(
+    ch_fid: str,
+    repo: ReadRepository = Depends(get_read_repository),
+) -> FacilityDetailOut:
+    detail = repo.get_facility(ch_fid)
+    if detail is None:
+        raise HTTPException(status_code=404, detail=f"Facility '{ch_fid}' not found")
+    return detail
+
+
+@router.get("/open-questions", response_model=PaginatedOpenQuestionsOut)
+def list_open_questions(
+    status: Literal["open", "resolved"] | None = Query(default=None),
+    category: str | None = Query(default=None, max_length=64),
+    repo: ReadRepository = Depends(get_read_repository),
+) -> PaginatedOpenQuestionsOut:
+    return repo.list_open_questions(status=status, category=category)
+
+
+@router.get("/open-questions/{oq_id}", response_model=OpenQuestionOut)
+def get_open_question(
+    oq_id: str,
+    repo: ReadRepository = Depends(get_read_repository),
+) -> OpenQuestionOut:
+    oq = repo.get_open_question(oq_id)
+    if oq is None:
+        raise HTTPException(status_code=404, detail=f"Open question '{oq_id}' not found")
+    return oq
 
 
 @router.post("/explanations", response_model=ExplanationOut)
 def create_explanation(
     req: ExplanationRequestIn,
     repo: ReadRepository = Depends(get_read_repository),
+    ai: AIService = Depends(get_ai_service),
 ) -> ExplanationOut:
     ev_match, r_meta, h_status, eval_reasons, rule_oqs = repo.get_explanation_inputs(
         req.patient_id, req.rule_id
@@ -413,7 +505,7 @@ def create_explanation(
         )
 
     try:
-        res = _explanation_service.explain_evaluation(
+        res, meta = ai.explain(
             BoundedExplanationInput(
                 synthetic_patient_id=req.patient_id,
                 pathway=r_meta["pathway"],
@@ -451,14 +543,11 @@ def create_explanation(
         missing_or_uncertain_text=res.missing_or_uncertain_text,
         rule_citation_text=res.rule_citation_text,
         warnings=list(res.warnings),
+        ai=_ai_out(meta),
     )
 
 
-@router.post("/outreach/preview", response_model=OutreachPreviewOut)
-def preview_outreach(
-    req: OutreachPreviewRequestIn,
-    repo: ReadRepository = Depends(get_read_repository),
-) -> OutreachPreviewOut:
+def _gated_preview(req: OutreachPreviewRequestIn, repo: ReadRepository):
     p, evals, gaps, consents = repo.get_patient_outreach_inputs(req.patient_id)
     if p is None:
         raise HTTPException(
@@ -482,7 +571,15 @@ def preview_outreach(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except PrivacyViolationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return res, rule
 
+
+@router.post("/outreach/preview", response_model=OutreachPreviewOut)
+def preview_outreach(
+    req: OutreachPreviewRequestIn,
+    repo: ReadRepository = Depends(get_read_repository),
+) -> OutreachPreviewOut:
+    res, _ = _gated_preview(req, repo)
     return OutreachPreviewOut(
         synthetic_patient_id=res.synthetic_patient_id,
         care_gap_id=res.care_gap_id,
@@ -493,6 +590,79 @@ def preview_outreach(
         blocked_reason=res.blocked_reason,
         preview_message=res.preview_message,
         disclaimer=res.disclaimer,
+    )
+
+
+@router.post("/outreach/draft", response_model=OutreachDraftOut)
+def draft_outreach(
+    req: OutreachPreviewRequestIn,
+    repo: ReadRepository = Depends(get_read_repository),
+    ai: AIService = Depends(get_ai_service),
+) -> OutreachDraftOut:
+    """Consent-gated, simulated outreach draft. Nothing is ever sent."""
+    res, rule = _gated_preview(req, repo)
+    draft = ai.draft_outreach(
+        res, channel=req.channel, language=req.language, programme=str(rule.get("source_name") or rule["pathway"])
+    )
+    return OutreachDraftOut(
+        synthetic_patient_id=res.synthetic_patient_id,
+        care_gap_id=res.care_gap_id,
+        rule_id=res.rule_id,
+        rule_version=res.rule_version,
+        allowed=res.allowed,
+        blocked_reason=res.blocked_reason,
+        draft_message=draft.message if draft else None,
+        disclaimer=res.disclaimer,
+        ai=_ai_out(draft.meta) if draft else None,
+    )
+
+
+@router.get("/insights/population", response_model=PopulationInsightOut)
+def population_insight(
+    repo: ReadRepository = Depends(get_read_repository),
+    ai: AIService = Depends(get_ai_service),
+) -> PopulationInsightOut:
+    d = repo.get_dashboard_summary()
+    facts = {
+        "run_id": d.run_id,
+        "evaluation_run_id": d.evaluation_run_id,
+        "reference_date": d.reference_date.isoformat(),
+        "total_patients": d.total_patients,
+        "n_adults": d.n_adults,
+        "n_children": d.n_children,
+        "open_care_gaps_count": d.open_care_gaps_count,
+        "closed_refused_care_gaps_count": d.closed_refused_care_gaps_count,
+        "open_gaps_by_pathway": d.gaps_by_pathway,
+        "open_gaps_by_type": d.gaps_by_type,
+        "open_gaps_by_region": {str(r.region_id): r.open_care_gaps_count for r in d.region_breakdown},
+        "unknown_history_patients_count": d.unknown_history_patients_count,
+        "review_flagged_patients_count": d.review_flagged_patients_count,
+    }
+    insight = ai.population_insight(facts)
+    return PopulationInsightOut(
+        facts=insight.facts,
+        summary_text=insight.summary_text,
+        disclaimer=_INSIGHT_DISCLAIMER,
+        ai=_ai_out(insight.meta),
+    )
+
+
+@router.get("/ai/status", response_model=AIStatusOut)
+def ai_status(ai: AIService = Depends(get_ai_service)) -> AIStatusOut:
+    return AIStatusOut(**ai.status())
+
+
+@router.get("/ai/audit", response_model=AIAuditOut)
+def ai_audit(
+    limit: int = Query(default=50, ge=1, le=500),
+    feature: Literal["explanation", "outreach_draft", "population_insight"] | None = Query(default=None),
+    ai: AIService = Depends(get_ai_service),
+) -> AIAuditOut:
+    return AIAuditOut(
+        items=[
+            AIAuditRecordOut(**{**r.__dict__, "violations": list(r.violations)})
+            for r in ai.audit.recent(limit=limit, feature=feature)
+        ]
     )
 
 
@@ -507,6 +677,41 @@ def create_care_gap_follow_up(
     repo: FollowUpRepository = Depends(get_followup_repository),
 ) -> FollowUpEventOut:
     return repo.create_follow_up(gap_id, req)
+
+
+@router.post("/care-gaps/{gap_id}/reviews", response_model=CareGapReviewOut, status_code=201)
+def create_care_gap_review(
+    gap_id: str,
+    req: CareGapReviewIn,
+    repo: FollowUpRepository = Depends(get_followup_repository),
+) -> CareGapReviewOut:
+    return repo.create_review(gap_id, req)
+
+
+@router.get("/care-gaps/{gap_id}/reviews", response_model=CareGapReviewsOut)
+def list_care_gap_reviews(
+    gap_id: str,
+    repo: FollowUpRepository = Depends(get_followup_repository),
+) -> CareGapReviewsOut:
+    return repo.list_reviews(gap_id)
+
+
+@router.get("/care-gaps/{gap_id}/follow-ups", response_model=PaginatedFollowUpEventsOut)
+def list_care_gap_follow_ups(
+    gap_id: str,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    repo: FollowUpRepository = Depends(get_followup_repository),
+) -> PaginatedFollowUpEventsOut:
+    return repo.list_follow_ups(gap_id, limit=limit, offset=offset)
+
+
+@router.get("/patients/{patient_id}/activity", response_model=PatientActivityOut)
+def get_patient_activity(
+    patient_id: str,
+    repo: FollowUpRepository = Depends(get_followup_repository),
+) -> PatientActivityOut:
+    return repo.get_patient_activity(patient_id)
 
 
 @router.get("/appointments", response_model=PaginatedAppointmentsOut)
@@ -552,6 +757,14 @@ def update_appointment(
     return repo.update_appointment(appointment_id, req)
 
 
+@router.get("/appointments/{appointment_id}/history", response_model=WorkflowHistoryOut)
+def get_appointment_history(
+    appointment_id: str,
+    repo: FollowUpRepository = Depends(get_followup_repository),
+) -> WorkflowHistoryOut:
+    return repo.get_appointment_history(appointment_id)
+
+
 @router.get("/referrals", response_model=PaginatedReferralsOut)
 def list_referrals(
     patient_id: str | None = Query(default=None),
@@ -582,3 +795,11 @@ def update_referral(
     repo: FollowUpRepository = Depends(get_followup_repository),
 ) -> ReferralOut:
     return repo.update_referral(referral_id, req)
+
+
+@router.get("/referrals/{referral_id}/history", response_model=WorkflowHistoryOut)
+def get_referral_history(
+    referral_id: str,
+    repo: FollowUpRepository = Depends(get_followup_repository),
+) -> WorkflowHistoryOut:
+    return repo.get_referral_history(referral_id)

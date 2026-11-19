@@ -43,6 +43,7 @@ TABLES = {
     "care_gap",
     "care_gap_review",
     "care_gap_follow_up_event",
+    "workflow_status_event",
     "appointment",
     "outreach_event",
 }
@@ -65,6 +66,7 @@ EXPECTED_PKS = {
     "care_gap": ("care_gap_id",),
     "care_gap_review": ("review_id",),
     "care_gap_follow_up_event": ("follow_up_id",),
+    "workflow_status_event": ("status_event_id",),
     "appointment": ("appointment_id",),
     "outreach_event": ("outreach_id",),
 }
@@ -464,7 +466,7 @@ def test_migration_0007_uses_frozen_static_ddl():
     src = mig_path.read_text(encoding="utf-8")
     assert "app.models" not in src
     assert "Base.metadata" not in src
-    for tbl_name in TABLES - {"care_gap_follow_up_event"}:
+    for tbl_name in TABLES - {"care_gap_follow_up_event", "workflow_status_event"}:
         assert f"CREATE TABLE synthetic.{tbl_name}" in src
 
 
@@ -496,20 +498,13 @@ def test_live_synthetic_migration(monkeypatch):
             "v_eligibility_current",
             "v_care_gap_effective_priority",
         }
+        from app.services import official_loader
+
         clinical_load.run(engine)
-        with engine.begin() as conn:
-            for r_id, code, label, sdi in (
-                (1, "AD", "Abu Dhabi", "Abu Dhabi"),
-                (2, "AA", "Al Ain", "Al Ain"),
-                (3, "ADHF", "Al Dhafra", "Al Dhafra"),
-            ):
-                conn.execute(
-                    text(
-                        "INSERT INTO official.region (region_id, region_code, name_en, sdi_label) "
-                        "VALUES (:r_id, :code, :label, :sdi) ON CONFLICT (region_id) DO NOTHING"
-                    ),
-                    {"r_id": r_id, "code": code, "label": label, "sdi": sdi},
-                )
+        with engine.connect() as conn:
+            has_facilities = conn.execute(text("SELECT count(*) FROM official.facility")).scalar_one()
+        if not has_facilities:  # synthetic profiles reference real official.facility rows
+            assert official_loader.run(engine=engine)["quarantined"] == []
         small_ds = generate_synthetic_dataset(seed=20261116, total_patients=35)
         res1 = load_synthetic_dataset(engine, small_ds, reset_existing_run=True)
         res2 = load_synthetic_dataset(engine, small_ds, reset_existing_run=True)

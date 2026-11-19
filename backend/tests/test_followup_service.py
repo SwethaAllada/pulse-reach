@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.repositories.followup_repo import _MEMORY_FOLLOW_UP_EVENTS
+from app.repositories.followup_repo import reset_memory_writes
 from app.repositories.read_repo import get_cached_dataset, get_cached_index
 from app.services.followup.service import FollowUpService, FollowUpValidationError
 
@@ -18,7 +18,7 @@ client = TestClient(app)
 @pytest.fixture(autouse=True)
 def _reset_memory_dataset():
     yield
-    _MEMORY_FOLLOW_UP_EVENTS.clear()
+    reset_memory_writes()
     get_cached_index.cache_clear()
     get_cached_dataset.cache_clear()
 
@@ -99,6 +99,7 @@ def test_follow_up_appointment_and_referral_write_endpoints():
             "scheduled_datetime": datetime(2026, 11, 25, 10, 0, tzinfo=timezone.utc).isoformat(),
             "slot_type": "weekday",
             "booked_via": "clinician_portal",
+            "recorded_by": "coordinator_ui",
         },
     )
     assert apt_resp.status_code == 201
@@ -109,7 +110,7 @@ def test_follow_up_appointment_and_referral_write_endpoints():
     # PATCH appointment to attended
     patch_apt = client.patch(
         f"/api/v1/appointments/{apt['appointment_id']}",
-        json={"status": "attended"},
+        json={"status": "attended", "recorded_by": "coordinator_ui"},
     )
     assert patch_apt.status_code == 200
     assert patch_apt.json()["status"] == "attended"
@@ -117,7 +118,7 @@ def test_follow_up_appointment_and_referral_write_endpoints():
     # Invalid transition attended -> scheduled -> 422
     bad_apt = client.patch(
         f"/api/v1/appointments/{apt['appointment_id']}",
-        json={"status": "scheduled"},
+        json={"status": "scheduled", "recorded_by": "coordinator_ui"},
     )
     assert bad_apt.status_code == 422
 
@@ -149,14 +150,29 @@ def test_follow_up_appointment_and_referral_write_endpoints():
     )
     assert bad_close.status_code == 422
 
-    # 4. Closing gap WITH documented evidence -> 201 and gap becomes closed_completed
+    # 4. Closing gap WITH documented, rule-matching completion evidence -> 201 and gap becomes
+    # closed_completed. A newly documented complete screening for the gap's own rule is added.
     ds = get_cached_dataset()
-    scr_by_pat = {s["patient_id"]: s["screening_id"] for s in ds.ifhas_screenings}
     target_gap = next(
-        g for g in ds.care_gaps if g["status"] == "open" and g["patient_id"] in scr_by_pat
+        g
+        for g in ds.care_gaps
+        if g["status"] == "open"
+        and g["gap_type"] == "no_documented_screening"
+        and g["rule_id"].startswith("IFHAS-PKG-")
     )
     target_gap_id = target_gap["care_gap_id"]
-    ev_ref = scr_by_pat[target_gap["patient_id"]]
+    ev_ref = "SYNTH-SCR-900001"
+    new_screening = {
+        "screening_id": ev_ref,
+        "run_id": ds.generation_run["run_id"],
+        "patient_id": target_gap["patient_id"],
+        "rule_id": target_gap["rule_id"],
+        "rule_version": target_gap["rule_version"],
+        "performed_date": ds.evaluation_run["reference_date"],
+        "completion_status": "complete",
+    }
+    ds.ifhas_screenings.append(new_screening)
+    get_cached_index().ifhas_by_patient.setdefault(target_gap["patient_id"], []).append(new_screening)
     good_close = client.post(
         f"/api/v1/care-gaps/{target_gap_id}/follow-ups",
         json={
@@ -222,6 +238,7 @@ def test_referral_list_create_and_patch_endpoints():
                 "trigger_rule_version": scr["rule_version"],
                 "referral_target": "diagnostic_mammography",
                 "trigger_date": "2026-11-16",
+                "recorded_by": "coordinator_ui",
             },
         )
         assert created.status_code == 201
@@ -231,7 +248,7 @@ def test_referral_list_create_and_patch_endpoints():
         # Transition pending -> initiated
         init_resp = client.patch(
             f"/api/v1/referrals/{ref_id}",
-            json={"status": "initiated", "initiated_date": "2026-11-17"},
+            json={"status": "initiated", "initiated_date": "2026-11-17", "recorded_by": "coordinator_ui"},
         )
         assert init_resp.status_code == 200
         assert init_resp.json()["status"] == "initiated"
@@ -239,14 +256,14 @@ def test_referral_list_create_and_patch_endpoints():
         # Transition initiated -> completed requires completed_date
         bad_comp = client.patch(
             f"/api/v1/referrals/{ref_id}",
-            json={"status": "completed"},
+            json={"status": "completed", "recorded_by": "coordinator_ui"},
         )
         assert bad_comp.status_code == 422
 
         # Transition initiated -> declined
         dec_resp = client.patch(
             f"/api/v1/referrals/{ref_id}",
-            json={"status": "declined"},
+            json={"status": "declined", "recorded_by": "coordinator_ui"},
         )
         assert dec_resp.status_code == 200
         assert dec_resp.json()["status"] == "declined"

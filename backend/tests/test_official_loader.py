@@ -724,7 +724,10 @@ def test_real_ingestion_populates_the_nine_tables_and_quarantines_nothing(real):
                       "dimension_member": 195, "observation": 14913, "facility": 5339, "license_status_map": 14}
     assert report["post_load_checks"] == {k: 0 for k in report["post_load_checks"]}
     assert set(report["tables"]) == set(counts)
-    assert scalar(eng, "SELECT count(*) FROM pg_tables WHERE schemaname IN ('clinical','synthetic')") == 0
+    # The official loader writes nothing outside `official` (the later schemas exist but stay empty).
+    other = [r[0] for r in eng.connect().execute(text(
+        "SELECT schemaname || '.' || tablename FROM pg_tables WHERE schemaname IN ('clinical','synthetic')"))]
+    assert other and {t: scalar(eng, f"SELECT count(*) FROM {t}") for t in other} == {t: 0 for t in other}
 
 
 @live

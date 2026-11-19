@@ -1,4 +1,20 @@
 # Run from repo root: docker compose --env-file .env -f infrastructure/docker-compose.yml up
+# `db-init` migrates, loads the official register and seeds once (idempotent; never reseeds an
+# already-seeded database); `backend` starts only after it succeeds and fails fast if the rules
+# or the seeded run are missing.
+x-backend-env: &backend-env
+  DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+  DATA_SOURCE: ${DATA_SOURCE:-db}
+  PULSE_REACH_REPO_ROOT: /app
+  RULES_DIR: /app/data-pipeline/rules
+  DATA_DIR: /app/data
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+  LLM_ENABLED: ${LLM_ENABLED:-false}
+  LLM_PROVIDER: ${LLM_PROVIDER:-openai_compatible}
+  LLM_MODEL: ${LLM_MODEL:-}
+  LLM_BASE_URL: ${LLM_BASE_URL:-}
+  LLM_API_KEY: ${LLM_API_KEY:-}
+
 services:
   db:
     image: postgres:16-alpine
@@ -15,25 +31,40 @@ services:
       interval: 5s
       retries: 10
 
+  db-init:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    command: ["python", "-m", "app.db.init", "--seed"]
+    environment: *backend-env
+    volumes:
+      - ../data-pipeline/rules:/app/data-pipeline/rules:ro
+      - ../data:/app/data:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
   backend:
     build:
       context: ..
       dockerfile: backend/Dockerfile
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-      DATA_SOURCE: ${DATA_SOURCE:-db}
-      PULSE_REACH_REPO_ROOT: /app
-      RULES_DIR: /app/data-pipeline/rules
-      DATA_DIR: /app/data
-      CORS_ORIGINS: http://localhost:3000
+      <<: *backend-env
     volumes:
       - ../data-pipeline/rules:/app/data-pipeline/rules:ro
       - ../data:/app/data:ro
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      retries: 6
     depends_on:
       db:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
 
 volumes:
   pgdata:

@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from pydantic import SecretStr
 from sqlalchemy import create_engine, insert, text
 from sqlalchemy.engine import make_url
@@ -30,6 +31,11 @@ VIEWS = {"v_observation_current", "v_observation_leaf", "v_indicator_year_shape"
          "v_derived_total_additive", "v_facility_usable"}
 FUNCTIONS = {"enforce_obtained_source_has_source_file", "enforce_observation_member_dimension_type",
              "forbid_retyping_referenced_dimension_member"}
+# Views of the later schemas (0006 clinical, 0007 synthetic), present at head.
+CLINICAL_VIEWS = {"v_rule_current", "v_rule_authority", "v_rule_item_effective_authority"}
+SYNTHETIC_VIEWS = {"v_consent_current", "v_history_availability_current", "v_eligibility_current",
+                   "v_care_gap_effective_priority"}
+OFFICIAL_HEAD = "0005"  # last revision that touches the official schema
 TRIGGERS = {"trg_source_obtained_requires_source_file", "trg_source_file_keeps_obtained_source_covered",
             "trg_observation_member_dimension_type", "trg_dimension_member_type_not_retyped"}
 DIMENSIONS = {  # dimension_type -> observation column
@@ -172,7 +178,8 @@ def test_exactly_the_designed_views_triggers_and_functions_exist(engine):
                                   FROM pg_trigger t JOIN pg_class r ON r.oid = t.tgrelid
                                   JOIN pg_namespace n ON n.oid = r.relnamespace
                                   WHERE n.nspname = 'official' AND NOT t.tgisinternal""")).all()
-    assert views == {("official", v) for v in VIEWS}
+    assert views == ({("official", v) for v in VIEWS} | {("clinical", v) for v in CLINICAL_VIEWS}
+                     | {("synthetic", v) for v in SYNTHETIC_VIEWS})
     assert funcs == FUNCTIONS
     assert {t[0] for t in trigs} == TRIGGERS
     assert {t[0]: (t[1], t[2]) for t in trigs if "obtained" in t[0] or "covered" in t[0]} == {
@@ -707,8 +714,8 @@ def test_upgrade_and_downgrade_preserve_tables_and_data():
                 assert "vintage selector" in c.execute(text(
                     "SELECT obj_description('official.v_observation_current'::regclass)")).scalar().lower()
 
-            command.upgrade(cfg, "head")  # 0005 replaces the same two views again
-            assert catalogue(eng) == (VIEWS, FUNCTIONS, TRIGGERS, "0005")
+            command.upgrade(cfg, OFFICIAL_HEAD)  # 0005 replaces the same two views again
+            assert catalogue(eng) == (VIEWS, FUNCTIONS, TRIGGERS, OFFICIAL_HEAD)
             assert structure(eng) == struct2, "0005 must not change any table, column, constraint or index"
             assert row_digest(eng) == data2
             with eng.connect() as c:
@@ -728,14 +735,15 @@ def test_upgrade_and_downgrade_preserve_tables_and_data():
                 assert "not_testable_reason" not in {r[0] for r in c.execute(text(
                     "SELECT column_name FROM information_schema.columns WHERE table_schema = 'official' "
                     "AND table_name = 'v_indicator_year_shape'"))}
-            command.upgrade(cfg, "head")
-            assert row_digest(eng) == data2
+            command.upgrade(cfg, "head")  # later revisions never touch official tables or rows
+            assert structure(eng) == struct2 and row_digest(eng) == data2
+            assert catalogue(eng)[:3] == (VIEWS, FUNCTIONS, TRIGGERS)
 
             command.check(cfg)  # no model/database drift (views and triggers are outside autogenerate)
 
             command.downgrade(cfg, "base")  # full round trip, then back to head on an empty database
             command.upgrade(cfg, "head")
-            assert catalogue(eng)[3] == "0005"
+            assert catalogue(eng)[3] == ScriptDirectory.from_config(cfg).get_current_head()
         finally:
             eng.dispose()
 

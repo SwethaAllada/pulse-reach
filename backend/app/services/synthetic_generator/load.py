@@ -17,6 +17,8 @@ from app.services.synthetic_generator.generator import (
 CHUNK_SIZE = 2000
 
 DELETE_ORDER = (
+    "workflow_status_event",
+    "care_gap_follow_up_event",
     "outreach_event",
     "care_gap_review",
     "care_gap",
@@ -35,6 +37,14 @@ DELETE_ORDER = (
     "facility_service_profile",
     "evaluation_run",
     "generation_run",
+)
+
+# (table, column) FKs pointing "backwards" in DELETE_ORDER; nulled before the deletes.
+NULLED_BEFORE_DELETE = (
+    ("ifhas_screening", "appointment_id"),
+    ("well_child_visit", "appointment_id"),
+    ("outreach_event", "appointment_id"),
+    ("appointment", "care_gap_id"),
 )
 
 
@@ -73,39 +83,23 @@ def _load_with_sa_conn(
             row["facility_id"] = int(fac_ids[idx])
 
     if reset_existing_run:
+        # SET LOCAL is transaction-scoped: on failure the rollback discards it, so it is switched
+        # off only after a successful reset (a `finally` would mask the error on an aborted txn).
         conn.execute(text("SET LOCAL pulsereach.allow_synthetic_reset = 'on'"))
-        try:
+        for tbl_name, col in NULLED_BEFORE_DELETE:
             conn.execute(
                 text(
-                    "UPDATE synthetic.ifhas_screening SET appointment_id = NULL WHERE run_id = :run_id"
+                    f"UPDATE synthetic.{tbl_name} SET {col} = NULL "
+                    f"WHERE run_id = :run_id AND {col} IS NOT NULL"
                 ),
                 {"run_id": run_id},
             )
+        for tbl_name in DELETE_ORDER:
             conn.execute(
-                text(
-                    "UPDATE synthetic.well_child_visit SET appointment_id = NULL WHERE run_id = :run_id"
-                ),
+                text(f"DELETE FROM synthetic.{tbl_name} WHERE run_id = :run_id"),
                 {"run_id": run_id},
             )
-            conn.execute(
-                text(
-                    "UPDATE synthetic.outreach_event SET appointment_id = NULL WHERE run_id = :run_id"
-                ),
-                {"run_id": run_id},
-            )
-            conn.execute(
-                text(
-                    "UPDATE synthetic.appointment SET care_gap_id = NULL WHERE run_id = :run_id"
-                ),
-                {"run_id": run_id},
-            )
-            for tbl_name in DELETE_ORDER:
-                conn.execute(
-                    text(f"DELETE FROM synthetic.{tbl_name} WHERE run_id = :run_id"),
-                    {"run_id": run_id},
-                )
-        finally:
-            conn.execute(text("SET LOCAL pulsereach.allow_synthetic_reset = 'off'"))
+        conn.execute(text("SET LOCAL pulsereach.allow_synthetic_reset = 'off'"))
 
     def _insert_table(table_name: str, rows: list[dict[str, Any]]) -> None:
         if not rows:

@@ -27,6 +27,8 @@ from app.models.synthetic import (
     Assessment,
     CareGap,
     CareGapFollowUpEvent,
+    CareGapReview,
+    WorkflowStatusEvent,
     ComponentResult,
     Consent,
     EligibilityEvaluation,
@@ -118,6 +120,8 @@ def test_postgres_read_repository_matches_memory_repository_on_seeded_subset():
         EvaluationReason.__table__,
         CareGap.__table__,
         CareGapFollowUpEvent.__table__,
+        CareGapReview.__table__,
+        WorkflowStatusEvent.__table__,
         OutreachEvent.__table__,
     ]
     test_meta = MetaData()
@@ -287,11 +291,47 @@ def test_postgres_read_repository_matches_memory_repository_on_seeded_subset():
     not os.getenv("TEST_DATABASE_URL"),
     reason="TEST_DATABASE_URL not set; live PostgreSQL read parity test skipped",
 )
-def test_live_postgres_read_repository_parity():
-    live_engine = create_engine(os.environ["TEST_DATABASE_URL"])
-    with Session(live_engine) as session:
-        session.execute(text("SELECT 1"))
-        db_repo = PostgresReadRepository(session)
-        summary = db_repo.get_dashboard_summary()
-        assert summary.is_synthetic is True
-        assert summary.total_patients >= 1
+def test_live_postgres_read_repository_parity(monkeypatch):
+    """Seeded PostgreSQL (real loaders, all constraints) returns what memory mode returns."""
+    from alembic import command
+    from alembic.config import Config
+    from pathlib import Path
+    from pydantic import SecretStr
+
+    from app.db.session import get_engine
+    from app.repositories.read_repo import get_cached_dataset, get_cached_index
+    from app.services import official_loader
+    from app.services.synthetic_generator import seed as seed_cmd
+
+    url = os.environ["TEST_DATABASE_URL"]
+    monkeypatch.setattr(settings, "database_url", SecretStr(url))
+    get_engine.cache_clear()
+    command.upgrade(Config(str(Path(__file__).resolve().parents[1] / "alembic.ini")), "head")
+    live_engine = create_engine(url)
+    get_cached_index.cache_clear()
+    get_cached_dataset.cache_clear()
+    try:
+        with live_engine.connect() as conn:
+            if conn.execute(text("SELECT count(*) FROM official.facility")).scalar_one() == 0:
+                assert official_loader.run(engine=live_engine)["quarantined"] == []
+        seed_cmd.seed_database(engine=live_engine)
+        mem = MemoryReadRepository()
+        with Session(live_engine) as session:
+            db = PostgresReadRepository(session)
+            assert db.get_dashboard_summary() == mem.get_dashboard_summary()
+            for pid in ("SYNTH-PAT-000001", "SYNTH-PAT-000009", "SYNTH-PAT-000013", "SYNTH-PAT-000200"):
+                assert db.get_patient(pid) == mem.get_patient(pid), pid
+                assert db.get_patient_evaluations(pid) == mem.get_patient_evaluations(pid), pid
+                assert db.get_patient_history(pid) == mem.get_patient_history(pid), pid
+                assert db.get_patient_consents(pid) == mem.get_patient_consents(pid), pid
+            for gap in ("SYNTH-GAP-000001", "SYNTH-GAP-000026", "SYNTH-GAP-000048"):
+                assert db.get_care_gap_detail(gap) == mem.get_care_gap_detail(gap), gap
+            for kw in ({}, {"status": "open"}, {"gap_type": "referral_not_initiated"}):
+                args = {"status": None, "gap_type": None, "rule_id": None, "limit": 50, "offset": 0, **kw}
+                assert db.list_care_gaps(**args) == mem.list_care_gaps(**args), kw
+            assert db.list_open_questions() == mem.list_open_questions()
+            pq = dict(limit=50, offset=0, sex=None, region_id=2, pathway=None, sort_by="family_name")
+            assert db.list_patients(**pq) == mem.list_patients(**pq)
+    finally:
+        live_engine.dispose()
+        get_engine.cache_clear()

@@ -359,7 +359,7 @@ def test_live_clinical_migration_views_and_append_only(monkeypatch):
             "v_rule_item_effective_authority",
         }
         command.downgrade(cfg, "0005")
-        assert insp.get_table_names(schema="clinical") == []
+        assert inspect(engine).get_table_names(schema="clinical") == []  # new inspector: no stale cache
         command.upgrade(cfg, "head")
     finally:
         engine.dispose()

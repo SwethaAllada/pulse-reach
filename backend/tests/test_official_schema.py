@@ -324,8 +324,13 @@ def test_schema_placement(engine):
     insp = inspect(engine)
     assert set(insp.get_table_names(schema="official")) == TABLES
     assert insp.get_table_names(schema="public") == ["alembic_version"]
-    for other in ("clinical", "synthetic"):
-        assert insp.get_table_names(schema=other) == []  # clinical / synthetic are not implemented yet
+    import app.models.clinical  # noqa: F401
+    import app.models.synthetic  # noqa: F401
+    from app.models.base import Base
+
+    for other in ("clinical", "synthetic"):  # later schemas hold exactly their own designed tables
+        designed = {t.name for t in Base.metadata.tables.values() if t.schema == other}
+        assert set(insp.get_table_names(schema=other)) == designed
     with engine.connect() as c:
         outside = c.execute(text("""
             SELECT count(*) FROM pg_constraint c JOIN pg_class t ON t.oid = c.conrelid
