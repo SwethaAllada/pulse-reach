@@ -267,6 +267,7 @@ def test_synthetic_dataset_rows_match_sqlalchemy_table_columns(dataset: Syntheti
         "referral": dataset.referrals,
         "care_gap": dataset.care_gaps,
         "care_gap_review": dataset.care_gap_reviews,
+        "care_gap_follow_up_event": [],
         "outreach_event": dataset.outreach_events,
     }
     assert set(collection_by_table) == set(synth_tables)
@@ -359,5 +360,7 @@ def test_committed_demo_fixture_50_patients():
     pids = {p["patient_id"] for p in payload["patients"]}
     for i in range(1, 28):
         assert f"SYNTH-PAT-{i:06d}" in pids
+    assert all(g["priority_score"] is None for g in payload["care_gaps"])
+    assert all(g["scored_by_model_version"] is None for g in payload["care_gaps"])
 
 

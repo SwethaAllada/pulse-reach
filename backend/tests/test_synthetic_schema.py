@@ -42,6 +42,7 @@ TABLES = {
     "referral",
     "care_gap",
     "care_gap_review",
+    "care_gap_follow_up_event",
     "appointment",
     "outreach_event",
 }
@@ -63,6 +64,7 @@ EXPECTED_PKS = {
     "referral": ("referral_id",),
     "care_gap": ("care_gap_id",),
     "care_gap_review": ("review_id",),
+    "care_gap_follow_up_event": ("follow_up_id",),
     "appointment": ("appointment_id",),
     "outreach_event": ("outreach_id",),
 }
@@ -457,6 +459,15 @@ def test_migration_0007_append_only_trigger_has_scoped_reset_guard():
     assert "IF TG_OP = 'DELETE'" in text
 
 
+def test_migration_0007_uses_frozen_static_ddl():
+    mig_path = BACKEND / "migrations" / "versions" / "0007_create_synthetic_schema_tables.py"
+    src = mig_path.read_text(encoding="utf-8")
+    assert "app.models" not in src
+    assert "Base.metadata" not in src
+    for tbl_name in TABLES - {"care_gap_follow_up_event"}:
+        assert f"CREATE TABLE synthetic.{tbl_name}" in src
+
+
 # --- live PostgreSQL (set TEST_DATABASE_URL) -----------------------------
 live = pytest.mark.skipif(
     not os.getenv("TEST_DATABASE_URL"), reason="TEST_DATABASE_URL not set"
@@ -474,7 +485,7 @@ def test_live_synthetic_migration(monkeypatch):
     monkeypatch.setattr(session.settings, "database_url", SecretStr(url))
     cfg = Config(str(BACKEND / "alembic.ini"))
     cfg.set_main_option("script_location", str(BACKEND / "migrations"))
-    command.upgrade(cfg, "0007")
+    command.upgrade(cfg, "head")
     engine = create_engine(url)
     try:
         insp = inspect(engine)

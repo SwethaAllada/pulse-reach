@@ -1466,6 +1466,780 @@
       "documented_in_record": null,
       "signature_on_file": null,
       "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000010",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000029",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000011",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000029",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000012",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000029",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000013",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000029",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000014",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000035",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000015",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000035",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000016",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000035",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000017",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000036",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000018",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000038",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000019",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000038",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000020",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000038",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000021",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000039",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000022",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000039",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000023",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000039",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000024",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000039",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000025",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000040",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000026",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000042",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000027",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000042",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000028",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000043",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000029",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000043",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000030",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000043",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000031",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000043",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000032",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000044",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000033",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000045",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000034",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000045",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000035",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000045",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000036",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000045",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000037",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000046",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000038",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000046",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000039",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000046",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000040",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000047",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000041",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000047",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000042",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000047",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000043",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000048",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000044",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000049",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000045",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000049",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000046",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000049",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000047",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000050",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000048",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000050",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000049",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000050",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000050",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000050",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000051",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000050",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
+    },
+    {
+      "consent_id": "SYNTH-CNS-000052",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000050",
+      "is_synthetic": true,
+      "guardian_id": null,
+      "consent_type": "contact",
+      "state": "granted",
+      "applies_to": "self",
+      "scope_pathway": "ifhas",
+      "scope_rule_id": null,
+      "scope_rule_version": null,
+      "recorded_at": "2026-11-11T08:00:00+00:00",
+      "recorded_by": "synthetic_intake_portal",
+      "documented_in_record": true,
+      "signature_on_file": true,
+      "refusal_reason": null
     }
   ],
   "history_availabilities": [
@@ -2120,6 +2894,81 @@
       "results_communicated_date": "2025-08-21",
       "journey_reported_date": "2025-08-25",
       "has_abnormal_finding": false
+    },
+    {
+      "screening_id": "SYNTH-SCR-000097",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000043",
+      "is_synthetic": true,
+      "profile_id": "SYNTH-FSP-000001",
+      "rule_id": "IFHAS-PKG-MAJOR-18-39",
+      "rule_version": "1.0.0",
+      "appointment_id": null,
+      "performed_date": "2026-11-14",
+      "completion_status": "complete",
+      "results_communicated_date": "2026-11-15",
+      "journey_reported_date": "2026-11-15",
+      "has_abnormal_finding": false
+    },
+    {
+      "screening_id": "SYNTH-SCR-000098",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000045",
+      "is_synthetic": true,
+      "profile_id": "SYNTH-FSP-000001",
+      "rule_id": "IFHAS-PKG-VISION-40-75",
+      "rule_version": "1.0.0",
+      "appointment_id": null,
+      "performed_date": "2026-11-14",
+      "completion_status": "complete",
+      "results_communicated_date": "2026-11-15",
+      "journey_reported_date": "2026-11-15",
+      "has_abnormal_finding": false
+    },
+    {
+      "screening_id": "SYNTH-SCR-000099",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000046",
+      "is_synthetic": true,
+      "profile_id": "SYNTH-FSP-000001",
+      "rule_id": "IFHAS-PKG-MAJOR-18-39",
+      "rule_version": "1.0.0",
+      "appointment_id": null,
+      "performed_date": "2026-11-14",
+      "completion_status": "complete",
+      "results_communicated_date": "2026-11-15",
+      "journey_reported_date": "2026-11-15",
+      "has_abnormal_finding": false
+    },
+    {
+      "screening_id": "SYNTH-SCR-000100",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000047",
+      "is_synthetic": true,
+      "profile_id": "SYNTH-FSP-000001",
+      "rule_id": "IFHAS-PKG-MAJOR-18-39",
+      "rule_version": "1.0.0",
+      "appointment_id": null,
+      "performed_date": "2026-11-14",
+      "completion_status": "complete",
+      "results_communicated_date": "2026-11-15",
+      "journey_reported_date": "2026-11-15",
+      "has_abnormal_finding": false
+    },
+    {
+      "screening_id": "SYNTH-SCR-000101",
+      "run_id": "SYNTH-RUN-0001",
+      "patient_id": "SYNTH-PAT-000049",
+      "is_synthetic": true,
+      "profile_id": "SYNTH-FSP-000001",
+      "rule_id": "IFHAS-PKG-MAJOR-18-39",
+      "rule_version": "1.0.0",
+      "appointment_id": null,
+      "performed_date": "2026-11-14",
+      "completion_status": "complete",
+      "results_communicated_date": "2026-11-15",
+      "journey_reported_date": "2026-11-15",
+      "has_abnormal_finding": false
     }
   ],
   "well_child_visits": [
@@ -2216,12 +3065,12 @@
       "closed_by_referral_id": null,
       "closed_by_component_result_id": null,
       "closed_by_consent_id": null,
-      "priority_score": 0.78,
-      "priority_explanation": "Non-clinical operational scheduling priority for IFHAS-PKG-MAJOR-40-64 (gap_type=no_documented_screening). Does not alter clinical eligibility.",
-      "scored_by_model_version": "pulsereach-priority-0.1.0",
-      "scored_at": "2026-11-16T09:00:00+00:00",
-      "scoring_consent_id": "SYNTH-CNS-000002",
-      "scoring_suppressed_reason": null
+      "priority_score": null,
+      "priority_explanation": null,
+      "scored_by_model_version": null,
+      "scored_at": null,
+      "scoring_consent_id": null,
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000002",
@@ -2244,12 +3093,12 @@
       "closed_by_referral_id": null,
       "closed_by_component_result_id": null,
       "closed_by_consent_id": null,
-      "priority_score": 0.78,
-      "priority_explanation": "Non-clinical operational scheduling priority for IFHAS-PKG-VISION-40-75 (gap_type=no_documented_screening). Does not alter clinical eligibility.",
-      "scored_by_model_version": "pulsereach-priority-0.1.0",
-      "scored_at": "2026-11-16T09:00:00+00:00",
-      "scoring_consent_id": "SYNTH-CNS-000002",
-      "scoring_suppressed_reason": null
+      "priority_score": null,
+      "priority_explanation": null,
+      "scored_by_model_version": null,
+      "scored_at": null,
+      "scoring_consent_id": null,
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000003",
@@ -2272,12 +3121,12 @@
       "closed_by_referral_id": null,
       "closed_by_component_result_id": null,
       "closed_by_consent_id": null,
-      "priority_score": 0.78,
-      "priority_explanation": "Non-clinical operational scheduling priority for IFHAS-PKG-ORAL-18-75 (gap_type=no_documented_screening). Does not alter clinical eligibility.",
-      "scored_by_model_version": "pulsereach-priority-0.1.0",
-      "scored_at": "2026-11-16T09:00:00+00:00",
-      "scoring_consent_id": "SYNTH-CNS-000002",
-      "scoring_suppressed_reason": null
+      "priority_score": null,
+      "priority_explanation": null,
+      "scored_by_model_version": null,
+      "scored_at": null,
+      "scoring_consent_id": null,
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000004",
@@ -2300,12 +3149,12 @@
       "closed_by_referral_id": null,
       "closed_by_component_result_id": null,
       "closed_by_consent_id": null,
-      "priority_score": 0.78,
-      "priority_explanation": "Non-clinical operational scheduling priority for IFHAS-PKG-MAMMOGRAPHY-40-75 (gap_type=no_documented_screening). Does not alter clinical eligibility.",
-      "scored_by_model_version": "pulsereach-priority-0.1.0",
-      "scored_at": "2026-11-16T09:00:00+00:00",
-      "scoring_consent_id": "SYNTH-CNS-000002",
-      "scoring_suppressed_reason": null
+      "priority_score": null,
+      "priority_explanation": null,
+      "scored_by_model_version": null,
+      "scored_at": null,
+      "scoring_consent_id": null,
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000005",
@@ -2328,12 +3177,12 @@
       "closed_by_referral_id": null,
       "closed_by_component_result_id": null,
       "closed_by_consent_id": null,
-      "priority_score": 0.78,
-      "priority_explanation": "Non-clinical operational scheduling priority for IFHAS-PKG-FIT-40-75 (gap_type=no_documented_screening). Does not alter clinical eligibility.",
-      "scored_by_model_version": "pulsereach-priority-0.1.0",
-      "scored_at": "2026-11-16T09:00:00+00:00",
-      "scoring_consent_id": "SYNTH-CNS-000002",
-      "scoring_suppressed_reason": null
+      "priority_score": null,
+      "priority_explanation": null,
+      "scored_by_model_version": null,
+      "scored_at": null,
+      "scoring_consent_id": null,
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000006",
@@ -2356,12 +3205,12 @@
       "closed_by_referral_id": null,
       "closed_by_component_result_id": null,
       "closed_by_consent_id": null,
-      "priority_score": 0.78,
-      "priority_explanation": "Non-clinical operational scheduling priority for IFHAS-PKG-COLONOSCOPY-40-75 (gap_type=no_documented_screening). Does not alter clinical eligibility.",
-      "scored_by_model_version": "pulsereach-priority-0.1.0",
-      "scored_at": "2026-11-16T09:00:00+00:00",
-      "scoring_consent_id": "SYNTH-CNS-000002",
-      "scoring_suppressed_reason": null
+      "priority_score": null,
+      "priority_explanation": null,
+      "scored_by_model_version": null,
+      "scored_at": null,
+      "scoring_consent_id": null,
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000007",
@@ -2389,7 +3238,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000008",
@@ -2417,7 +3266,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000009",
@@ -2445,7 +3294,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000010",
@@ -2473,7 +3322,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000011",
@@ -2501,7 +3350,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000012",
@@ -2529,7 +3378,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000013",
@@ -2557,7 +3406,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000014",
@@ -2585,7 +3434,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000015",
@@ -2613,7 +3462,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000016",
@@ -2641,7 +3490,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000017",
@@ -2669,7 +3518,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000018",
@@ -2697,7 +3546,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000019",
@@ -2725,7 +3574,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000020",
@@ -2753,7 +3602,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000021",
@@ -2781,7 +3630,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000022",
@@ -2809,7 +3658,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000023",
@@ -2837,7 +3686,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000024",
@@ -2865,7 +3714,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000025",
@@ -2893,7 +3742,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000026",
@@ -2921,7 +3770,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000027",
@@ -2949,7 +3798,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000028",
@@ -2977,7 +3826,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000029",
@@ -3005,7 +3854,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000030",
@@ -3033,7 +3882,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000031",
@@ -3061,7 +3910,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000032",
@@ -3089,7 +3938,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000033",
@@ -3117,7 +3966,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000034",
@@ -3145,7 +3994,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000035",
@@ -3173,7 +4022,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000036",
@@ -3201,7 +4050,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000037",
@@ -3229,7 +4078,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000038",
@@ -3257,7 +4106,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000039",
@@ -3285,7 +4134,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000040",
@@ -3313,7 +4162,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000041",
@@ -3341,7 +4190,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000042",
@@ -3369,7 +4218,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000043",
@@ -3397,7 +4246,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000044",
@@ -3425,7 +4274,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000045",
@@ -3453,7 +4302,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000046",
@@ -3481,7 +4330,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000047",
@@ -3509,7 +4358,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000048",
@@ -3537,7 +4386,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000049",
@@ -3565,7 +4414,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000050",
@@ -3789,7 +4638,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000058",
@@ -3817,7 +4666,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000059",
@@ -3845,7 +4694,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000060",
@@ -3873,7 +4722,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000061",
@@ -3901,7 +4750,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000062",
@@ -3929,7 +4778,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000063",
@@ -3957,7 +4806,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000064",
@@ -3985,7 +4834,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000065",
@@ -4013,7 +4862,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000066",
@@ -4041,7 +4890,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000067",
@@ -4069,7 +4918,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000068",
@@ -4097,7 +4946,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000069",
@@ -4125,7 +4974,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000070",
@@ -4153,7 +5002,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000071",
@@ -4181,7 +5030,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000072",
@@ -4209,7 +5058,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000073",
@@ -4237,7 +5086,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000074",
@@ -4265,7 +5114,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000075",
@@ -4293,7 +5142,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000076",
@@ -4321,7 +5170,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000077",
@@ -4349,7 +5198,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000078",
@@ -4377,7 +5226,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000079",
@@ -4405,7 +5254,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000080",
@@ -4433,7 +5282,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000081",
@@ -4461,7 +5310,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000082",
@@ -4489,7 +5338,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000083",
@@ -4517,7 +5366,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000084",
@@ -4545,7 +5394,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000085",
@@ -4573,7 +5422,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000086",
@@ -4601,7 +5450,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000087",
@@ -4629,7 +5478,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000088",
@@ -4652,12 +5501,12 @@
       "closed_by_referral_id": null,
       "closed_by_component_result_id": null,
       "closed_by_consent_id": null,
-      "priority_score": 0.78,
-      "priority_explanation": "Non-clinical operational scheduling priority for IFHAS-PKG-MAJOR-40-64 (gap_type=no_documented_screening). Does not alter clinical eligibility.",
-      "scored_by_model_version": "pulsereach-priority-0.1.0",
-      "scored_at": "2026-11-16T09:00:00+00:00",
-      "scoring_consent_id": "SYNTH-CNS-000009",
-      "scoring_suppressed_reason": null
+      "priority_score": null,
+      "priority_explanation": null,
+      "scored_by_model_version": null,
+      "scored_at": null,
+      "scoring_consent_id": null,
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000089",
@@ -4680,12 +5529,12 @@
       "closed_by_referral_id": null,
       "closed_by_component_result_id": null,
       "closed_by_consent_id": null,
-      "priority_score": 0.78,
-      "priority_explanation": "Non-clinical operational scheduling priority for IFHAS-PKG-VISION-40-75 (gap_type=no_documented_screening). Does not alter clinical eligibility.",
-      "scored_by_model_version": "pulsereach-priority-0.1.0",
-      "scored_at": "2026-11-16T09:00:00+00:00",
-      "scoring_consent_id": "SYNTH-CNS-000009",
-      "scoring_suppressed_reason": null
+      "priority_score": null,
+      "priority_explanation": null,
+      "scored_by_model_version": null,
+      "scored_at": null,
+      "scoring_consent_id": null,
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000090",
@@ -4708,12 +5557,12 @@
       "closed_by_referral_id": null,
       "closed_by_component_result_id": null,
       "closed_by_consent_id": null,
-      "priority_score": 0.78,
-      "priority_explanation": "Non-clinical operational scheduling priority for IFHAS-PKG-HEARING-DEMENTIA-50-64 (gap_type=no_documented_screening). Does not alter clinical eligibility.",
-      "scored_by_model_version": "pulsereach-priority-0.1.0",
-      "scored_at": "2026-11-16T09:00:00+00:00",
-      "scoring_consent_id": "SYNTH-CNS-000009",
-      "scoring_suppressed_reason": null
+      "priority_score": null,
+      "priority_explanation": null,
+      "scored_by_model_version": null,
+      "scored_at": null,
+      "scoring_consent_id": null,
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000091",
@@ -4736,12 +5585,12 @@
       "closed_by_referral_id": null,
       "closed_by_component_result_id": null,
       "closed_by_consent_id": null,
-      "priority_score": 0.78,
-      "priority_explanation": "Non-clinical operational scheduling priority for IFHAS-PKG-ORAL-18-75 (gap_type=no_documented_screening). Does not alter clinical eligibility.",
-      "scored_by_model_version": "pulsereach-priority-0.1.0",
-      "scored_at": "2026-11-16T09:00:00+00:00",
-      "scoring_consent_id": "SYNTH-CNS-000009",
-      "scoring_suppressed_reason": null
+      "priority_score": null,
+      "priority_explanation": null,
+      "scored_by_model_version": null,
+      "scored_at": null,
+      "scoring_consent_id": null,
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000092",
@@ -4764,12 +5613,12 @@
       "closed_by_referral_id": null,
       "closed_by_component_result_id": null,
       "closed_by_consent_id": null,
-      "priority_score": 0.78,
-      "priority_explanation": "Non-clinical operational scheduling priority for IFHAS-PKG-MAMMOGRAPHY-40-75 (gap_type=no_documented_screening). Does not alter clinical eligibility.",
-      "scored_by_model_version": "pulsereach-priority-0.1.0",
-      "scored_at": "2026-11-16T09:00:00+00:00",
-      "scoring_consent_id": "SYNTH-CNS-000009",
-      "scoring_suppressed_reason": null
+      "priority_score": null,
+      "priority_explanation": null,
+      "scored_by_model_version": null,
+      "scored_at": null,
+      "scoring_consent_id": null,
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000093",
@@ -4792,12 +5641,12 @@
       "closed_by_referral_id": null,
       "closed_by_component_result_id": null,
       "closed_by_consent_id": null,
-      "priority_score": 0.78,
-      "priority_explanation": "Non-clinical operational scheduling priority for IFHAS-PKG-FIT-40-75 (gap_type=no_documented_screening). Does not alter clinical eligibility.",
-      "scored_by_model_version": "pulsereach-priority-0.1.0",
-      "scored_at": "2026-11-16T09:00:00+00:00",
-      "scoring_consent_id": "SYNTH-CNS-000009",
-      "scoring_suppressed_reason": null
+      "priority_score": null,
+      "priority_explanation": null,
+      "scored_by_model_version": null,
+      "scored_at": null,
+      "scoring_consent_id": null,
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000094",
@@ -4820,12 +5669,12 @@
       "closed_by_referral_id": null,
       "closed_by_component_result_id": null,
       "closed_by_consent_id": null,
-      "priority_score": 0.78,
-      "priority_explanation": "Non-clinical operational scheduling priority for IFHAS-PKG-COLONOSCOPY-40-75 (gap_type=no_documented_screening). Does not alter clinical eligibility.",
-      "scored_by_model_version": "pulsereach-priority-0.1.0",
-      "scored_at": "2026-11-16T09:00:00+00:00",
-      "scoring_consent_id": "SYNTH-CNS-000009",
-      "scoring_suppressed_reason": null
+      "priority_score": null,
+      "priority_explanation": null,
+      "scored_by_model_version": null,
+      "scored_at": null,
+      "scoring_consent_id": null,
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000095",
@@ -4853,7 +5702,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000096",
@@ -4881,7 +5730,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000097",
@@ -4909,7 +5758,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000098",
@@ -4937,7 +5786,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000099",
@@ -4965,7 +5814,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000100",
@@ -4993,7 +5842,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000101",
@@ -5021,7 +5870,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000102",
@@ -5049,7 +5898,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000103",
@@ -5077,7 +5926,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000104",
@@ -5105,7 +5954,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000105",
@@ -5133,7 +5982,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000106",
@@ -5161,7 +6010,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000107",
@@ -5189,7 +6038,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000108",
@@ -5217,7 +6066,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000109",
@@ -5245,7 +6094,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000110",
@@ -5273,7 +6122,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000111",
@@ -5301,7 +6150,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000112",
@@ -5329,7 +6178,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000113",
@@ -5344,10 +6193,10 @@
       "subject_well_child_visit_id": null,
       "subject_referral_id": null,
       "identified_date": "2026-11-16",
-      "status": "open",
-      "closed_date": null,
+      "status": "closed_completed",
+      "closed_date": "2026-11-16",
       "suppression_reason": null,
-      "closed_by_ifhas_screening_id": null,
+      "closed_by_ifhas_screening_id": "SYNTH-SCR-000097",
       "closed_by_well_child_visit_id": null,
       "closed_by_referral_id": null,
       "closed_by_component_result_id": null,
@@ -5357,7 +6206,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000114",
@@ -5385,7 +6234,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000115",
@@ -5413,7 +6262,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000116",
@@ -5441,7 +6290,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000117",
@@ -5469,7 +6318,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000118",
@@ -5484,10 +6333,10 @@
       "subject_well_child_visit_id": null,
       "subject_referral_id": null,
       "identified_date": "2026-11-16",
-      "status": "open",
-      "closed_date": null,
+      "status": "closed_completed",
+      "closed_date": "2026-11-16",
       "suppression_reason": null,
-      "closed_by_ifhas_screening_id": null,
+      "closed_by_ifhas_screening_id": "SYNTH-SCR-000098",
       "closed_by_well_child_visit_id": null,
       "closed_by_referral_id": null,
       "closed_by_component_result_id": null,
@@ -5497,7 +6346,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000119",
@@ -5525,7 +6374,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000120",
@@ -5553,7 +6402,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000121",
@@ -5581,7 +6430,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000122",
@@ -5596,10 +6445,10 @@
       "subject_well_child_visit_id": null,
       "subject_referral_id": null,
       "identified_date": "2026-11-16",
-      "status": "open",
-      "closed_date": null,
+      "status": "closed_completed",
+      "closed_date": "2026-11-16",
       "suppression_reason": null,
-      "closed_by_ifhas_screening_id": null,
+      "closed_by_ifhas_screening_id": "SYNTH-SCR-000099",
       "closed_by_well_child_visit_id": null,
       "closed_by_referral_id": null,
       "closed_by_component_result_id": null,
@@ -5609,7 +6458,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000123",
@@ -5637,7 +6486,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000124",
@@ -5665,7 +6514,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000125",
@@ -5680,10 +6529,10 @@
       "subject_well_child_visit_id": null,
       "subject_referral_id": null,
       "identified_date": "2026-11-16",
-      "status": "open",
-      "closed_date": null,
+      "status": "closed_completed",
+      "closed_date": "2026-11-16",
       "suppression_reason": null,
-      "closed_by_ifhas_screening_id": null,
+      "closed_by_ifhas_screening_id": "SYNTH-SCR-000100",
       "closed_by_well_child_visit_id": null,
       "closed_by_referral_id": null,
       "closed_by_component_result_id": null,
@@ -5693,7 +6542,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000126",
@@ -5721,7 +6570,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000127",
@@ -5749,7 +6598,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000128",
@@ -5777,7 +6626,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000129",
@@ -5792,10 +6641,10 @@
       "subject_well_child_visit_id": null,
       "subject_referral_id": null,
       "identified_date": "2026-11-16",
-      "status": "open",
-      "closed_date": null,
+      "status": "closed_completed",
+      "closed_date": "2026-11-16",
       "suppression_reason": null,
-      "closed_by_ifhas_screening_id": null,
+      "closed_by_ifhas_screening_id": "SYNTH-SCR-000101",
       "closed_by_well_child_visit_id": null,
       "closed_by_referral_id": null,
       "closed_by_component_result_id": null,
@@ -5805,7 +6654,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000130",
@@ -5833,7 +6682,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000131",
@@ -5861,7 +6710,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000132",
@@ -5889,7 +6738,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000133",
@@ -5917,7 +6766,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000134",
@@ -5945,7 +6794,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000135",
@@ -5973,7 +6822,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000136",
@@ -6001,7 +6850,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     },
     {
       "care_gap_id": "SYNTH-GAP-000137",
@@ -6029,7 +6878,7 @@
       "scored_by_model_version": null,
       "scored_at": null,
       "scoring_consent_id": null,
-      "scoring_suppressed_reason": null
+      "scoring_suppressed_reason": "model_not_implemented"
     }
   ]
 }

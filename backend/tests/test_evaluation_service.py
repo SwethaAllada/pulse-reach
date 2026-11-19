@@ -526,3 +526,180 @@ def test_workflow_results_communication_10d_and_journey_completion_15d(engine):
     assert "IFHAS-WF-RESULTS-COMMUNICATION-10D" not in gaps_ok
     assert "IFHAS-WF-JOURNEY-COMPLETION-15D" not in gaps_ok
 
+
+@pytest.mark.parametrize(
+    ("status", "initiated_date", "completed_date", "expected_eval_status", "expected_reason"),
+    [
+        ("pending", None, None, "due", None),
+        ("initiated", date(2026, 10, 25), None, "upcoming", None),
+        ("initiated", None, None, "upcoming", None),
+        ("scheduled", date(2026, 10, 26), None, "upcoming", None),
+        ("scheduled", None, None, "upcoming", None),
+        ("cancelled", date(2026, 10, 26), None, "requires_clinical_review", "referral_cancelled"),
+        ("completed", date(2026, 10, 26), date(2026, 11, 2), "completed", None),
+        ("completed", date(2026, 10, 26), None, "requires_clinical_review", "missing_completion_evidence"),
+    ],
+)
+def test_referral_status_mapping_never_falsely_completes(
+    engine: EvaluationEngine,
+    status: str,
+    initiated_date: date | None,
+    completed_date: date | None,
+    expected_eval_status: str,
+    expected_reason: str | None,
+):
+    patient = PatientContext(
+        patient_id="SYNTH-PAT-000910",
+        date_of_birth=date(1980, 5, 10),
+        sex="female",
+        thiqa_member=True,
+        ever_smoked=False,
+        history_by_pathway={"ifhas": "available"},
+        referrals=(
+            ReferralFact(
+                referral_id="SYNTH-REF-000910",
+                trigger_rule_id="IFHAS-WF-REFERRAL-15WD",
+                trigger_rule_version="1.0.0",
+                trigger_date=date(2026, 10, 1),
+                initiated_date=initiated_date,
+                completed_date=completed_date,
+                status=status,
+            ),
+        ),
+    )
+    res = engine.evaluate_patient(patient, reference_date=REF_DATE)
+    ev = {e.rule_id: e for e in res.evaluations}["IFHAS-WF-REFERRAL-15WD"]
+    assert ev.evaluation_status == expected_eval_status
+    if expected_reason is not None:
+        assert ev.reason_code == expected_reason
+        assert any(r.reason_code == expected_reason for r in ev.reasons)
+    if expected_eval_status == "completed":
+        assert ev.last_completed_date == completed_date
+
+
+def test_engine_derives_age_and_month_thresholds_from_bundle(engine: EvaluationEngine):
+    import copy
+    from dataclasses import replace
+
+    rules_copy = copy.deepcopy(engine.bundle.rules)
+    for r in rules_copy:
+        if r["rule_id"] == "IFHAS-PROG-ELIG-MIN-AGE":
+            r["spec"]["min_years"] = 21
+        if r.get("pathway") == "ifhas" and r.get("age_max_years") is not None:
+            r["age_max_years"] = min(int(r["age_max_years"]), 70)
+        if r.get("pathway") == "well_child" and r.get("recommended_age_months") is not None:
+            r["recommended_age_months"] = min(int(r["recommended_age_months"]), 60)
+
+    custom_bundle = replace(engine.bundle, rules=rules_copy)
+    custom_engine = EvaluationEngine(custom_bundle)
+
+    # 19-year-old -> not_eligible under min_years=21
+    p19 = PatientContext(
+        patient_id="SYNTH-PAT-000911",
+        date_of_birth=date(2007, 1, 1),
+        sex="female",
+        thiqa_member=True,
+        ever_smoked=False,
+        history_by_pathway={"ifhas": "available"},
+    )
+    ev19 = {
+        e.rule_id: e
+        for e in custom_engine.evaluate_patient(p19, reference_date=REF_DATE).evaluations
+    }
+    assert ev19["IFHAS-PROG-ELIG-MIN-AGE"].evaluation_status == "not_eligible"
+
+    # 72-year-old -> requires_clinical_review under max verified age=70
+    p72 = PatientContext(
+        patient_id="SYNTH-PAT-000912",
+        date_of_birth=date(1954, 1, 1),
+        sex="female",
+        thiqa_member=True,
+        ever_smoked=False,
+        history_by_pathway={"ifhas": "available"},
+    )
+    ev72 = {
+        e.rule_id: e
+        for e in custom_engine.evaluate_patient(p72, reference_date=REF_DATE).evaluations
+    }
+    assert ev72["IFHAS-PROG-ELIG-MIN-AGE"].evaluation_status == "requires_clinical_review"
+
+    # 66-month-old -> not_eligible under WCV max months=60
+    p66m = PatientContext(
+        patient_id="SYNTH-PAT-000913",
+        date_of_birth=date(2021, 5, 16),
+        sex="male",
+        thiqa_member=True,
+        ever_smoked=None,
+        history_by_pathway={"well_child": "available"},
+    )
+    ev66m = {
+        e.rule_id: e
+        for e in custom_engine.evaluate_patient(p66m, reference_date=REF_DATE).evaluations
+    }
+    assert ev66m["WCV-PROG-SCOPE"].evaluation_status == "not_eligible"
+
+
+def test_engine_strict_boolean_rejects_truthy_non_bool_values(engine: EvaluationEngine):
+    # Non-bool thiqa_member ('false' or 1) must produce insufficient_information, never eligible
+    for bad_thiqa in ("false", 1):
+        p = PatientContext(
+            patient_id="SYNTH-PAT-000914",
+            date_of_birth=date(1985, 5, 10),
+            sex="female",
+            thiqa_member=bad_thiqa,  # type: ignore[arg-type]
+            ever_smoked=False,
+            history_by_pathway={"ifhas": "available"},
+        )
+        evs = {
+            e.rule_id: e
+            for e in engine.evaluate_patient(p, reference_date=REF_DATE).evaluations
+        }
+        assert evs["IFHAS-PROG-ELIG-THIQA"].evaluation_status == "insufficient_information"
+        assert evs["IFHAS-PKG-MAJOR-40-64"].evaluation_status == "insufficient_information"
+
+    # Non-bool ever_smoked=1 on AAA -> insufficient_information
+    p_smoke = PatientContext(
+        patient_id="SYNTH-PAT-000916",
+        date_of_birth=date(1958, 5, 10),
+        sex="male",
+        thiqa_member=True,
+        ever_smoked=1,  # type: ignore[arg-type]
+        history_by_pathway={"ifhas": "available"},
+    )
+    evs_smoke = {
+        e.rule_id: e
+        for e in engine.evaluate_patient(p_smoke, reference_date=REF_DATE).evaluations
+    }
+    assert evs_smoke["IFHAS-PKG-AAA-M-65-75"].evaluation_status == "insufficient_information"
+
+    # Non-bool documented_in_record=1 / signature_on_file='true' must NOT close refusal gap
+    p_ref = PatientContext(
+        patient_id="SYNTH-PAT-000915",
+        date_of_birth=date(1981, 5, 10),
+        sex="female",
+        thiqa_member=True,
+        ever_smoked=False,
+        history_by_pathway={"ifhas": "available"},
+        consents=(
+            ConsentFact(
+                consent_id="SYNTH-CNS-000915",
+                consent_type="screening_participation",
+                state="refused",
+                applies_to="self",
+                scope_pathway="ifhas",
+                scope_rule_id="IFHAS-PKG-MAMMOGRAPHY-40-75",
+                scope_rule_version="1.0.0",
+                recorded_at=datetime(2026, 10, 1, tzinfo=timezone.utc),
+                documented_in_record=1,  # type: ignore[arg-type]
+                signature_on_file="true",  # type: ignore[arg-type]
+            ),
+        ),
+    )
+    gaps = {
+        g.rule_id: g
+        for g in engine.evaluate_patient(p_ref, reference_date=REF_DATE).care_gaps
+    }
+    assert gaps["IFHAS-PKG-MAMMOGRAPHY-40-75"].status == "open"
+
+
+

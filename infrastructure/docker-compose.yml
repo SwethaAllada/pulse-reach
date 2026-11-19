@@ -16,10 +16,19 @@ services:
       retries: 10
 
   backend:
-    build: ../backend
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      DATA_SOURCE: ${DATA_SOURCE:-db}
+      PULSE_REACH_REPO_ROOT: /app
+      RULES_DIR: /app/data-pipeline/rules
+      DATA_DIR: /app/data
       CORS_ORIGINS: http://localhost:3000
+    volumes:
+      - ../data-pipeline/rules:/app/data-pipeline/rules:ro
+      - ../data:/app/data:ro
     ports:
       - "8000:8000"
     depends_on:
