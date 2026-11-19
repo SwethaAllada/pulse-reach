@@ -163,7 +163,7 @@ def test_grounded_explanation_keeps_deterministic_fields():
     facts = json.loads(prov.calls[0]["user"].removeprefix("FACTS:\n"))
     assert facts["evaluation_status"] == "due" and facts["rule_id"] == INP.rule_id
     assert "SYNTH-PAT" not in prov.calls[0]["user"]  # the person is not identified to the model
-    assert meta.prompt_version == "explanation-v1" and meta.model == "fake-model-1"
+    assert meta.prompt_version == "explanation-v2" and meta.model == "fake-model-1"
 
 
 # Golden adversarial set: every one must be rejected and replaced by the deterministic text.
@@ -222,15 +222,16 @@ def test_explanation_api_uses_ai_and_survives_provider_failure(use_ai):
 def test_explanation_api_grounded(use_ai):
     use_ai(FakeProvider(GOOD_EXPLANATION))
     body = client.post("/api/v1/explanations", json={"patient_id": "SYNTH-PAT-000001", "rule_id": "IFHAS-PKG-MAJOR-40-64"}).json()
-    assert body["generation_mode"] == LLM_GROUNDED and body["ai"]["prompt_version"] == "explanation-v1"
+    assert body["generation_mode"] == LLM_GROUNDED and body["ai"]["prompt_version"] == "explanation-v2"
     assert body["evaluation_status"] in {"due", "upcoming", "completed", "unknown", "requires_clinical_review",
                                          "not_eligible", "eligible", "insufficient_information"}
 
 
 # --- outreach drafts -----------------------------------------------------------------------
 
-ALLOWED = {"patient_id": "SYNTH-PAT-000001", "rule_id": "IFHAS-PKG-MAJOR-40-64", "channel": "sms", "language": "en"}
-BLOCKED = {"patient_id": "SYNTH-PAT-000002", "rule_id": "IFHAS-PKG-MAJOR-40-64", "channel": "sms", "language": "en"}
+# SYNTH-PAT-000001's recorded contact channel is `phone`; drafts are only permitted on that channel.
+ALLOWED = {"patient_id": "SYNTH-PAT-000001", "rule_id": "IFHAS-PKG-MAJOR-40-64", "channel": "phone", "language": "en"}
+BLOCKED = {"patient_id": "SYNTH-PAT-000002", "rule_id": "IFHAS-PKG-MAJOR-40-64", "channel": "phone", "language": "en"}
 
 
 def _first_allowed_rule(pid: str) -> str:
@@ -247,8 +248,8 @@ def test_outreach_draft_is_gated_and_simulated(use_ai):
     rule_id = _first_allowed_rule("SYNTH-PAT-000001")
     ok = client.post("/api/v1/outreach/draft", json={**ALLOWED, "rule_id": rule_id}).json()
     assert ok["allowed"] and ok["simulated_only"] and ok["sendable"] is False
-    assert ok["draft_message"].startswith("[SIMULATED OUTREACH PREVIEW — SMS (en)] Hello")
-    assert ok["ai"]["generation_mode"] == LLM_GROUNDED and ok["ai"]["prompt_version"] == "outreach-v1"
+    assert ok["draft_message"].startswith("[SIMULATED OUTREACH PREVIEW — PHONE (en)] Hello")
+    assert ok["ai"]["generation_mode"] == LLM_GROUNDED and ok["ai"]["prompt_version"] == "outreach-v2"
 
     calls = len(prov.calls)
     blocked = client.post("/api/v1/outreach/draft", json=BLOCKED).json()
@@ -260,9 +261,9 @@ def test_outreach_draft_rejects_clinical_content(use_ai):
     use_ai(FakeProvider("Your results suggest cancer; please consult a licensed healthcare professional."))
     rule_id = _first_allowed_rule("SYNTH-PAT-000001")
     out = client.post("/api/v1/outreach/draft", json={**ALLOWED, "rule_id": rule_id}).json()
-    preview = client.post("/api/v1/outreach/preview", json={**ALLOWED, "rule_id": rule_id}).json()
     assert out["ai"]["generation_mode"] == DETERMINISTIC and "clinical_claim" in out["ai"]["violations"]
-    assert out["draft_message"] == preview["preview_message"]
+    assert out["is_fallback"] and "cancer" not in out["draft_message"]
+    assert "SYNTH-PAT" not in out["draft_message"]  # the deterministic draft carries no identifiers
 
 
 # --- population insights -------------------------------------------------------------------

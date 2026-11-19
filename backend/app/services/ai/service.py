@@ -21,11 +21,12 @@ from functools import lru_cache
 from typing import Any
 
 from app.core.config import Settings, settings
-from app.services.ai.audit import AIAuditLog, sha256
-from app.services.ai.guardrails import validate_output
+from app.services.ai.audit import AIAuditLog, AIAuditRecord, sha256
+from app.services.ai.guardrails import validate_outreach_output, validate_output
 from app.services.ai.prompts import (
     EXPLANATION_PROMPT_VERSION,
     EXPLANATION_SYSTEM,
+    OUTREACH_CHANNEL_FORMAT,
     OUTREACH_PROMPT_VERSION,
     OUTREACH_SYSTEM,
     POPULATION_PROMPT_VERSION,
@@ -39,15 +40,20 @@ from app.services.explanation import (
     BoundedExplanationInput,
     ExplanationResult,
     ExplanationService,
-    OutreachPreviewResult,
 )
+from app.services.explanation.context import ExplanationContext
+from app.services.outreach.drafting import OutreachDraftGate
 
 logger = logging.getLogger(__name__)
 
 LLM_GROUNDED = "llm_grounded"
 DETERMINISTIC = "deterministic_fallback"
+NOT_GENERATED = "not_generated"
 
-_OUTREACH_MAX_CHARS = {"sms": 320, "app": 400, "email": 700, "phone": 500}
+_NO_ELIGIBILITY_CLAIM_STATUSES = frozenset(
+    {"not_eligible", "insufficient_information", "requires_clinical_review"}
+)
+
 _SIMULATED_BANNER = "[SIMULATED OUTREACH PREVIEW — {channel} ({language})] "
 
 
@@ -65,8 +71,9 @@ class AIGenerationMeta:
 
 @dataclass(frozen=True)
 class OutreachDraft:
-    message: str
+    message: str  # simulated banner + body
     meta: AIGenerationMeta
+    body: str = ""  # editable text without the banner
 
 
 @dataclass(frozen=True)
@@ -84,19 +91,33 @@ class AIService:
         provider_status: str = "disabled",
         max_output_tokens: int = 400,
         audit: AIAuditLog | None = None,
+        configured_provider: str | None = None,
     ) -> None:
         self._provider = provider
         self._provider_status = provider_status
+        self._configured_provider = configured_provider or getattr(provider, "name", None)
         self._max_tokens = max_output_tokens
         self.audit = audit or AIAuditLog()
         self._explanations = ExplanationService(llm_provider=None)
 
     def status(self) -> dict[str, Any]:
+        """Configuration plus the outcome of the most recent provider call (no probe, no secrets)."""
+        last = next((r for r in self.audit.recent(limit=500) if r.provider is not None), None)
+        if self._provider is None:
+            availability = "disabled" if self._provider_status == "disabled" else "misconfigured"
+        elif last is None:
+            availability = "configured_unverified"
+        else:
+            availability = "last_call_failed" if last.fallback_reason == "provider_error" else "last_call_succeeded"
         return {
             "llm_enabled": self._provider is not None,
             "status": self._provider_status,
+            "availability": availability,
+            "configured_provider": self._configured_provider,
             "provider": getattr(self._provider, "name", None),
             "model": getattr(self._provider, "model", None),
+            "last_provider_call_at": last.recorded_at if last else None,
+            "last_provider_outcome": (last.fallback_reason or last.generation_mode) if last else None,
             "prompt_versions": dict(PROMPT_VERSIONS),
         }
 
@@ -111,6 +132,8 @@ class AIService:
         facts: dict[str, Any],
         subject: dict[str, Any],
         validate: Callable[[str], list[str]],
+        extra: dict[str, Any] | None = None,
+        fallback_text: str | None = None,
     ) -> tuple[str | None, AIGenerationMeta]:
         user = facts_json(facts)
         text: str | None = None
@@ -146,6 +169,9 @@ class AIService:
             input_sha256=sha256(system + "\n" + user),
             output_sha256=sha256(text),
             latency_ms=latency,
+            # `returned_sha256` fingerprints the text actually returned (model or fallback).
+            extra={**(extra or {}), **({"returned_sha256": sha256(accepted or fallback_text)}
+                                       if fallback_text is not None else {})},
         )
         meta = AIGenerationMeta(
             feature=feature,
@@ -161,9 +187,16 @@ class AIService:
 
     # -- explanation ------------------------------------------------------------------------
 
-    def explain(self, inp: BoundedExplanationInput) -> tuple[ExplanationResult, AIGenerationMeta]:
+    def explain(
+        self, inp: BoundedExplanationInput, context: ExplanationContext | None = None
+    ) -> tuple[ExplanationResult, AIGenerationMeta]:
+        """Deterministic result plus, when accepted, a validated generated summary.
+
+        `context` (evidence, missing/conflicting information, rule meaning, next step) is built
+        deterministically from stored records; only its de-identified `provider_facts()` are sent.
+        """
         det = self._explanations.explain_evaluation(inp)  # privacy-validated deterministic result
-        facts = {
+        facts: dict[str, Any] = {
             "rule_id": inp.rule_id,
             "rule_version": inp.rule_version,
             "standard": inp.standard_name,
@@ -176,19 +209,28 @@ class AIService:
             "open_question_ids": list(inp.open_question_ids),
             "next_due_date": inp.next_due_date,
         }
+        subject: dict[str, Any] = {"patient_id": inp.synthetic_patient_id, "rule_id": inp.rule_id}
+        if context is not None:
+            facts.update(context.provider_facts())
+            subject.update(context.references)
+        status = inp.evaluation_status
+        completed = status == "completed" or (context is not None and context.has_documented_completion)
         text, meta = self._generate(
             feature="explanation",
             prompt_version=EXPLANATION_PROMPT_VERSION,
             system=EXPLANATION_SYSTEM,
             facts=facts,
-            subject={"patient_id": inp.synthetic_patient_id, "rule_id": inp.rule_id},
+            subject=subject,
             validate=lambda t: validate_output(
                 t,
                 facts=facts,
-                max_chars=900,
+                max_chars=1200,
                 must_contain=(inp.rule_id,),
-                allow_overdue=inp.evaluation_status == "overdue",
+                allow_overdue=status == "overdue",
                 allow_approval_claims=False,
+                allow_completed=completed,
+                allow_due=status in ("due", "overdue"),
+                allow_eligibility=status not in _NO_ELIGIBILITY_CLAIM_STATUSES,
             ),
         )
         if text is None:
@@ -197,34 +239,54 @@ class AIService:
 
     # -- outreach ---------------------------------------------------------------------------
 
-    def draft_outreach(
-        self, preview: OutreachPreviewResult, *, channel: str, language: str, programme: str
-    ) -> OutreachDraft | None:
-        """Draft a simulated message for an *allowed* preview; None when the gate blocked it."""
-        if not preview.allowed or not preview.preview_message:
+    def draft_outreach(self, gate: OutreachDraftGate) -> OutreachDraft | None:
+        """Draft a simulated message for an *allowed* gate; None (and no model call) otherwise.
+
+        The model only sees `gate.facts` (programme, gap category, approved next step, channel,
+        language, tone); the fallback is the deterministic draft built from the same facts.
+        """
+        if not gate.allowed or not gate.deterministic_body:
+            self.record_outreach_blocked(gate)
             return None
-        banner = _SIMULATED_BANNER.format(channel=channel.upper(), language=language)
-        max_chars = _OUTREACH_MAX_CHARS.get(channel, 320)
-        template_body = preview.preview_message.removeprefix(banner).strip()
-        facts = {
-            "channel": channel,
-            "language": language,
-            "programme": programme,
-            "approved_template": template_body,
-        }
+        max_chars = gate.max_chars
         text, meta = self._generate(
             feature="outreach_draft",
             prompt_version=OUTREACH_PROMPT_VERSION,
-            system=OUTREACH_SYSTEM.format(max_chars=max_chars),
-            facts=facts,
-            subject={"patient_id": preview.synthetic_patient_id, "rule_id": preview.rule_id,
-                     "care_gap_id": preview.care_gap_id},
-            validate=lambda t: validate_output(
-                t, facts=facts, max_chars=max_chars,
-                must_contain=() if "professional" not in template_body else ("professional",),
+            system=OUTREACH_SYSTEM.format(
+                max_chars=max_chars, tone=gate.tone, language=gate.language,
+                channel_format=OUTREACH_CHANNEL_FORMAT[gate.channel],
             ),
+            facts=gate.facts,
+            subject=gate.audit_subject,
+            validate=lambda t: validate_outreach_output(
+                t, facts=gate.facts, channel=gate.channel, language=gate.language, max_chars=max_chars
+            ),
+            extra=gate.audit_extra,
+            fallback_text=gate.deterministic_body,
         )
-        return OutreachDraft(message=banner + (text or template_body), meta=meta)
+        body = text or gate.deterministic_body
+        banner = _SIMULATED_BANNER.format(channel=gate.channel.upper(), language=gate.language)
+        return OutreachDraft(message=banner + body, meta=meta, body=body)
+
+    def record_outreach_blocked(self, gate: OutreachDraftGate) -> AIAuditRecord:
+        """Audit a draft request refused before generation (the provider is never called)."""
+        return self.audit.record(
+            feature="outreach_draft", subject=gate.audit_subject, prompt_version=OUTREACH_PROMPT_VERSION,
+            provider=None, model=None, generation_mode=NOT_GENERATED,
+            fallback_reason=f"blocked:{gate.blocked_reason}", violations=(), input_sha256=None,
+            output_sha256=None, latency_ms=None, extra=gate.audit_extra,
+        )
+
+    def record_outreach_review(
+        self, *, subject: dict[str, Any], extra: dict[str, Any], decision: str, violations: tuple[str, ...] = ()
+    ) -> AIAuditRecord:
+        """Audit a human approval/rejection; stores a message fingerprint, never the text."""
+        return self.audit.record(
+            feature="outreach_review", subject=subject, prompt_version=OUTREACH_PROMPT_VERSION,
+            provider=None, model=None, generation_mode=f"human_{decision}", fallback_reason=None,
+            violations=violations, input_sha256=None, output_sha256=extra.get("message_sha256"),
+            latency_ms=None, extra=extra,
+        )
 
     # -- population ------------------------------------------------------------------------
 
@@ -271,4 +333,9 @@ def build_ai_service(cfg: Settings) -> AIService:
     provider, status = build_provider(cfg)
     if cfg.llm_enabled and provider is None:
         logger.warning("LLM_ENABLED is true but the provider is %s; using deterministic templates", status)
-    return AIService(provider, provider_status=status, max_output_tokens=cfg.llm_max_output_tokens)
+    return AIService(
+        provider,
+        provider_status=status,
+        max_output_tokens=cfg.llm_max_output_tokens,
+        configured_provider=cfg.llm_provider if cfg.llm_enabled else None,
+    )

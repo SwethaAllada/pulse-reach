@@ -242,6 +242,17 @@ class OutreachService:
                 rule_version=rule_version,
                 reason=f"contact_consent_{consent_state}",
             )
+        # The consent schema has no expiry column yet; an `expires_at` value, when present, is honoured.
+        if consent.get("expires_at") is not None and _parse_recorded_at(
+            consent["expires_at"]
+        ) <= datetime.now(timezone.utc):
+            return self._blocked(
+                patient_id=patient_id,
+                care_gap_id=care_gap_id,
+                rule_id=rule_id,
+                rule_version=rule_version,
+                reason="contact_consent_expired",
+            )
 
         contact_status = str(patient.get("contact_status") or "unverified")
         if contact_status != "valid":

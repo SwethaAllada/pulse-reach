@@ -298,11 +298,23 @@ class AIGenerationOut(BaseModel):
     audit_id: str
 
 
+class OutreachDraftRequestIn(BaseModel):
+    """`channel`/`language` are free strings so unsupported values get a clear `blocked_reason`
+    (`channel_unsupported` / `language_unsupported`) instead of a schema error."""
+
+    patient_id: str
+    rule_id: str
+    care_gap_id: str | None = None
+    channel: str = "sms"
+    language: str = "en"
+    tone: Literal["supportive", "neutral"] = "supportive"
+
+
 class OutreachDraftOut(BaseModel):
     synthetic_patient_id: str
     care_gap_id: str | None
     rule_id: str
-    rule_version: str
+    rule_version: str | None
     allowed: bool
     simulated_only: bool = True
     sendable: bool = Field(default=False, description="Always false: PulseReach never sends messages.")
@@ -310,6 +322,54 @@ class OutreachDraftOut(BaseModel):
     draft_message: str | None
     disclaimer: str
     ai: AIGenerationOut | None = None
+    channel: str | None = None
+    language: str | None = None
+    tone: str | None = None
+    recipient: Literal["patient"] | None = None
+    generation_status: Literal["generated", "fallback", "blocked"] = "blocked"
+    is_fallback: bool = False
+    draft_body: str | None = Field(default=None, description="Editable text without the simulated banner.")
+    next_step: RecommendedPathwayOut | None = None
+    review_status: Literal["pending_review", "not_applicable"] = "not_applicable"
+    simulated_outreach_status: str | None = Field(
+        default=None, description="Null until a reviewer approves; then the follow-up outcome."
+    )
+
+
+class OutreachDraftReviewIn(BaseModel):
+    draft_audit_id: str
+    patient_id: str
+    rule_id: str
+    care_gap_id: str
+    channel: str
+    language: str
+    decision: Literal["approved", "rejected"]
+    final_message: str | None = Field(
+        default=None, description="Required when approved: the reviewed (possibly edited) body."
+    )
+    reviewed_by: Actor
+    reason: str | None = None
+
+
+class OutreachDraftReviewOut(BaseModel):
+    draft_audit_id: str
+    review_audit_id: str
+    synthetic_patient_id: str
+    care_gap_id: str
+    rule_id: str
+    channel: str
+    language: str
+    review_status: Literal["approved", "rejected", "blocked"]
+    blocked_reason: str | None = None
+    edited: bool | None = None
+    simulated_outreach_status: str | None = Field(
+        default=None, description="'simulated_not_sent' (or 'suppressed') for approvals; never delivered."
+    )
+    follow_up: FollowUpEventOut | None = None
+    simulated_only: bool = True
+    sendable: bool = False
+    delivered: bool = Field(default=False, description="Always false: approval is not delivery.")
+    disclaimer: str
 
 
 class PopulationInsightOut(BaseModel):
@@ -323,8 +383,14 @@ class PopulationInsightOut(BaseModel):
 class AIStatusOut(BaseModel):
     llm_enabled: bool
     status: str
+    availability: Literal[
+        "disabled", "misconfigured", "configured_unverified", "last_call_succeeded", "last_call_failed"
+    ] = "disabled"
+    configured_provider: str | None = None
     provider: str | None = None
     model: str | None = None
+    last_provider_call_at: datetime | None = None
+    last_provider_outcome: str | None = None
     prompt_versions: dict[str, str]
 
 
@@ -343,13 +409,43 @@ class AIAuditRecordOut(BaseModel):
     input_sha256: str | None = None
     output_sha256: str | None = None
     latency_ms: float | None = None
+    extra: dict[str, Any] = Field(default_factory=dict)
 
 
 class AIAuditOut(BaseModel):
     items: list[AIAuditRecordOut]
 
 
+class ExplanationEvidenceOut(BaseModel):
+    code: str
+    label: str
+    value: str
+
+
+class ExplanationCareGapOut(BaseModel):
+    care_gap_id: str
+    gap_type: str
+    status: str
+    identified_date: date
+    closed_date: date | None = None
+
+
+class ExplanationRuleMeaningOut(BaseModel):
+    description: str
+    eligibility_as_printed: str | None = None
+    frequency_as_printed: str | None = None
+    verification_status: str
+    is_authoritative: bool
+    requires_clinical_review: bool
+    open_question_ids: list[str] = Field(default_factory=list)
+    citation: str
+
+
 class ExplanationOut(BaseModel):
+    """Deterministic facts (status, evidence, missing/conflicting information, rule meaning, next
+    step) are always present; `generated_explanation` is the validated model narrative, or null
+    when the deterministic template was used."""
+
     synthetic_patient_id: str
     rule_id: str
     rule_version: str
@@ -363,6 +459,18 @@ class ExplanationOut(BaseModel):
     rule_citation_text: str
     warnings: list[str]
     ai: AIGenerationOut | None = None
+    evaluation_id: str | None = None
+    pathway: str | None = None
+    history_status: str | None = None
+    next_due_date: date | None = None
+    why_identified: str | None = None
+    care_gaps: list[ExplanationCareGapOut] = Field(default_factory=list)
+    supporting_evidence: list[ExplanationEvidenceOut] = Field(default_factory=list)
+    missing_information: list[str] = Field(default_factory=list)
+    conflicting_information: list[str] = Field(default_factory=list)
+    rule_meaning: ExplanationRuleMeaningOut | None = None
+    next_step: RecommendedPathwayOut | None = None
+    generated_explanation: str | None = None
 
 
 class OutreachPreviewRequestIn(BaseModel):

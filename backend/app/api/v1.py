@@ -7,7 +7,7 @@ Supports both `DATA_SOURCE=memory` (default deterministic demo mode) and `DATA_S
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
@@ -44,6 +44,9 @@ from app.schemas.v1 import (
     AIStatusOut,
     ExplanationOut,
     OutreachDraftOut,
+    OutreachDraftRequestIn,
+    OutreachDraftReviewIn,
+    OutreachDraftReviewOut,
     PopulationInsightOut,
     ExplanationRequestIn,
     FollowUpCreateIn,
@@ -76,12 +79,21 @@ from app.schemas.v1 import (
 )
 from app.services.evaluation.engine import ENGINE_VERSION
 from app.services.ai import AIGenerationMeta, AIService, get_ai_service
+from app.services.ai.audit import sha256
+from app.services.ai.guardrails import validate_outreach_output
+from app.services.ai.service import NOT_GENERATED
 from app.services.explanation import BoundedExplanationInput, PrivacyViolationError
+from app.services.explanation.context import build_explanation_context
 from app.services.outreach import OutreachRuleNotFoundError, OutreachService
+from app.services.outreach.drafting import OutreachDraftGate, gate_outreach_draft, pre_consent_block
 
 router = APIRouter(prefix="/api/v1", tags=["v1"])
 
 _outreach_service = OutreachService()
+_OUTREACH_DRAFT_DISCLAIMER = (
+    "SIMULATED OUTREACH DRAFT — for human review only. PulseReach never sends SMS, e-mail, phone "
+    "calls, app notifications or any other message; approval records a simulated attempt only."
+)
 _INSIGHT_DISCLAIMER = (
     "Aggregates of synthetic records computed deterministically by the backend; any narrative is "
     "a restatement of these counts, not an analysis, prediction or clinical finding."
@@ -503,6 +515,18 @@ def create_explanation(
             status_code=404,
             detail=f"Evaluation for patient '{req.patient_id}' and rule '{req.rule_id}' not found",
         )
+    pe = repo.get_patient_evaluations(req.patient_id)
+    rule_detail = repo.get_rule_detail(req.rule_id)
+    ev_item = next(
+        (e for e in (pe.evaluations if pe else []) if e.evaluation_id == ev_match["evaluation_id"]), None
+    )
+    context = (
+        build_explanation_context(
+            ev_item, rule_detail, [g for g in pe.care_gaps if g.rule_id == req.rule_id]
+        )
+        if ev_item is not None and rule_detail is not None
+        else None
+    )
 
     try:
         res, meta = ai.explain(
@@ -525,12 +549,31 @@ def create_explanation(
                     if ev_match["next_due_date"] is not None
                     else None
                 ),
-            )
+            ),
+            context,
         )
     except PrivacyViolationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    structured = (
+        {
+            "evaluation_id": context.evaluation_id,
+            "pathway": context.pathway,
+            "history_status": context.history_status,
+            "next_due_date": context.next_due_date,
+            "why_identified": context.why_identified,
+            "care_gaps": list(context.care_gaps),
+            "supporting_evidence": [e.__dict__ for e in context.supporting_evidence],
+            "missing_information": list(context.missing_information),
+            "conflicting_information": list(context.conflicting_information),
+            "rule_meaning": context.rule_meaning,
+            "next_step": context.next_step,
+        }
+        if context is not None
+        else {}
+    )
     return ExplanationOut(
+        **structured,
         synthetic_patient_id=res.synthetic_patient_id,
         rule_id=res.rule_id,
         rule_version=res.rule_version,
@@ -544,10 +587,11 @@ def create_explanation(
         rule_citation_text=res.rule_citation_text,
         warnings=list(res.warnings),
         ai=_ai_out(meta),
+        generated_explanation=res.summary_text if meta.generation_mode == "llm_grounded" else None,
     )
 
 
-def _gated_preview(req: OutreachPreviewRequestIn, repo: ReadRepository):
+def _gated_preview(req: OutreachPreviewRequestIn | OutreachDraftRequestIn, repo: ReadRepository):
     p, evals, gaps, consents = repo.get_patient_outreach_inputs(req.patient_id)
     if p is None:
         raise HTTPException(
@@ -571,7 +615,7 @@ def _gated_preview(req: OutreachPreviewRequestIn, repo: ReadRepository):
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except PrivacyViolationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return res, rule
+    return res, rule, (p, gaps, consents)
 
 
 @router.post("/outreach/preview", response_model=OutreachPreviewOut)
@@ -579,7 +623,7 @@ def preview_outreach(
     req: OutreachPreviewRequestIn,
     repo: ReadRepository = Depends(get_read_repository),
 ) -> OutreachPreviewOut:
-    res, _ = _gated_preview(req, repo)
+    res, _, _ = _gated_preview(req, repo)
     return OutreachPreviewOut(
         synthetic_patient_id=res.synthetic_patient_id,
         care_gap_id=res.care_gap_id,
@@ -593,27 +637,121 @@ def preview_outreach(
     )
 
 
+def _draft_gate(
+    req: OutreachDraftRequestIn | OutreachDraftReviewIn, repo: ReadRepository, tone: str
+) -> OutreachDraftGate:
+    """All pre-generation checks (`app.services.outreach.drafting`); never calls a provider."""
+    early = pre_consent_block(req.channel, req.language)
+    if early is not None:
+        if repo.get_patient(req.patient_id) is None:
+            raise HTTPException(status_code=404, detail=f"Synthetic patient '{req.patient_id}' not found")
+        return OutreachDraftGate(
+            allowed=False, blocked_reason=early, patient_id=req.patient_id, rule_id=req.rule_id,
+            rule_version=None, care_gap_id=req.care_gap_id, channel=req.channel,
+            language=req.language, tone=tone,
+        )
+    res, _, (p, gaps, consents) = _gated_preview(req, repo)
+    rule = repo.get_rule_detail(req.rule_id)
+    return gate_outreach_draft(
+        preview=res, patient=p, consents=consents, rule=rule.model_dump() if rule else {},
+        care_gaps=gaps, channel=req.channel, language=req.language, tone=tone,
+        requested_care_gap_id=req.care_gap_id,
+    )
+
+
 @router.post("/outreach/draft", response_model=OutreachDraftOut)
 def draft_outreach(
-    req: OutreachPreviewRequestIn,
+    req: OutreachDraftRequestIn,
     repo: ReadRepository = Depends(get_read_repository),
     ai: AIService = Depends(get_ai_service),
 ) -> OutreachDraftOut:
-    """Consent-gated, simulated outreach draft. Nothing is ever sent."""
-    res, rule = _gated_preview(req, repo)
-    draft = ai.draft_outreach(
-        res, channel=req.channel, language=req.language, programme=str(rule.get("source_name") or rule["pathway"])
-    )
+    """Consent-gated, simulated outreach draft for human review. Nothing is ever sent."""
+    gate = _draft_gate(req, repo, req.tone)
+    draft = ai.draft_outreach(gate)  # audits blocked requests too; no provider call when blocked
+    fallback = draft is not None and draft.meta.generation_mode == "deterministic_fallback"
     return OutreachDraftOut(
-        synthetic_patient_id=res.synthetic_patient_id,
-        care_gap_id=res.care_gap_id,
-        rule_id=res.rule_id,
-        rule_version=res.rule_version,
-        allowed=res.allowed,
-        blocked_reason=res.blocked_reason,
+        synthetic_patient_id=gate.patient_id,
+        care_gap_id=gate.care_gap_id,
+        rule_id=gate.rule_id,
+        rule_version=gate.rule_version,
+        allowed=gate.allowed,
+        blocked_reason=gate.blocked_reason,
         draft_message=draft.message if draft else None,
-        disclaimer=res.disclaimer,
+        draft_body=draft.body if draft else None,
+        disclaimer=_OUTREACH_DRAFT_DISCLAIMER,
         ai=_ai_out(draft.meta) if draft else None,
+        channel=gate.channel,
+        language=gate.language,
+        tone=gate.tone,
+        recipient=gate.recipient if draft else None,
+        generation_status="blocked" if draft is None else ("fallback" if fallback else "generated"),
+        is_fallback=fallback,
+        next_step=gate.next_step if draft else None,
+        review_status="pending_review" if draft else "not_applicable",
+    )
+
+
+@router.post("/outreach/draft/review", response_model=OutreachDraftReviewOut)
+def review_outreach_draft(
+    req: OutreachDraftReviewIn,
+    repo: ReadRepository = Depends(get_read_repository),
+    followups: FollowUpRepository = Depends(get_followup_repository),
+    ai: AIService = Depends(get_ai_service),
+) -> OutreachDraftReviewOut:
+    """Human approval or rejection of a draft. Approval re-checks consent, validates the final
+    text and records a *simulated* outreach attempt (`simulated_not_sent`); nothing is sent."""
+    src = ai.audit.get(req.draft_audit_id)
+    if src is None or src.feature != "outreach_draft" or src.generation_mode == NOT_GENERATED:
+        raise HTTPException(status_code=404, detail="Outreach draft not found; generate a new draft.")
+    if (src.subject.get("patient_id"), src.subject.get("rule_id"), src.subject.get("care_gap_id"),
+            src.extra.get("channel"), src.extra.get("language")) != (
+            req.patient_id, req.rule_id, req.care_gap_id, req.channel, req.language):
+        raise HTTPException(status_code=409, detail="Review does not match the generated draft.")
+
+    subject = {"patient_id": req.patient_id, "rule_id": req.rule_id, "care_gap_id": req.care_gap_id}
+    extra: dict[str, Any] = {"draft_audit_id": req.draft_audit_id, "channel": req.channel,
+                             "language": req.language, "reviewed_by": req.reviewed_by}
+    out = dict(draft_audit_id=req.draft_audit_id, synthetic_patient_id=req.patient_id,
+               care_gap_id=req.care_gap_id, rule_id=req.rule_id, channel=req.channel,
+               language=req.language, disclaimer=_OUTREACH_DRAFT_DISCLAIMER)
+
+    if req.decision == "rejected":
+        rec = ai.record_outreach_review(subject=subject, decision="rejected",
+                                        extra={**extra, "reason_provided": bool(req.reason)})
+        return OutreachDraftReviewOut(**out, review_audit_id=rec.audit_id, review_status="rejected")
+
+    gate = _draft_gate(req, repo, str(src.extra.get("tone") or "supportive"))
+    if not gate.allowed:  # consent or eligibility changed since the draft was generated
+        rec = ai.record_outreach_review(subject=subject, decision="blocked",
+                                        extra={**extra, "blocked_reason": gate.blocked_reason})
+        return OutreachDraftReviewOut(**out, review_audit_id=rec.audit_id, review_status="blocked",
+                                      blocked_reason=gate.blocked_reason)
+
+    body = (req.final_message or "").strip()
+    body = body.removeprefix(
+        f"[SIMULATED OUTREACH PREVIEW — {req.channel.upper()} ({req.language})]"
+    ).strip()
+    violations = validate_outreach_output(body, facts=gate.facts, channel=gate.channel,
+                                          language=gate.language, max_chars=gate.max_chars)
+    if violations:
+        ai.record_outreach_review(subject=subject, decision="invalid", violations=tuple(violations),
+                                  extra={**extra, "message_sha256": sha256(body)})
+        raise HTTPException(status_code=422, detail={"message": "Final message failed validation.",
+                                                     "violations": violations})
+
+    follow_up = followups.create_follow_up(req.care_gap_id, FollowUpCreateIn(
+        event_type="outreach_attempted", recorded_by=req.reviewed_by,
+        note=f"AI-assisted outreach draft approved by reviewer (draft audit {req.draft_audit_id}; "
+             f"channel {req.channel}; language {req.language}). Simulated only; not sent.",
+    ))
+    edited = sha256(body) != src.extra.get("returned_sha256")
+    rec = ai.record_outreach_review(subject=subject, decision="approved", extra={
+        **extra, "message_sha256": sha256(body), "edited": edited,
+        "follow_up_id": follow_up.follow_up_id, "simulated_outreach_status": follow_up.outcome_status,
+    })
+    return OutreachDraftReviewOut(
+        **out, review_audit_id=rec.audit_id, review_status="approved", edited=edited,
+        simulated_outreach_status=follow_up.outcome_status, follow_up=follow_up,
     )
 
 
@@ -655,7 +793,9 @@ def ai_status(ai: AIService = Depends(get_ai_service)) -> AIStatusOut:
 @router.get("/ai/audit", response_model=AIAuditOut)
 def ai_audit(
     limit: int = Query(default=50, ge=1, le=500),
-    feature: Literal["explanation", "outreach_draft", "population_insight"] | None = Query(default=None),
+    feature: Literal["explanation", "outreach_draft", "outreach_review", "population_insight"] | None = Query(
+        default=None
+    ),
     ai: AIService = Depends(get_ai_service),
 ) -> AIAuditOut:
     return AIAuditOut(

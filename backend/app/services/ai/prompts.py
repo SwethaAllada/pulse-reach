@@ -10,8 +10,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-EXPLANATION_PROMPT_VERSION = "explanation-v1"
-OUTREACH_PROMPT_VERSION = "outreach-v1"
+EXPLANATION_PROMPT_VERSION = "explanation-v2"
+OUTREACH_PROMPT_VERSION = "outreach-v2"
 POPULATION_PROMPT_VERSION = "population-v1"
 
 PROMPT_VERSIONS = {
@@ -30,20 +30,37 @@ _COMMON_RULES = (
 EXPLANATION_SYSTEM = (
     "You explain a deterministic, rule-based preventive-care evaluation to a care coordinator. "
     + _COMMON_RULES
-    + " Always name the rule id exactly as given. If the evaluation_status is unknown, "
-    "insufficient_information or requires_clinical_review, state that no automated conclusion "
-    "is made. Write 2 to 4 sentences."
+    + " Always name the rule id exactly as given. In this order, explain: why the person was "
+    "identified (evaluation_status, care_gaps, review_origin), the documented evidence, what information is missing "
+    "or conflicting, what the rule means (rule_description), and the documented next step. "
+    "Refer to the screening by its rule id, not by any disease name. Describe missing or "
+    "unavailable history as unknown: never as completed, due or overdue. If "
+    "documented_next_step is null, say that no next step is documented. If the "
+    "evaluation_status is unknown, insufficient_information or requires_clinical_review, state "
+    "that no automated conclusion is made. Write 3 to 6 sentences."
 )
 
 OUTREACH_SYSTEM = (
-    "You rewrite an approved, consent-checked outreach template into a short, polite message "
-    "inviting a person to contact their preventive-care provider. "
+    "You write a short, clear, respectful outreach message from a preventive-care programme to a "
+    "person whose contact consent has already been checked. "
     + _COMMON_RULES
-    + " Do not mention any condition, result or test by name beyond the programme name given. "
-    "Do not promise an appointment. Keep the advice to consult a licensed healthcare "
-    "professional. Do not include names, phone numbers, e-mails or links. "
-    "Maximum {max_chars} characters."
+    + " Name the programme, give the reason for contact using care_gap_category, and invite the "
+    "person to take approved_next_step, and nothing else. Tone '{tone}': supportive means warm "
+    "and encouraging; neutral means plain and factual. Do not diagnose or mention any condition, "
+    "result, test or risk. Do not say the screening is required, mandatory, due, overdue or "
+    "completed, or that the person is eligible. Do not use fear, urgency, pressure or deadlines. "
+    "Do not invent appointments, dates, times, facilities, locations, costs, phone numbers, names "
+    "or links. Always keep the advice to consult a licensed healthcare professional. Write in the "
+    "language with code '{language}'. {channel_format} Maximum {max_chars} characters. Reply "
+    "with the message text only."
 )
+OUTREACH_CHANNEL_FORMAT = {
+    "sms": "Format: one short paragraph with no line breaks, suitable for an SMS.",
+    "app": "Format: one short paragraph with no line breaks, for an in-app notification.",
+    "email": "Format: an e-mail body with a greeting, one or two short paragraphs and a sign-off "
+    "from the programme; no subject line.",
+    "phone": "Format: one paragraph a care coordinator can read aloud on a phone call.",
+}
 
 POPULATION_SYSTEM = (
     "You summarise aggregate counts for preventive-programme managers. "

@@ -10,6 +10,15 @@
 - Data pipeline: `cd data-pipeline && ../backend/.venv/bin/python -m pytest -q -p no:cacheprovider`.
 - Fresh DB bootstrap: `python -m app.db.init --seed`; image: `docker build -f backend/Dockerfile .` from the repo root.
 
+## AI layer (`backend/app/services/ai/`)
+
+- Tests: `tests/test_ai_service.py`, `tests/test_ai_explanations.py`, `tests/test_ai_outreach.py` (providers mocked via `httpx.post`; no live calls).
+- Outreach drafts: all consent/channel/language/next-step checks live in `app/services/outreach/drafting.py` and run before any
+  provider call; channel permission is derived from the person's `preferred_channel` (consent has no channel/expiry columns).
+- Live provider needs `LLM_ENABLED=true`, `LLM_PROVIDER` (`openai_compatible`|`anthropic`), `LLM_MODEL`, `LLM_API_KEY`
+  (optional `LLM_BASE_URL`); check `GET /api/v1/ai/status` (`availability`) and `GET /api/v1/ai/audit`.
+- Bump the prompt version in `prompts.py` whenever a template's wording changes.
+
 ## Environment gotcha (macOS + Podman)
 
 If PostgreSQL round trips through the published port take hundreds of ms, Podman's `gvproxy`

@@ -70,6 +70,10 @@ class AIAuditLog:
             items = [r for r in self._records if feature is None or r.feature == feature]
         return list(reversed(items))[:limit]
 
+    def get(self, audit_id: str) -> AIAuditRecord | None:
+        with self._lock:
+            return next((r for r in self._records if r.audit_id == audit_id), None)
+
     def clear(self) -> None:
         with self._lock:
             self._records.clear()
