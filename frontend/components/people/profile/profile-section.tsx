@@ -49,7 +49,7 @@ export function UnavailableNote({ title, children }: { title: string; children: 
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[11px] font-medium uppercase tracking-[0.08em] text-faint">{label}</dt>
+      <dt className="text-xs font-medium text-faint">{label}</dt>
       <dd className="mt-1 text-sm text-foreground">{children}</dd>
     </div>
   );

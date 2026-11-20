@@ -47,7 +47,7 @@ export function UserMenu() {
       >
         <span
           aria-hidden="true"
-          className="flex size-7 items-center justify-center rounded-full bg-ink text-[11px] font-semibold text-ink-text"
+          className="flex size-7 items-center justify-center rounded-full bg-surface-brand text-[11px] font-semibold text-[var(--on-brand)]"
         >
           {me ? initials(me.user.full_name) : "–"}
         </span>

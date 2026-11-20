@@ -3,7 +3,8 @@
 Per worker process: behind several instances the effective limit is multiplied by the instance
 count, so persistent per-account lockout (`identity.user_account.locked_until`) is the
 authoritative brute-force control and this limiter is a first line of defence. Use the platform
-(Cloud Armor / API gateway) for distributed limits.
+(Cloud Armor / API gateway) for distributed limits. Behind Cloud Run set `TRUSTED_PROXY_HOPS=1`
+so the per-IP key is the address Cloud Run appended, not the shared front-end peer.
 """
 
 from __future__ import annotations
@@ -28,7 +29,12 @@ def reset_rate_limits() -> None:
 
 
 def client_ip(request: Request) -> str:
-    return request.client.host if request.client else "unknown"
+    peer = request.client.host if request.client else "unknown"
+    hops = settings.trusted_proxy_hops
+    if not hops:
+        return peer
+    forwarded = [h.strip() for h in request.headers.get("x-forwarded-for", "").split(",") if h.strip()]
+    return forwarded[-hops] if len(forwarded) >= hops else peer
 
 
 def check_rate_limit(*keys: str, limit: int | None = None) -> None:

@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Info } from "lucide-react";
+import { AlertCircle, ArrowRight, Eye, EyeOff, FileCheck2, FlaskConical, Info, ShieldCheck } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/auth-context";
 import { buttonClass } from "@/components/ui/button-styles";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { LogoMark, LogoWordmark } from "@/components/shell/logo";
-import { AtlasOrnament } from "./atlas-ornament";
 
 const REASON_TEXT = {
   none: null,
@@ -36,6 +35,7 @@ export function SignInScreen({ reason }: { reason: "none" | "expired" | "signed_
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reveal, setReveal] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,110 +52,112 @@ export function SignInScreen({ reason }: { reason: "none" | "expired" | "signed_
 
   const notice = REASON_TEXT[reason];
   const field =
-    "h-11 w-full rounded-xl border border-border-strong bg-surface-raised px-3.5 text-[15px] text-foreground placeholder:text-faint transition-colors hover:border-faint focus:border-accent focus:outline-none";
+    "h-10 w-full rounded-lg border border-border-strong bg-surface-raised px-3 text-sm text-foreground placeholder:text-faint transition-[border-color,box-shadow] duration-200 hover:border-faint focus:border-accent focus:outline-none focus:ring-3 focus:ring-accent-soft aria-invalid:border-status-error";
 
   return (
-    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-      <section
-        aria-label="About PulseReach"
-        className="relative flex flex-col justify-between overflow-hidden bg-ink px-6 py-8 sm:px-10 lg:px-14 lg:py-12"
-      >
-        <div className="flex items-center gap-3">
-          <LogoMark />
-          <span className="font-display text-xl font-medium tracking-[-0.02em] text-ink-text">
-            Pulse<span className="italic text-ink-accent">Reach</span>
-          </span>
-        </div>
-        <AtlasOrnament className="pointer-events-none absolute -right-56 top-1/2 hidden w-[620px] -translate-y-1/2 opacity-70 lg:block xl:-right-40" />
-        <div className="relative mt-16 max-w-xl lg:mt-0">
-          <p className="reveal text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-accent">Prevention Atlas</p>
-          <h1
-            className="reveal mt-4 font-display text-4xl font-normal leading-[1.04] tracking-[-0.025em] text-ink-text sm:text-6xl"
-            style={{ "--i": 1 } as React.CSSProperties}
+    <div className="relative flex min-h-screen flex-col">
+      <header className="flex items-center justify-between px-6 py-5 sm:px-10">
+        <LogoWordmark />
+        <ThemeToggle />
+      </header>
+
+      <main className="flex flex-1 items-center justify-center px-6 pb-16">
+        <div className="w-full max-w-[400px]">
+          <section
+            aria-label="Sign in"
+            className="reveal rounded-2xl border border-border bg-surface-raised p-7 shadow-[var(--shadow-lift)] sm:p-8"
           >
-            A living view of <em className="italic text-ink-accent">population</em> health.
-          </h1>
-          <p className="reveal mt-5 max-w-md text-[15px] leading-relaxed text-ink-muted" style={{ "--i": 2 } as React.CSSProperties}>
-            Programmes, documented care gaps and the evidence behind them — computed by a deterministic rules engine,
-            never guessed.
-          </p>
-        </div>
-        <p className="relative mt-12 text-xs text-ink-faint lg:mt-0">
-          Synthetic demonstration data only — no real people. Not clinically validated.
-        </p>
-      </section>
+            <LogoMark className="size-9" />
+            <h2 className="mt-5 font-display text-[26px] font-medium tracking-[-0.015em] text-foreground">Sign in</h2>
+            <p className="mt-1.5 text-sm text-muted">Use your PulseReach account to continue.</p>
 
-      <section aria-label="Sign in" className="relative flex items-center justify-center px-6 py-12 sm:px-10">
-        <div className="absolute right-4 top-4">
-          <ThemeToggle />
-        </div>
-        <form onSubmit={submit} noValidate className="reveal w-full max-w-sm" style={{ "--i": 2 } as React.CSSProperties}>
-          <LogoWordmark className="mb-8 lg:hidden" />
-          <h2 className="font-display text-3xl font-medium tracking-[-0.02em] text-foreground">Sign in</h2>
-          <p className="mt-2 text-sm text-muted">Staff workspace for population health managers, clinicians and care coordinators.</p>
-
-          {notice && (
-            <p role="status" className="mt-5 rounded-xl bg-highlight px-3.5 py-2.5 text-sm text-foreground">
-              {notice}
-            </p>
-          )}
-
-          <div className="mt-7 flex flex-col gap-4">
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-              E-mail
-              <input
-                type="email"
-                autoComplete="username"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={field}
-                placeholder="name@organization.example"
-                aria-invalid={error !== null}
-              />
-            </label>
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-              Password
-              <input
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={field}
-                aria-invalid={error !== null}
-              />
-            </label>
-          </div>
-
-          <div aria-live="assertive" className="min-h-6">
-            {error && (
-              <p role="alert" className="reveal mt-3 text-sm text-status-error">
-                {error}
+            {notice && (
+              <p role="status" className="mt-5 rounded-lg bg-highlight px-3 py-2 text-sm text-foreground">
+                {notice}
               </p>
             )}
-          </div>
 
-          <button type="submit" disabled={busy} className={buttonClass("primary", "mt-4 w-full")}>
-            {busy ? (
-              <>
-                <span className="progress-track h-1 w-16 rounded-full bg-[color-mix(in_srgb,var(--on-action)_20%,transparent)] text-on-action" />
-                <span className="sr-only">Signing in…</span>
-              </>
-            ) : (
-              <>
-                Sign in <ArrowRight size={16} aria-hidden="true" />
-              </>
-            )}
-          </button>
+            <form onSubmit={submit} noValidate className="mt-6 flex flex-col gap-4">
+              <label className="flex flex-col gap-1.5 text-[13px] font-medium text-foreground">
+                E-mail
+                <input
+                  type="email"
+                  autoComplete="username"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={field}
+                  placeholder="name@organization.example"
+                  aria-invalid={error !== null}
+                />
+              </label>
+              <label className="flex flex-col gap-1.5 text-[13px] font-medium text-foreground">
+                Password
+                <span className="relative">
+                  <input
+                    type={reveal ? "text" : "password"}
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={`${field} pr-10`}
+                    aria-invalid={error !== null}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setReveal((r) => !r)}
+                    aria-label={reveal ? "Hide password" : "Show password"}
+                    aria-pressed={reveal}
+                    className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-lg text-faint transition-colors hover:text-foreground"
+                  >
+                    {reveal ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+                  </button>
+                </span>
+              </label>
 
-          <p className="mt-8 flex gap-2 text-xs leading-relaxed text-faint">
-            <Info size={14} aria-hidden="true" className="mt-px shrink-0" />
-            <span>
-              Accounts are issued by your organization administrator. Patient accounts use the patient portal and cannot
-              open this workspace.
-            </span>
-          </p>
-        </form>
-      </section>
+              <div aria-live="assertive" className="empty:hidden">
+                {error && (
+                  <p role="alert" className="reveal flex items-start gap-2 rounded-lg bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] px-3 py-2 text-sm text-status-error">
+                    <AlertCircle size={15} aria-hidden="true" className="mt-0.5 shrink-0" />
+                    {error}
+                  </p>
+                )}
+              </div>
+
+              <button type="submit" disabled={busy} className={buttonClass("primary", "mt-1 w-full")}>
+                {busy ? (
+                  <>
+                    <span className="progress-track h-1 w-16 rounded-full bg-[color-mix(in_srgb,var(--on-action)_20%,transparent)] text-on-action" />
+                    <span className="sr-only">Signing in…</span>
+                  </>
+                ) : (
+                  <>
+                    Sign in <ArrowRight size={16} aria-hidden="true" />
+                  </>
+                )}
+              </button>
+            </form>
+
+            <p className="mt-6 flex gap-2 border-t border-border pt-5 text-xs leading-relaxed text-faint">
+              <Info size={14} aria-hidden="true" className="mt-px shrink-0" />
+              <span>
+                Accounts are issued by your organization administrator. Care teams and patients sign in here; each account
+                sees only what its role allows.
+              </span>
+            </p>
+          </section>
+
+          <ul className="reveal mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-faint [--i:2]">
+            <li className="flex items-center gap-1.5">
+              <ShieldCheck size={13} aria-hidden="true" className="text-accent" /> Role-based access
+            </li>
+            <li className="flex items-center gap-1.5">
+              <FileCheck2 size={13} aria-hidden="true" className="text-accent" /> Every access audited
+            </li>
+            <li className="flex items-center gap-1.5">
+              <FlaskConical size={13} aria-hidden="true" className="text-warm-text" /> Synthetic data only
+            </li>
+          </ul>
+        </div>
+      </main>
     </div>
   );
 }

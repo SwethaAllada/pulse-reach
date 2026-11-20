@@ -45,6 +45,10 @@ import type {
   RuleDetailOut,
   TokenOut,
 } from "./types";
+import type * as P from "./portal-types";
+import type * as A from "./admin-types";
+import type * as G from "./geo-types";
+import type { AggregationRunOut, PopulationConfigOut, PopulationUpdatesOut } from "./admin-types";
 import { clearSession, getSession, isAccessExpired, setSession } from "@/lib/auth/session";
 
 /** Backend base URL; `.env.example` documents the local default. Never holds credentials. */
@@ -168,6 +172,17 @@ export function holdRequests(): void {
   gate = { promise, open };
 }
 
+/*
+ * Patient sessions never release the staff gate: only `/portal/*` requests (the patient's own,
+ * link-derived record) bypass it, so a staff view mounted underneath can never fire a request
+ * with a patient token.
+ */
+let portalAllowed = false;
+
+export function allowPortalRequests(allowed: boolean): void {
+  portalAllowed = allowed;
+}
+
 export function releaseRequests(): void {
   gate?.open();
   gate = null;
@@ -222,7 +237,7 @@ function notSignedIn(path: string): ApiError {
 async function apiRequest<T>(path: string, pathWithQuery: string, init: RequestInit): Promise<T> {
   const url = `${API_BASE_URL}/api/v1${pathWithQuery}`;
   const identity = UNGATED.has(path);
-  if (!identity) await waitForGate(init.signal);
+  if (!identity && !(portalAllowed && path.startsWith("/portal/"))) await waitForGate(init.signal);
   const send = () => {
     const session = getSession();
     if (!session && !identity && !unauthenticatedAllowed) throw notSignedIn(path);
@@ -340,4 +355,62 @@ export const api = {
   login: (email: string, password: string) => apiPost<TokenOut>("/auth/login", { email, password }),
   logout: () => apiPost<void>("/auth/logout", undefined),
   me: (signal?: AbortSignal) => apiGet<MeOut>("/me", {}, signal),
+
+  /* Population aggregation operations (SYSTEM_ADMIN / PHM). */
+  populationUpdates: (signal?: AbortSignal) => apiGet<PopulationUpdatesOut>("/population/updates", {}, signal),
+  populationConfig: (signal?: AbortSignal) => apiGet<PopulationConfigOut>("/population/config", {}, signal),
+  refreshPopulation: () => apiPost<AggregationRunOut>("/population/refresh", undefined),
+
+  /* Map (BE-33): area aggregates are suppressed server-side; facilities are verified points only. */
+  populationMap: (query: { geography: "district" | "local_area"; metric: G.MapMetric; condition?: G.ConditionCode; period?: string; limit?: number }, signal?: AbortSignal) =>
+    apiGet<G.MapOut>("/population/map", { period: "90d", limit: 500, ...query }, signal),
+  populationAlerts: (signal?: AbortSignal) => apiGet<G.AlertsOut>("/population/alerts", { active_only: true, limit: 200 }, signal),
+  facilityPoints: (signal?: AbortSignal) => apiGet<G.FacilityPointsOut>("/facilities/points", {}, signal),
+};
+
+const enc = encodeURIComponent;
+
+/** Patient portal: the backend derives the patient from the verified account link, never from the request. */
+export const portalApi = {
+  link: (invitationCode: string, dateOfBirth: string) =>
+    apiPost<{ linked: boolean; patient_id: string; message: string }>("/portal/link", { invitation_code: invitationCode, date_of_birth: dateOfBirth }),
+  summary: (signal?: AbortSignal) => apiGet<P.PortalProfileOut>("/portal/summary", {}, signal),
+  healthSummary: (signal?: AbortSignal) => apiGet<P.HealthSummaryOut>("/portal/health-summary", {}, signal),
+  recommendations: (status: "active" | "all", signal?: AbortSignal) =>
+    apiGet<P.RecommendationsOut>("/portal/recommendations", { status }, signal),
+  recommendation: (id: string, signal?: AbortSignal) =>
+    apiGet<P.RecommendationDetailOut>(`/portal/recommendations/${enc(id)}`, {}, signal),
+  appointments: (signal?: AbortSignal) => apiGet<P.PortalAppointmentsOut>("/portal/appointments", {}, signal),
+  referrals: (signal?: AbortSignal) => apiGet<P.PortalReferralsOut>("/portal/referrals", {}, signal),
+  followUps: (signal?: AbortSignal) => apiGet<P.PortalFollowUpsOut>("/portal/follow-ups", {}, signal),
+  followUp: (id: string, signal?: AbortSignal) => apiGet<P.PortalFollowUpDetailOut>(`/portal/follow-ups/${enc(id)}`, {}, signal),
+  respond: (id: string, response: P.PatientResponse, message: string | null) =>
+    apiPost<P.PortalFollowUpDetailOut>(`/portal/follow-ups/${enc(id)}/responses`, { response, message }),
+  requests: (signal?: AbortSignal) => apiGet<P.PatientRequestsOut>("/portal/requests", {}, signal),
+  cancelRequest: (id: string) => apiPost<P.PatientRequestDetailOut>(`/portal/requests/${enc(id)}/cancel`, undefined),
+  requestAppointment: (body: P.AppointmentRequestIn) => apiPost<P.PatientRequestDetailOut>("/portal/appointment-requests", body),
+  requestAppointmentChange: (appointmentId: string, body: P.AppointmentChangeIn) =>
+    apiPost<P.PatientRequestDetailOut>(`/portal/appointments/${enc(appointmentId)}/change-requests`, body),
+  requestAssistance: (message: string, preferredTime: P.TimeOfDay | null) =>
+    apiPost<P.PatientRequestDetailOut>("/portal/assistance", { message, preferred_time_of_day: preferredTime }),
+};
+
+/** Organization administration — every call is scoped by the backend to the caller's organization. */
+export const adminApi = {
+  users: (query: { role?: string; limit: number; offset: number }, signal?: AbortSignal) =>
+    apiGet<A.Page<A.MemberOut>>("/admin/users", query, signal),
+  createUser: (body: A.StaffCreateIn) => apiPost<A.StaffCreateOut>("/admin/users", body),
+  updateUser: (id: string, body: A.MemberUpdateIn) => apiPatch<A.MemberOut>(`/admin/users/${enc(id)}`, body),
+  setUserActive: (id: string, active: boolean) =>
+    apiPost<A.AccountStatusOut>(`/admin/users/${enc(id)}/${active ? "activate" : "deactivate"}`, undefined),
+  issuePasswordReset: (id: string) => apiPost<A.OneTimeTokenOut>(`/admin/users/${enc(id)}/password-reset`, undefined),
+  assignments: (query: { staff_user_id?: string; patient_id?: string; active_only?: boolean; limit: number; offset: number }, signal?: AbortSignal) =>
+    apiGet<A.Page<A.AssignmentOut>>("/admin/assignments", query, signal),
+  createAssignment: (staffUserId: string, patientId: string) =>
+    apiPost<A.AssignmentOut>("/admin/assignments", { staff_user_id: staffUserId, patient_id: patientId }),
+  endAssignment: (id: string) => apiPost<A.AssignmentOut>(`/admin/assignments/${enc(id)}/end`, undefined),
+  patientLinks: (query: { status?: "active" | "revoked"; limit: number; offset: number }, signal?: AbortSignal) =>
+    apiGet<A.Page<A.PatientLinkOut>>("/admin/patient-links", query, signal),
+  revokePatientLink: (id: string) => apiPost<A.PatientLinkOut>(`/admin/patient-links/${enc(id)}/revoke`, undefined),
+  auditEvents: (query: A.AuditQuery, signal?: AbortSignal) => apiGet<A.Page<A.AuditEventOut>>("/audit-events", query, signal),
 };

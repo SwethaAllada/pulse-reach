@@ -169,10 +169,13 @@ export function DistributionBand({
 }
 
 export const inputClass =
-  "h-10 w-full min-w-0 rounded-xl border border-border-strong bg-surface-raised px-3 text-sm text-foreground transition-colors duration-200 placeholder:text-faint hover:border-faint focus-visible:border-accent";
+  "h-9 w-full min-w-0 rounded-lg border border-border-strong bg-surface-raised px-3 text-sm text-foreground transition-colors duration-200 placeholder:text-faint hover:border-faint focus-visible:border-accent";
+/** Compact control for toolbars and table rows: no width, so callers size it. */
+export const compactInputClass =
+  "h-8 min-w-0 rounded-lg border border-border-strong bg-surface-raised px-2.5 text-sm text-foreground transition-colors duration-200 placeholder:text-faint hover:border-faint focus-visible:border-accent";
 export const textareaClass =
-  "min-h-20 w-full rounded-xl border border-border-strong bg-surface-raised px-3 py-2 text-sm text-foreground transition-colors duration-200 placeholder:text-faint hover:border-faint focus-visible:border-accent";
-export const labelClass = "flex min-w-0 flex-col gap-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-faint";
+  "min-h-20 w-full rounded-lg border border-border-strong bg-surface-raised px-3 py-2 text-sm text-foreground transition-colors duration-200 placeholder:text-faint hover:border-faint focus-visible:border-accent";
+export const labelClass = "flex min-w-0 flex-col gap-1.5 text-xs font-medium text-muted";
 
 export function FormError({ message }: { message: string | null }) {
   if (!message) return null;
@@ -217,7 +220,7 @@ export function Pager({ page, total, size, onPage, label }: { page: number; tota
 export function QuietEmpty({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
     <div className="reveal rounded-xl border border-dashed border-border-strong px-5 py-8 text-center">
-      <p className="font-display text-lg text-foreground">{title}</p>
+      <p className="text-[15px] font-semibold text-foreground">{title}</p>
       {children && <p className="mx-auto mt-1 max-w-md text-sm text-muted">{children}</p>}
     </div>
   );

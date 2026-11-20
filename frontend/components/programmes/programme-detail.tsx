@@ -3,7 +3,7 @@
 import { useCallback, useMemo, ViewTransition } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, Info } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronRight, Info } from "lucide-react";
 import type { CareGapStatus, Pathway } from "@/lib/api/types";
 import { scopeLabel, useAuth } from "@/lib/auth/auth-context";
 import { AGE_BAND_OPTIONS, parsePeopleFilters, peopleFiltersHref, peopleFiltersToSearchParams } from "@/lib/people/params";
@@ -21,11 +21,12 @@ import { PopulationFilterBar, filterLabelClass, selectClass } from "@/components
 import { SegmentGlyph } from "@/components/population/segment-glyph";
 import { buttonClass } from "@/components/ui/button-styles";
 import { BACK } from "@/components/ui/page-transition";
-import { Figure } from "@/components/ui/figure";
+import { Figure, KpiCard } from "@/components/ui/figure";
 import { MemberLattice } from "./composition";
 import { InlineError } from "./resource-state";
 import { ProgrammeSections } from "./programme-sections";
 import { cn } from "@/lib/cn";
+import { homeCrumb } from "@/components/shell/nav-items";
 
 export interface DetailState {
   filters: ProgrammeFilters;
@@ -67,9 +68,9 @@ export function ProgrammeDetail() {
 
 function UnknownProgramme({ slug }: { slug: string }) {
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-4 py-16 sm:px-6 lg:px-8">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-faint">Programmes</p>
-      <h1 className="mt-3 font-display text-4xl font-medium text-foreground">No programme “{slug}”</h1>
+    <div className="mx-auto w-full max-w-[1280px] px-4 py-16 sm:px-6 lg:px-8">
+      <p className="text-xs font-medium text-faint">Programmes</p>
+      <h1 className="mt-3 font-display text-[28px] font-medium text-foreground">No programme “{slug}”</h1>
       <p className="mt-3 text-sm text-muted">PulseReach evaluates IFHAS adult screening and Well-Child visits.</p>
       <Link href="/programmes" className={buttonClass("secondary", "mt-6")}>
         <ArrowLeft size={14} aria-hidden="true" /> All programmes
@@ -119,27 +120,28 @@ function ProgrammeDetailBody({ pathway }: { pathway: Pathway }) {
   const memberValue = (v: number | undefined) =>
     v !== undefined ? v : population.status === "loading" ? <HeroDash /> : "—";
   const sum = summary.status === "ready" ? summary.data : null;
+  const home = homeCrumb(auth.status === "signed_in" ? auth.me.role : null);
   const overviewQs = peopleFiltersToSearchParams({ region_id: state.filters.region_id, sex: state.filters.sex }).toString();
 
   return (
-    <div className="pb-24">
-      <section aria-labelledby="programme-heading" className="bg-ink px-4 pb-10 pt-8 sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-[1200px] flex-col gap-8">
+    <div className="mx-auto w-full max-w-[1280px] px-4 pb-16 pt-6 sm:px-6 lg:px-8">
+      <section aria-labelledby="programme-heading">
+        <div className="flex flex-col gap-6">
           <header className="reveal">
-            <nav aria-label="Breadcrumb" className="mb-5">
-              <ol className="flex flex-wrap items-center gap-2 text-xs text-ink-faint">
+            <nav aria-label="Breadcrumb" className="mb-3">
+              <ol className="flex flex-wrap items-center gap-1.5 text-xs text-ink-faint">
                 <li>
-                  <Link href="/" className="hover:text-ink-text">
-                    Population
+                  <Link href={home.href} className="hover:text-ink-text">
+                    {home.label}
                   </Link>
                 </li>
-                <li aria-hidden="true" className="h-px w-3 bg-ink-line" />
+                <li aria-hidden="true"><ChevronRight size={12} /></li>
                 <li>
                   <Link href={overviewQs ? `/programmes?${overviewQs}` : "/programmes"} transitionTypes={BACK} className="hover:text-ink-text">
                     Programmes
                   </Link>
                 </li>
-                <li aria-hidden="true" className="h-px w-3 bg-ink-line" />
+                <li aria-hidden="true"><ChevronRight size={12} /></li>
                 <li aria-current="page" className="text-ink-muted">
                   {meta.name}
                 </li>
@@ -147,18 +149,16 @@ function ProgrammeDetailBody({ pathway }: { pathway: Pathway }) {
             </nav>
             <div className="flex flex-wrap items-end justify-between gap-6">
               <div className="max-w-3xl">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-accent">
-                  Programme · {meta.audience}
-                </p>
+                <p className="text-xs font-medium text-ink-faint">Programme · {meta.audience}</p>
                 <ViewTransition name={`programme-title-${pathway}`} share="atlas-morph" default="none">
                   <h1
                     id="programme-heading"
-                    className="mt-3 font-display text-5xl font-normal leading-none tracking-[-0.03em] text-ink-text sm:text-7xl"
+                    className="mt-1 font-display text-[28px] font-medium leading-tight tracking-[-0.015em] text-ink-text"
                   >
                     {meta.name}
                   </h1>
                 </ViewTransition>
-                <p className="mt-4 text-[15px] leading-relaxed text-ink-muted">
+                <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">
                   {model?.source ? (
                     <>
                       Rules transcribed from <span className="text-ink-text">{model.source.name}</span> ({model.source.version}).
@@ -179,19 +179,19 @@ function ProgrammeDetailBody({ pathway }: { pathway: Pathway }) {
             </div>
           </header>
 
-          <div className="reveal" style={{ "--i": 1 } as React.CSSProperties}>
+          <div className="reveal rounded-xl border border-border bg-surface-raised px-4 py-3.5" style={{ "--i": 1 } as React.CSSProperties}>
             <PopulationFilterBar
-              tone="ink"
+              tone="paper"
               hideProgramme
               label={`${meta.name} filters`}
               filters={{ ...state.filters, pathway }}
               onChange={(f) => navigate({ filters: { ...state.filters, region_id: f.region_id, sex: f.sex }, segment: state.segment })}
               emptyText={`Every ${meta.name} member in your scope.`}
             >
-              <label className={`${filterLabelClass("ink")} lg:w-40`}>
+              <label className={`${filterLabelClass("paper")} lg:w-40`}>
                 Age group
                 <select
-                  className={selectClass("ink")}
+                  className={selectClass("paper")}
                   value={state.filters.age_band ?? ""}
                   onChange={(e) =>
                     navigate({ filters: { ...state.filters, age_band: (e.target.value || undefined) as ProgrammeFilters["age_band"] } })
@@ -215,25 +215,23 @@ function ProgrammeDetailBody({ pathway }: { pathway: Pathway }) {
 
           {rules.status === "error" && <InlineError tone="plate" message={`Programme rules are unavailable. ${rules.message}`} onRetry={retry} />}
 
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3 lg:grid-cols-5 lg:divide-x lg:divide-ink-line">
-            <Figure tone="plate" label="Members" value={memberValue(programme?.people)} note={`${meta.unit} with a history record`} i={2} />
-            <Figure tone="plate" label="With an open gap" value={gapValue(model?.peopleWithOpenGap)} note="people" className="lg:pl-6" i={3} />
-            <Figure tone="plate" label="Open gap records" value={gapValue(model?.gaps.open)} note="across this programme’s rules" className="lg:pl-6" i={4} />
-            <Figure tone="plate" label="Completions" value={gapValue(model?.gaps.closed_completed)} note="gap records closed by documentation" className="lg:pl-6" i={5} />
-            <Figure
-              tone="plate"
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <KpiCard label="Members" value={memberValue(programme?.people)} note={`${meta.unit} with a history record`} i={2} />
+            <KpiCard label="With an open gap" value={gapValue(model?.peopleWithOpenGap)} note="people" i={3} />
+            <KpiCard label="Open gap records" value={gapValue(model?.gaps.open)} note="across this programme’s rules" i={4} />
+            <KpiCard label="Completions" value={gapValue(model?.gaps.closed_completed)} note="gap records closed by documentation" i={5} />
+            <KpiCard
               label="History unavailable"
               value={memberValue(programme?.history.not_available)}
               note="people — not evidence of missed care"
-              className="lg:pl-6"
               i={6}
             />
           </dl>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-            <div className="reveal rounded-2xl border border-ink-line p-4 sm:p-6" style={{ "--i": 3 } as React.CSSProperties}>
+            <div className="reveal rounded-xl border border-border bg-surface-raised p-5" style={{ "--i": 3 } as React.CSSProperties}>
               <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-faint">Member lattice · one mark per person</p>
+                <p className="text-[15px] font-semibold text-ink-text">Member lattice <span className="text-xs font-normal text-ink-faint">· one mark per person</span></p>
                 <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
                   {SEGMENT_ORDER.map((s) => (
                     <li key={s} className="flex items-center gap-1.5">
@@ -253,7 +251,7 @@ function ProgrammeDetailBody({ pathway }: { pathway: Pathway }) {
               ) : population.status === "error" ? (
                 <InlineError tone="plate" message={`Members are unavailable. ${population.message}`} onRetry={retry} />
               ) : (
-                <div aria-busy="true" aria-label="Loading members" className="skeleton-ink h-56 rounded-xl" />
+                <div aria-busy="true" aria-label="Loading members" className="skeleton h-56 rounded-xl" />
               )}
               <p className="mt-4 text-[11px] text-ink-faint">
                 Marks are ordered by segment only; their position carries no clinical meaning. An open gap under any of this
@@ -266,7 +264,7 @@ function ProgrammeDetailBody({ pathway }: { pathway: Pathway }) {
         </div>
       </section>
 
-      <div className="mx-auto mt-14 w-full max-w-[1200px] px-4 sm:px-6 lg:px-8">
+      <div className="mt-10">
         <ProgrammeSections
           pathway={pathway}
           state={state}
@@ -281,7 +279,7 @@ function ProgrammeDetailBody({ pathway }: { pathway: Pathway }) {
 }
 
 function HeroDash() {
-  return <span aria-label="Loading" className="skeleton-ink inline-block h-9 w-16 rounded-md align-middle" />;
+  return <span aria-label="Loading" className="skeleton inline-block h-7 w-14 rounded-md align-middle" />;
 }
 
 function SegmentFocus({
@@ -309,19 +307,19 @@ function SegmentFocus({
     <aside
       aria-label="Segment focus"
       aria-live="polite"
-      className="reveal flex flex-col rounded-2xl border border-ink-line bg-ink-raised/60 p-5"
+      className="reveal flex flex-col rounded-xl border border-border bg-surface-raised p-5"
       style={{ "--i": 4 } as React.CSSProperties}
     >
       <div key={segment ?? "all"} className="reveal-fade flex flex-1 flex-col">
-        <p className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-faint">
+        <p className="flex items-center justify-between gap-2 text-xs font-medium text-ink-faint">
           {segment ? "Segment" : "Whole programme"}
           {segment && (
-            <button type="button" onClick={onClear} className="rounded-full px-2 py-0.5 text-[11px] normal-case tracking-normal text-ink-accent hover:text-ink-text">
+            <button type="button" onClick={onClear} className="rounded-full px-2 py-0.5 text-xs text-ink-accent hover:text-ink-text">
               Show all
             </button>
           )}
         </p>
-        <h2 className="mt-2 flex items-center gap-2 font-display text-2xl font-normal tracking-[-0.01em] text-ink-text">
+        <h2 className="mt-1 flex items-center gap-2 text-lg font-semibold text-ink-text">
           {segment && <SegmentGlyph segment={segment} surface="ink" size={14} />}
           {segment ? SEGMENT_META[segment].label : `All ${PROGRAMME_META[pathway].name} members`}
         </h2>
@@ -338,7 +336,7 @@ function SegmentFocus({
 
         {top.length > 0 && (
           <div className="mt-4">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint">Most open gaps by rule</p>
+            <p className="mb-2 text-xs font-medium text-ink-muted">Most open gaps by rule</p>
             <ul className="flex flex-col gap-2">
               {top.map((r, i) => (
                 <li key={r.key} title={r.key}>
@@ -359,10 +357,10 @@ function SegmentFocus({
         )}
 
         <div className={cn("mt-auto pt-6", !programme && "hidden")}>
-          <a href="#people" className={buttonClass("plate-primary", "w-full")}>
+          <a href="#people" className={buttonClass("primary", "w-full")}>
             Review {cohort ? cohort.people : ""} {cohort?.people === 1 ? "person" : "people"} below
           </a>
-          <Link href={href} className={buttonClass("plate", "mt-2 w-full")}>
+          <Link href={href} className={buttonClass("secondary", "mt-2 w-full")}>
             Open in People workspace <ArrowRight size={14} aria-hidden="true" />
           </Link>
           {mismatch && (

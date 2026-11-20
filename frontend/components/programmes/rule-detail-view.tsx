@@ -38,7 +38,7 @@ export function RuleDetailView() {
   const back = programmeHref(pathway);
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-4 pb-24 pt-8 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1280px] px-4 pb-16 pt-6 sm:px-6 lg:px-8">
       {detail.status === "ready" ? (
         <RuleHeader rule={detail.data} pathway={pathway} back={back} />
       ) : (
@@ -124,7 +124,7 @@ function RuleHeader({ rule, pathway, back }: { rule: RuleDetailOut; pathway: Pat
         }
         className="mb-8"
       />
-      <div className="reveal mb-12 grid grid-cols-1 gap-4 rounded-2xl bg-surface-sunken p-5 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:gap-6">
+      <div className="reveal mb-12 grid grid-cols-1 gap-4 rounded-xl bg-surface-sunken p-5 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:gap-6">
         <span className="flex size-12 items-center justify-center rounded-full bg-surface-raised">
           <StandingGlyph standing={standing} size={22} />
         </span>
@@ -154,7 +154,7 @@ function Definition({ rule }: { rule: RuleDetailOut }) {
               <dt className="text-xs font-medium uppercase tracking-[0.1em] text-faint">{c.label}</dt>
               <dd className="text-sm text-foreground">
                 {c.value}
-                {c.note && <span className="mt-0.5 block text-xs text-action-text">{c.note}</span>}
+                {c.note && <span className="mt-0.5 block text-xs text-warm-text">{c.note}</span>}
               </dd>
             </div>
           ))}
@@ -165,7 +165,7 @@ function Definition({ rule }: { rule: RuleDetailOut }) {
 
       {rule.items.length > 0 && (
         <div className="mt-8">
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-faint">Items ({rule.items.length})</p>
+          <p className="mb-3 text-xs font-medium text-faint">Items ({rule.items.length})</p>
           <ol className="flex flex-col gap-2">
             {rule.items.map((it) => (
               <li key={`${it.category}-${it.code}`} className="flex items-start gap-3 text-sm">

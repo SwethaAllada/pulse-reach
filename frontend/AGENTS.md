@@ -35,10 +35,28 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Design system ("Prevention Atlas")
 
-- Tokens in `app/globals.css` per `[data-theme]`, including the `--ink-*` plate (teal in light, midnight in dark). Components use
-  semantic tokens only (theme tests reject hex/rgba in inline styles). Motion: `.reveal`, `.grow-x/.grow-y`, `.skeleton(-ink)`,
+- Tokens in `app/globals.css` per `[data-theme]`: semantic layer (`--background`, `--surface-*`, `--brand-*`, `--accent-primary`
+  teal/seafoam, `--accent-warm` coral, `--text-*`, `--interactive-*`, `--success/warning/danger`) plus a compatibility alias block
+  (`--bg`, `--surface`, `--accent`, `--action`…) used by Tailwind classes. The `--ink-*` plate is deep teal in both themes.
+  `bg-action`/`primary` buttons = teal (light) / seafoam (dark); coral is `warm` (`text-warm-text`, `buttonClass("warm")`), never danger.
+  `app/theme-tokens.test.ts` checks the palette, teal/coral hues, WCAG AA pairs and that no component file contains hex/rgba.
+  Components use semantic tokens only (theme tests reject hex/rgba in inline styles). Motion: `.reveal`, `.grow-x/.grow-y`, `.skeleton(-ink)`,
   `<PageTransition>` + `Link transitionTypes={FORWARD|BACK}`; all disabled under `prefers-reduced-motion`.
 - Shared primitives: `components/ui/{plate,figure,button-styles,segmented,permission-notice,page-header}`.
+
+## Roles, portal, map
+
+- `/` is a role home (`components/home/role-home.tsx`): PHM → Population overview, coordinator → My worklist,
+  clinician → My patients, admin → `components/admin/admin-overview.tsx`. Navigation per role: `navItemsFor()` in
+  `components/shell/nav-items.ts` (tested in `app-shell.test.tsx`). Admin pages: `app/admin/*`.
+- Patient accounts get `components/portal/patient-portal.tsx` (rendered by `AppShell`); `allowPortalRequests` lets only
+  `/portal/*` through the request gate, so a patient token never reaches staff endpoints.
+- Population map (`components/population/geo/`, `lib/population/geo.ts`): MapLibre (`maplibre-gl` pinned) + OpenFreeMap
+  vector tiles (no key; attribution in the map). The worker is copied to `public/vendor/` by `scripts/copy-maplibre-worker.mjs`
+  (`predev`/`prebuild`; git-ignored) because bundlers do not emit it. Facilities come from `GET /facilities/points`
+  (usable coordinates only). Areas have no boundaries: alerting areas are drawn as their published-facility-point extent,
+  labelled as such. Shown only with `population.read` (PHM, clinician). Headless QA needs
+  `--use-angle=swiftshader --enable-unsafe-swiftshader` for WebGL.
 
 ## Visual QA
 

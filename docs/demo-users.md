@@ -25,11 +25,11 @@ Two organizations split the synthetic population by region: `demo-org-a` (region
 
 | Email | Role | Patient scope | What to try |
 |---|---|---|---|
-| `admin.a@demo.pulsereach.invalid` | SYSTEM_ADMIN | none (no patient data) | Admin and audit endpoints; Follow-up and Appointments are hidden / 403 |
-| `manager.a@demo.pulsereach.invalid` | POPULATION_HEALTH_MANAGER | all patients of org A | Population, Programmes; Follow-up overview and workload; create/update follow-ups; patient requests; no outreach drafting, no appointment scheduling |
-| `coordinator.a@demo.pulsereach.invalid` | CARE_COORDINATOR | 20 assigned patients | Full coordination: follow-ups, contact attempts, outreach draft and review, patient requests, appointments, referrals, documented completion |
-| `clinician.a@demo.pulsereach.invalid` | CLINICIAN | 10 assigned patients | Create follow-ups, update appointments and referrals, documented completion; no patient requests tab, no task updates, no outreach |
-| `patient.a@demo.pulsereach.invalid` | PATIENT | own linked record | Staff workspace shows "This workspace is for care teams"; own data via `/api/v1/portal/*` only |
+| `admin.a@demo.pulsereach.invalid` | SYSTEM_ADMIN | none (no patient data) | Home = Administration console (users & roles, assignments, portal links, audit log, population aggregation); no patient or clinical workspaces |
+| `manager.a@demo.pulsereach.invalid` | POPULATION_HEALTH_MANAGER | all patients of org A | Home = Population overview; Programmes, People; Follow-up overview and workload; care-team assignments and population aggregation; create/update follow-ups; patient requests; no outreach drafting, no appointment scheduling |
+| `coordinator.a@demo.pulsereach.invalid` | CARE_COORDINATOR | 20 assigned patients | Home = My worklist (own follow-ups, new patient requests, upcoming appointments); Panel insights over assigned patients; full coordination: follow-ups, contact attempts, outreach draft and review, patient requests, appointments, referrals, documented completion |
+| `clinician.a@demo.pulsereach.invalid` | CLINICIAN | 10 assigned patients | Home = My patients (assigned patients with open gaps, follow-ups, visits); Panel insights; create follow-ups, update appointments and referrals, documented completion; no patient requests tab, no task updates, no outreach |
+| `patient.a@demo.pulsereach.invalid` | PATIENT | own linked record | Patient portal (overview, recommended care, appointments + change requests, messages/replies, requests, health record); only `/api/v1/portal/*` is ever called |
 | `admin.b@demo.pulsereach.invalid` | SYSTEM_ADMIN | none | Org B administration |
 | `manager.b@demo.pulsereach.invalid` | POPULATION_HEALTH_MANAGER | all patients of org B | Never sees org A patients, tasks or requests (isolation check) |
 | `coordinator.b@demo.pulsereach.invalid` | CARE_COORDINATOR | 20 assigned patients (org B) | Org B coordination |

@@ -7,6 +7,7 @@ import { AccessScreen, CheckingScreen } from "@/components/auth/access-screens";
 import { Sidebar } from "./sidebar";
 import { TopNavigation } from "./top-navigation";
 import { SyntheticBanner } from "./synthetic-banner";
+import { PatientPortal } from "@/components/portal/patient-portal";
 
 /**
  * The workspace tree is always rendered so route segments stay prerenderable. Until a
@@ -16,7 +17,7 @@ import { SyntheticBanner } from "./synthetic-banner";
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { state, isStaff } = useAuth();
+  const { state, isStaff, isPatient } = useAuth();
   const ready = (state.status === "signed_in" || state.status === "legacy") && isStaff;
   const identity =
     state.status === "signed_in" ? `${state.me.user.user_id}|${state.me.organization_id ?? ""}` : state.status;
@@ -30,6 +31,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <AccessScreen kind="unreachable" message={state.message} />
     ) : state.status === "unsupported" ? (
       <AccessScreen kind="unsupported" message={state.endpoint} />
+    ) : isPatient ? (
+      <PatientPortal />
     ) : !isStaff ? (
       <AccessScreen kind="not_staff" />
     ) : null;

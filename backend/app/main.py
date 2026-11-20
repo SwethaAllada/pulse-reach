@@ -80,6 +80,11 @@ async def request_id_and_logging_middleware(request: Request, call_next):
     )
     token = request_id_var.set(req_id)
     start = time.perf_counter()
+    declared = request.headers.get("content-length", "")
+    if declared.isdigit() and int(declared) > settings.max_request_body_bytes:
+        request_id_var.reset(token)
+        return JSONResponse(error_body(413, "Request body too large."), status_code=413,
+                            headers={"X-Request-ID": req_id})
     try:
         response = await call_next(request)
         duration_ms = round((time.perf_counter() - start) * 1000, 2)
@@ -117,7 +122,7 @@ async def request_id_and_logging_middleware(request: Request, call_next):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in settings.cors_origins.split(",") if o.strip()],
-    allow_credentials=True,
+    allow_credentials=False,  # bearer tokens only; no cookies cross origins
     allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
     allow_headers=["*"],
 )

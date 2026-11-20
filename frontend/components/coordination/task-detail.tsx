@@ -69,7 +69,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
     </Link>
   );
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-4 pb-24 pt-8 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1280px] px-4 pb-16 pt-6 sm:px-6 lg:px-8">
       {task.status === "ready" ? (
         <TaskBody task={task.data} crumbs={crumbs} back={back} onRetry={() => setAttempt((n) => n + 1)} />
       ) : (
@@ -135,7 +135,7 @@ function TaskBody({ task, crumbs, back, onRetry }: { task: TaskDetailOut; crumbs
         className="mb-6"
       />
 
-      <section aria-label="Follow-up status" className="reveal mb-10 grid grid-cols-2 gap-x-6 gap-y-5 rounded-2xl bg-ink p-6 text-ink-text sm:grid-cols-3 lg:grid-cols-6">
+      <section aria-label="Follow-up status" className="reveal mb-10 grid grid-cols-2 gap-x-6 gap-y-5 rounded-xl border border-border bg-surface-raised p-6 text-ink-text sm:grid-cols-3 lg:grid-cols-6">
         <Fact label="Status">
           <StatusPill surface="ink" tone={meta.tone} label={meta.label} />
         </Fact>
@@ -208,7 +208,7 @@ function TaskBody({ task, crumbs, back, onRetry }: { task: TaskDetailOut; crumbs
 
         <aside className="flex flex-col gap-10">
           <section aria-label="What the patient sees">
-            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-faint">What the patient sees</h3>
+            <h3 className="mb-3 text-xs font-medium text-faint">What the patient sees</h3>
             {task.patient_visible ? (
               <div className="rounded-xl border border-border bg-surface p-4">
                 <VisibilityBadge visibility="patient" />
@@ -231,7 +231,7 @@ function TaskBody({ task, crumbs, back, onRetry }: { task: TaskDetailOut; crumbs
           </section>
 
           <section aria-label="Care-gap evidence">
-            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-faint">Care-gap evidence</h3>
+            <h3 className="mb-3 text-xs font-medium text-faint">Care-gap evidence</h3>
             {!task.care_gap_id ? (
               <p className="text-sm text-muted">Not linked to a care gap.</p>
             ) : (
@@ -251,7 +251,7 @@ function TaskBody({ task, crumbs, back, onRetry }: { task: TaskDetailOut; crumbs
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink-faint">{label}</p>
+      <p className="text-xs font-medium text-ink-faint">{label}</p>
       <div className="mt-1.5 text-sm text-ink-text">{children}</div>
     </div>
   );
@@ -463,7 +463,7 @@ function UpdateForm({ task, team, today }: { task: TaskDetailOut; team: Map<stri
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-faint">Move to</p>
+        <p className="mb-2 text-xs font-medium text-faint">Move to</p>
         <div className="flex flex-wrap gap-2">
           {transitions.map((s) => (
             <button key={s} type="button" className={buttonClass(s === "cancelled" ? "quiet" : "secondary")} disabled={status.pending} onClick={() => move(s)}>

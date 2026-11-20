@@ -138,7 +138,9 @@ def _counts(eng) -> dict[str, int]:
 def _expected_counts() -> dict[str, int]:
     ds = seed_cmd.generate_synthetic_dataset(bundle=clinical_loader.parse_clinical_bundle())
     expected = {t: len(getattr(ds, attr)) for t, attr in seed_cmd._RECONCILED_TABLES.items()}
-    return {**expected, "generation_run": 1, "evaluation_run": 1, "care_gap_follow_up_event": 0, "workflow_status_event": 0}
+    # Runtime history is not generated: a (re)seed starts with no follow-up, workflow or AI audit rows.
+    return {**expected, "generation_run": 1, "evaluation_run": 1, "care_gap_follow_up_event": 0,
+            "workflow_status_event": 0, "ai_audit_record": 0}
 
 
 def _official_and_clinical_fingerprint(eng) -> dict[str, tuple[int, str | None]]:

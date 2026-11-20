@@ -341,3 +341,56 @@ def test_legacy_mode_uses_the_unrestricted_scope(pw, monkeypatch):
     monkeypatch.setattr(settings, "auth_mode", "legacy")
     r = client.get(f"{P}/summary")
     assert r.status_code == 200 and r.json()["total_population"] >= 500
+
+
+# --- differencing (Phase 6) -------------------------------------------------------------------
+
+
+def _levels(w, condition, cohort, period):
+    out = {}
+    for level in ("state", "district", "local_area"):
+        items = _get(w, "phm_a", "/map", params={"condition": condition, "cohort": cohort, "period": period,
+                                                 "geography": level, "limit": 500}).json()["items"]
+        out.update({i["area"]["area_id"]: i for i in items})
+    return out
+
+
+@pytest.mark.parametrize("condition", ["diabetes_type_2", "hypertension", "asthma"])
+@pytest.mark.parametrize("cohort", ["all", "female", "children"])
+def test_parent_minus_visible_children_never_reveals_a_small_cell(pw, condition, cohort):
+    """For every published parent (state, district) whose children hide exactly one value, the
+    difference parent − Σ visible children must not be a small count (1…k−1)."""
+    k = settings.population_min_cell_size
+    leaks = []
+    for period in ("30d", "12m"):
+        areas = _levels(pw, condition, cohort, period)
+        groups: dict[str, list[dict]] = {}
+        for item in areas.values():
+            if item["area"]["parent_area_id"] in areas:
+                groups.setdefault(item["area"]["parent_area_id"], []).append(item)
+        for parent_id, children in groups.items():
+            parent = areas[parent_id]
+            for field in ("new_cases", "patients_with_condition"):
+                pv = (parent["disease"] or {}).get(field)
+                vals = [(c["disease"] or {}).get(field) for c in children if c["disease"] is not None]
+                if pv is None or sum(v is None for v in vals) != 1:
+                    continue
+                diff = pv - sum(v for v in vals if v is not None)
+                if 0 < diff < k:
+                    leaks.append((period, parent_id, field, diff))
+    assert leaks == []
+
+
+def test_cohort_complements_never_reveal_a_small_cell(pw):
+    k = settings.population_min_cell_size
+    for condition in ("diabetes_type_2", "hypertension"):
+        by = {c: {i["area"]["area_id"]: i["disease"] for i in _get(pw, "phm_a", "/map", params={
+            "condition": condition, "cohort": c, "period": "12m", "limit": 500}).json()["items"] if i["disease"]}
+            for c in ("all", "female", "male", "adults", "children")}
+        for aid, total in by["all"].items():
+            for a, b in (("female", "male"), ("adults", "children")):
+                t, x, y = (total or {}).get("patients_with_condition"), by[a][aid]["patients_with_condition"], \
+                    by[b][aid]["patients_with_condition"]
+                if t is not None and (x is None) != (y is None):
+                    known = x if x is not None else y
+                    assert not 0 < t - known < k, (condition, aid, a, b)

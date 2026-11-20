@@ -13,6 +13,7 @@ x-backend-env: &backend-env
   # legacy: previous shared write key contract, for frontend migration only.
   AUTH_MODE: ${AUTH_MODE:-users}
   SELF_REGISTRATION_ENABLED: ${SELF_REGISTRATION_ENABLED:-true}
+  TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
   DEFAULT_LOCALE: ${DEFAULT_LOCALE:-en}
   # Legacy mode only: writes need X-PulseReach-Write-Key = WRITE_API_KEY; without a key they are
   # refused unless ALLOW_UNPROTECTED_WRITES=true (local only).

@@ -31,7 +31,10 @@ from app.schemas.population import (
     TrendsOut,
     UpdatesOut,
 )
+from app.api.v1 import get_read_repository
+from app.repositories.read_repo import ReadRepository
 from app.services.population.alerts import InvalidTransition, transition
+from app.services.population.geography import facility_city_key, local_to_city_key
 from app.services.population.config import PopulationThresholds
 from app.services.population.facts import ALL_ORGANIZATIONS
 from app.services.population.service import RefreshInProgress, get_population_service, run_dict
@@ -119,6 +122,45 @@ def _intersects(extent: dict, box: list[float]) -> bool:
                 or extent["max_latitude"] < box[1] or extent["min_latitude"] > box[3])
 
 
+_CARE_LAYERS = ("hospitals", "health_centres", "clinics")
+_USABLE_GEO = frozenset({"ok", "swapped_repaired"})
+MIN_REPRESENTATIVE_FACILITIES = 3
+
+
+def _care_points(repo: ReadRepository) -> list[tuple[int | None, str | None, float, float]]:
+    """(region_id, city key, lat, lon) of published care facilities with usable coordinates."""
+    out = []
+    for layer in _CARE_LAYERS:
+        for f in repo.list_facilities(limit=100_000, offset=0, source_layer=layer).items:
+            if f.latitude is not None and f.longitude is not None and f.geo_quality in _USABLE_GEO:
+                out.append((f.region_id, facility_city_key(f.city), f.latitude, f.longitude))
+    return out
+
+
+def _median(xs: list[float]) -> float:
+    xs = sorted(xs)
+    n = len(xs)
+    return xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
+
+
+def representative_point(area: dict, association: str, points: list) -> dict | None:
+    """Median of the area's associated published care-facility coordinates (same association as the
+    aggregation: district = region of record; local area = same published city label in the region).
+    A representative point for mapped facilities only — not the area's centre, not where patients live.
+    None when the area has no facility association or fewer than MIN_REPRESENTATIVE_FACILITIES points."""
+    if area["level"] == "district":
+        mine = [(la, lo) for rid, _, la, lo in points if rid == area["region_id"]]
+    elif area["level"] == "local_area" and association != "no_matching_facility_label":
+        key = local_to_city_key(area["name_en"])[0]
+        mine = [(la, lo) for rid, city, la, lo in points if rid == area["region_id"] and city == key]
+    else:
+        return None
+    if len(mine) < MIN_REPRESENTATIVE_FACILITIES:
+        return None
+    return {"latitude": round(_median([p[0] for p in mine]), 5), "longitude": round(_median([p[1] for p in mine]), 5),
+            "facility_count": len(mine), "kind": "median_of_published_care_facility_points_approximate"}
+
+
 # --------------------------------------------------------------------------------------------
 # Map, trends, hotspots, area detail, summary
 # --------------------------------------------------------------------------------------------
@@ -138,6 +180,7 @@ def population_map(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     p: Principal = Depends(_READ),
+    repo: ReadRepository = Depends(get_read_repository),
 ) -> MapOut:
     metric = metric or ("new_cases" if condition else "population")
     if metric in DISEASE_METRICS and condition is None:
@@ -152,6 +195,7 @@ def population_map(
         excluded = len(ids) - len(located)
         ids = [a for a in located if _intersects(v.areas[a]["facilities"]["published_point_extent"], box)]
     items = []
+    points = _care_points(repo)
     for aid in ids:
         e = v.areas[aid]
         has_pop = e["population"] is not None
@@ -179,6 +223,7 @@ def population_map(
             "preventive_coverage": care and care["preventive_coverage"],
             "open_care_gaps": care and care["open_care_gaps"], "care_facilities": fac["care_facilities"],
             "facility_association": fac["association"]["status"], "facility_point_extent": fac["published_point_extent"],
+            "representative_point": representative_point(e["area"], fac["association"]["status"], points),
             "data_quality": dq,
             "suppressed": sorted(set((disease or {}).get("suppressed", []) + (care or {}).get("suppressed", []) + dq_sup
                                      + (["population"] if has_pop and v.population(aid, cohort) is None else []))),

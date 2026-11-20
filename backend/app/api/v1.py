@@ -29,6 +29,8 @@ from app.repositories.read_repo import (
     get_cached_engine,
 )
 from app.schemas.v1 import (
+    FacilityPointOut,
+    FacilityPointsOut,
     AppointmentCreateIn,
     AppointmentOut,
     AppointmentPatchIn,
@@ -560,6 +562,42 @@ def list_facilities(
         source_layer=source_layer,
         q=q,
     )
+
+
+_CARE_LAYERS = ("hospitals", "health_centres", "clinics")
+_USABLE_GEO = frozenset({"ok", "swapped_repaired"})
+
+
+@router.get("/facilities/points", response_model=FacilityPointsOut)
+def list_facility_points(
+    source_layer: list[_FACILITY_LAYERS] | None = Query(default=None),
+    repo: ReadRepository = Depends(get_read_repository),
+    _p: Principal = Depends(require("facilities.read")),
+) -> FacilityPointsOut:
+    """Map layer: published SDI facilities with usable coordinates only (`geo_quality` ok or
+    swapped_repaired). Rows without usable coordinates are counted, never plotted or defaulted.
+    Defaults to care facilities (hospitals, health centres, clinics)."""
+    layers = tuple(source_layer or _CARE_LAYERS)
+    items, excluded = [], 0
+    for layer in layers:
+        for f in repo.list_facilities(limit=100_000, offset=0, source_layer=layer).items:
+            if f.latitude is None or f.longitude is None or f.geo_quality not in _USABLE_GEO:
+                excluded += 1
+                continue
+            items.append(FacilityPointOut(
+                ch_fid=f.ch_fid, name=f.facility_name, source_layer=f.source_layer, facility_type=f.facility_type,
+                region_id=f.region_id, city=f.city, is_public=f.is_public, license_status=f.license_status,
+                latitude=f.latitude, longitude=f.longitude, geo_quality=f.geo_quality,
+            ))
+    return FacilityPointsOut(governance_notice=_FACILITY_NOTICE_POINTS, source_layers=list(layers), total=len(items),
+                             excluded_without_coordinates=excluded, items=items)
+
+
+_FACILITY_NOTICE_POINTS = (
+    "Published Abu Dhabi SDI facility register. Coordinates are as published (transposed pairs repaired); "
+    "facilities without usable coordinates are excluded, never placed at a default location. Licence records, "
+    "not verified operating status or capacity."
+)
 
 
 @router.get("/facilities/{ch_fid}", response_model=FacilityDetailOut)

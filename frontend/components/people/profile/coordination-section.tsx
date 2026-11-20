@@ -131,14 +131,14 @@ export function CoordinationSection({ data }: { data: PersonProfileData }) {
 
         {tasks && tasks.length > 0 && (
           <div>
-            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-faint">Follow-ups</h3>
+            <h3 className="mb-2 text-xs font-medium text-faint">Follow-ups</h3>
             <TaskList tasks={tasks} team={ready(team)} rules={ready(rules)} today={today} hidePatient />
           </div>
         )}
 
         <div>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-faint">Timeline</h3>
+            <h3 className="text-xs font-medium text-faint">Timeline</h3>
             <div className="overflow-x-auto">
               <Segmented
                 label="Timeline lane"
@@ -198,7 +198,7 @@ export function CoordinationSection({ data }: { data: PersonProfileData }) {
 function Count({ label, value }: { label: string; value: number | undefined }) {
   return (
     <div>
-      <dt className="text-[11px] font-medium uppercase tracking-[0.08em] text-faint">{label}</dt>
+      <dt className="text-xs font-medium text-faint">{label}</dt>
       <dd className="figure mt-1 text-2xl text-foreground">{value ?? "—"}</dd>
     </div>
   );

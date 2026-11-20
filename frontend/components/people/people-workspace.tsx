@@ -1,5 +1,6 @@
 "use client";
 
+import { homeCrumb } from "@/components/shell/nav-items";
 import { useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Info, RotateCcw } from "lucide-react";
@@ -24,7 +25,7 @@ export function PeopleWorkspace() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const { scope, state: auth } = useAuth();
+  const { scope, state: auth, role } = useAuth();
   const state = useMemo(() => parsePeopleState(searchParams), [searchParams]);
   const { page, reference, retry } = usePeopleList(state);
 
@@ -41,13 +42,13 @@ export function PeopleWorkspace() {
   const ref = reference.status === "ready" ? reference.data : null;
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-4 pb-20 pt-8 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1280px] px-4 pb-20 pt-8 sm:px-6 lg:px-8">
       <PageHeader
         index="03"
         eyebrow="Find"
         title="People"
         subtitle="The synthetic people in your scope, with their programme membership, history availability and documented preventive-care gaps."
-        breadcrumbs={[{ label: "Population", href: populationHref(state.filters) }, { label: "People" }]}
+        breadcrumbs={[homeCrumb(role, populationHref(state.filters)), { label: "People" }]}
         actions={
           hasAnyCriteria(state) ? (
             <button

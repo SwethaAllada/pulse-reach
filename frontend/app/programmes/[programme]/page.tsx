@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Programme" };
 export default function ProgrammePage() {
   return (
     <PageTransition>
-      <Suspense fallback={<div aria-busy="true" aria-label="Loading programme" className="skeleton-ink h-[640px] w-full" />}>
+      <Suspense fallback={<div aria-busy="true" aria-label="Loading programme" className="skeleton h-[640px] w-full" />}>
         <RequirePermission anyOf={["rules.read"]} workspace="Programmes">
           <ProgrammeDetail />
         </RequirePermission>

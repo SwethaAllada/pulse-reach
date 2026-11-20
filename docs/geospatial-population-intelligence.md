@@ -211,6 +211,13 @@ See `api-contracts.md` §1 for the table. All responses share an envelope: `is_s
   suppressed with their inputs; alert explanation numbers below k shown as `<k`. Suppressed fields
   are listed in `suppressed`. Rules are deterministic, so repeated filtering returns the same
   pattern; filters only select predefined areas/cohorts/periods (no free-form groups).
+- Complementary suppression also fires when a group has several unknown cells whose total
+  (parent − visible members, including an unpublished remainder) is itself small, since that
+  bounds each of them to 1…k−1 (Phase 6 fix).
+- Policy split: population endpoints are organization-wide and may exceed a caller's patient
+  access (CLINICIAN has `population.read` with assigned scope), so they are the disclosure
+  boundary. Programme summaries and People lists cover only the caller's own patient scope, so
+  their exact member lists are authorised individual access, not population disclosure.
 - Residual risks: differences between nested time windows (e.g. 30-day vs 90-day) and between
   monthly series and windows are not cross-suppressed; trend direction and hotspot class remain
   visible for suppressed cells.

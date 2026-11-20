@@ -167,7 +167,7 @@ const EVIDENCE_GLYPH = {
 
 function EvidenceLedger({ figures }: { figures: ReturnType<typeof evidenceFigures> }) {
   return (
-    <ol className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
+    <ol className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
       {figures.map((f, i) => {
         const meta = EVIDENCE_META[f.cls];
         return (
@@ -176,7 +176,7 @@ function EvidenceLedger({ figures }: { figures: ReturnType<typeof evidenceFigure
               {EVIDENCE_GLYPH[f.cls]}
               {meta.title}
             </p>
-            <p className="figure mt-4 text-5xl text-foreground">{f.value ?? "—"}</p>
+            <p className="figure mt-3 text-[32px] text-foreground">{f.value ?? "—"}</p>
             <p className="mt-1 text-xs text-muted">{f.unit}</p>
             <p className="mt-1 text-xs text-faint">{f.detail}</p>
             <p className="mt-4 border-t border-border pt-3 text-xs leading-relaxed text-muted">{meta.source}</p>
@@ -369,7 +369,7 @@ function Bars({ rows, total, label, color }: { rows: { key: string; label: strin
   const max = Math.max(1, ...rows.map((r) => r.count));
   return (
     <div>
-      <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-faint">{label}</p>
+      <p className="mb-3 text-xs font-medium text-faint">{label}</p>
       <ul className="flex flex-col gap-2.5">
         {rows.map((r, i) => (
           <li key={r.key} className="grid grid-cols-[96px_minmax(0,1fr)_56px] items-center gap-3 text-sm">

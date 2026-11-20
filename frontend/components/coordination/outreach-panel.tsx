@@ -189,7 +189,7 @@ export function OutreachPanel({
       )}
 
       <div>
-        <h4 className="text-[11px] font-medium uppercase tracking-[0.12em] text-faint">Review history for this care gap</h4>
+        <h4 className="text-xs font-medium text-faint">Review history for this care gap</h4>
         {history.length === 0 ? (
           <p className="mt-2 text-sm text-muted">No outreach has been reviewed for this care gap.</p>
         ) : (

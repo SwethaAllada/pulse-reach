@@ -1,5 +1,7 @@
 "use client";
 
+import { homeCrumb } from "@/components/shell/nav-items";
+import { useAuth } from "@/lib/auth/auth-context";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
@@ -55,11 +57,12 @@ export function PersonProfile() {
   const listHref = listHrefFromProfile(from);
   const listFilters = parsePeopleState(new URLSearchParams(from ?? "")).filters;
   const { state, retry } = usePersonProfile(personId);
+  const { role } = useAuth();
 
   const breadcrumbs = via
     ? [{ label: "Programmes", href: "/programmes" }, ...via.crumbs, { label: personId }]
     : [
-        { label: "Population", href: populationHref(listFilters) },
+        homeCrumb(role, populationHref(listFilters)),
         { label: "People", href: listHref },
         { label: personId },
       ];
@@ -70,7 +73,7 @@ export function PersonProfile() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-4 pb-16 pt-8 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1280px] px-4 pb-16 pt-8 sm:px-6 lg:px-8">
       {state.status === "ready" ? (
         <ProfileBody data={state.data} breadcrumbs={breadcrumbs} back={back} />
       ) : (
@@ -316,7 +319,7 @@ function ProfileBody({
 function Glance({ question, children }: { question: string; children: React.ReactNode }) {
   return (
     <div className="reveal min-w-0 lg:px-6 lg:first:pl-0">
-      <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-action-text">{question}</h2>
+      <h2 className="mb-2 text-xs font-medium text-warm-text">{question}</h2>
       {children}
     </div>
   );

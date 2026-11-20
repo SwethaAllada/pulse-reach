@@ -36,7 +36,7 @@ const TONES = {
     empty: "text-ink-faint",
   },
   paper: {
-    label: "text-faint",
+    label: "text-muted",
     select: "border-border-strong bg-surface-raised text-foreground hover:border-faint focus-visible:border-accent",
     chip: "border-border-strong bg-surface-raised text-foreground hover:border-accent",
     chipIcon: "text-muted",
@@ -46,18 +46,18 @@ const TONES = {
 } as const;
 
 export function selectClass(tone: Tone): string {
-  return `h-10 min-w-0 cursor-pointer rounded-xl border px-3 text-sm transition-colors duration-200 ${TONES[tone].select}`;
+  return `h-9 min-w-0 cursor-pointer rounded-lg border px-3 text-sm transition-colors duration-200 ${TONES[tone].select}`;
 }
 
 export function filterLabelClass(tone: Tone): string {
-  return `flex min-w-0 flex-col gap-1.5 text-[11px] font-medium uppercase tracking-[0.12em] ${TONES[tone].label}`;
+  return `flex min-w-0 flex-col gap-1.5 text-xs font-medium ${TONES[tone].label}`;
 }
 
 /** Filters `GET /api/v1/patients` supports: programme, region, sex. All combinable. */
 export function PopulationFilterBar({
   filters,
   onChange,
-  tone = "ink",
+  tone = "paper",
   emptyText,
   label = "Population filters",
   hideProgramme,

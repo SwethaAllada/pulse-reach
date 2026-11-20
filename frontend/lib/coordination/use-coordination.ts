@@ -2,7 +2,7 @@
 
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { api, apiErrorMessage, ApiError } from "@/lib/api/client";
-import { cached, onCacheReset } from "@/lib/api/cache";
+import { cached, evict, onCacheReset } from "@/lib/api/cache";
 import { useResource, type Resource } from "@/lib/api/resource";
 import type {
   AppointmentOut,
@@ -30,11 +30,14 @@ export type { Resource };
  * Coordination data changes with every write, so it is never cached across views. Each read
  * carries the coordination version in its key; any successful write bumps it, refetching every
  * mounted coordination view (task lists, counts, timelines) instead of showing stale state.
+ * A documented completion closes a care gap, so the session-cached care-gap records and dashboard
+ * counts (programme views) are evicted too.
  */
 let version = 0;
 const listeners = new Set<() => void>();
 
 export function invalidateCoordination(): void {
+  evict("care-gaps", "dashboard-summary");
   version += 1;
   listeners.forEach((l) => l());
 }

@@ -6,7 +6,7 @@ import { PanelLeftClose, PanelLeft, X } from "lucide-react";
 import { Suspense, useEffect, useSyncExternalStore } from "react";
 import { cn } from "@/lib/cn";
 import { useAuth } from "@/lib/auth/auth-context";
-import { NAV_GROUPS, NAV_ITEMS, isNavItemActive } from "./nav-items";
+import { NAV_GROUPS, isNavItemActive, navItemsFor, navLabel } from "./nav-items";
 import { LogoMark, LogoWordmark } from "./logo";
 
 const COLLAPSED_KEY = "pulereach-sidebar-collapsed";
@@ -88,7 +88,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           </Link>
           <div className={cn("min-w-0 flex-1 transition-opacity duration-200", collapsed && "lg:sr-only lg:opacity-0")}>
             <LogoWordmark />
-            <p className="truncate text-[10px] font-medium uppercase tracking-[0.14em] text-faint">Prevention atlas</p>
+            <p className="truncate text-[11px] text-faint">Population health</p>
           </div>
           <button
             type="button"
@@ -120,10 +120,10 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 }
 
 function NavLinks({ pathname, collapsed }: { pathname: string | null; collapsed: boolean }) {
-  const { can } = useAuth();
-  const items = NAV_ITEMS.filter((item) => can(...item.requires));
+  const { can, role } = useAuth();
+  const items = navItemsFor(role, can);
   return (
-    <nav aria-label="Primary" className="flex flex-1 flex-col gap-6 overflow-y-auto px-3 py-5">
+    <nav aria-label="Primary" className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
       {NAV_GROUPS.map((group) => {
         const groupItems = items.filter((i) => i.group === group.id);
         if (groupItems.length === 0) return null;
@@ -131,7 +131,7 @@ function NavLinks({ pathname, collapsed }: { pathname: string | null; collapsed:
           <div key={group.id}>
             <p
               className={cn(
-                "mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-faint",
+                "mb-2 px-3 text-xs font-medium text-faint",
                 collapsed && "lg:sr-only"
               )}
             >
@@ -142,12 +142,12 @@ function NavLinks({ pathname, collapsed }: { pathname: string | null; collapsed:
                 const active = pathname !== null && isNavItemActive(item, pathname);
                 const Icon = item.icon;
                 return (
-                  <li key={item.href}>
+                  <li key={`${item.group}|${item.href}`}>
                     <Link
                       href={item.href}
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-[background-color,color] duration-200",
+                        "group relative flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-[background-color,color] duration-200",
                         active
                           ? "bg-nav-active-bg font-semibold text-foreground"
                           : "font-medium text-muted hover:bg-surface-sunken hover:text-foreground"
@@ -166,27 +166,14 @@ function NavLinks({ pathname, collapsed }: { pathname: string | null; collapsed:
                         className={cn("shrink-0", active && "text-accent")}
                         aria-hidden="true"
                       />
-                      <span className={cn("flex min-w-0 flex-1 flex-col", collapsed && "lg:sr-only")}>
-                        <span className="truncate">{item.label}</span>
-                        {item.verb && (
-                          <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-faint">{item.verb}</span>
-                        )}
-                      </span>
-                      {item.index && (
-                        <span
-                          aria-hidden="true"
-                          className={cn("font-mono text-[10px] text-faint", collapsed && "lg:hidden")}
-                        >
-                          {item.index}
-                        </span>
-                      )}
+                      <span className={cn("min-w-0 flex-1 truncate", collapsed && "lg:sr-only")}>{navLabel(item, role)}</span>
                       {/* Tooltip — collapsed desktop only */}
                       {collapsed && (
                         <span
                           role="tooltip"
                           className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-md border border-border bg-surface-raised px-2.5 py-1.5 text-xs font-medium text-foreground opacity-0 shadow-[var(--shadow-popover)] transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 lg:block"
                         >
-                          {item.label}
+                          {navLabel(item, role)}
                         </span>
                       )}
                     </Link>

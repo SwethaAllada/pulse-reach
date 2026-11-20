@@ -229,39 +229,56 @@ describe("Older backend without authentication", () => {
   });
 });
 
+const staffCalls = () =>
+  fetchMock.mock.calls.filter(([u]) => !/\/(me|auth\/.*|portal\/.*)$/.test(new URL(String(u)).pathname));
+
 describe("Role access to staff workspaces", () => {
-  const NAV = ["Population", "Programmes", "People"] as const;
+  /* Each role gets its own home and navigation; items not listed must be absent. */
+  const NAV = [
+    "Population overview",
+    "My worklist",
+    "My patients",
+    "Administration",
+    "Follow-up",
+    "Programmes",
+    "Panel insights",
+    "Users & roles",
+    "Care-team assignments",
+    "Audit log",
+    "Facilities",
+  ] as const;
   const EXPECTED: Record<keyof typeof ROLE_PERMISSIONS, readonly (typeof NAV)[number][] | null> = {
-    SYSTEM_ADMIN: ["Programmes"],
-    POPULATION_HEALTH_MANAGER: ["Population", "Programmes", "People"],
-    CARE_COORDINATOR: ["Population", "Programmes", "People"],
-    CLINICIAN: ["Population", "Programmes", "People"],
+    SYSTEM_ADMIN: ["Administration", "Users & roles", "Care-team assignments", "Audit log", "Facilities"],
+    POPULATION_HEALTH_MANAGER: ["Population overview", "Follow-up", "Programmes", "Care-team assignments", "Facilities"],
+    CARE_COORDINATOR: ["My worklist", "Follow-up", "Programmes", "Panel insights", "Facilities"],
+    CLINICIAN: ["My patients", "Follow-up", "Programmes", "Panel insights", "Facilities"],
     PATIENT: null,
   };
 
-  it.each(Object.keys(EXPECTED) as (keyof typeof ROLE_PERMISSIONS)[])("%s sees only the workspaces its permissions allow", async (role) => {
+  it.each(Object.keys(EXPECTED) as (keyof typeof ROLE_PERMISSIONS)[])("%s gets its own home and navigation", async (role) => {
     account = me(role, ROLE_PERMISSIONS[role], role === "POPULATION_HEALTH_MANAGER" ? "organization" : "assigned");
     renderApp();
     await signIn();
     const expected = EXPECTED[role];
     if (expected === null) {
-      expect(await screen.findByRole("heading", { name: "This workspace is for care teams" })).toBeTruthy();
+      expect(await screen.findByRole("navigation", { name: "Portal" })).toBeTruthy();
       await new Promise((r) => setTimeout(r, 20));
-      expect(dataCalls()).toHaveLength(0);
+      expect(staffCalls()).toHaveLength(0);
       return;
     }
     const nav = await screen.findByRole("navigation", { name: "Primary" });
-    await waitFor(() => expect(within(nav).getByRole("link", { name: new RegExp(expected[0]) })).toBeTruthy());
+    await waitFor(() => expect(within(nav).getByRole("link", { name: expected[0] })).toBeTruthy());
     for (const item of NAV)
-      expect(!!within(nav).queryByRole("link", { name: new RegExp(`^.*${item}`) }), `${role} ${item}`).toBe(expected.includes(item));
+      expect(!!within(nav).queryByRole("link", { name: item }), `${role} ${item}`).toBe(expected.includes(item));
   });
 
-  it("keeps a patient account out even if it carried a staff permission", async () => {
+  it("keeps a patient account in the portal even if it carried a staff permission", async () => {
     account = me("PATIENT", [...ROLE_PERMISSIONS.PATIENT, "rules.read"]);
     renderApp();
     await signIn();
-    expect(await screen.findByRole("heading", { name: "This workspace is for care teams" })).toBeTruthy();
+    expect(await screen.findByRole("navigation", { name: "Portal" })).toBeTruthy();
     await new Promise((r) => setTimeout(r, 20));
+    expect(staffCalls()).toHaveLength(0);
     expect(dataCalls()).toHaveLength(0);
   });
 });

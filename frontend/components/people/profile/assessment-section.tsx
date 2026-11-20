@@ -65,7 +65,7 @@ export function AssessmentSection({ assessment, openGaps }: { assessment: Progra
           <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-5">
             {distinctions.map((d) => (
               <div key={d.label} className="min-w-0">
-                <dt className="text-[11px] font-medium uppercase tracking-[0.08em] text-faint">{d.label}</dt>
+                <dt className="text-xs font-medium text-faint">{d.label}</dt>
                 <dd className="mt-1 text-sm font-semibold text-foreground">{d.value}</dd>
                 <dd className="mt-0.5 text-xs leading-snug text-muted">{d.note}</dd>
               </div>
@@ -83,7 +83,7 @@ export function AssessmentSection({ assessment, openGaps }: { assessment: Progra
                 </span>
               </div>
 
-              <h4 className="mt-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-faint">Programme rules</h4>
+              <h4 className="mt-4 text-xs font-medium text-faint">Programme rules</h4>
               {a.gates.length === 0 ? (
                 <p className="mt-1 text-sm text-muted">No programme-level evaluations returned.</p>
               ) : (
@@ -100,7 +100,7 @@ export function AssessmentSection({ assessment, openGaps }: { assessment: Progra
                 </ul>
               )}
 
-              <h4 className="mt-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-faint">Preventive-care rules</h4>
+              <h4 className="mt-4 text-xs font-medium text-faint">Preventive-care rules</h4>
               <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5">
                 {SERVICE_ORDER.filter((k) => a.serviceCounts[k]).map((k) => (
                   <li key={k} className="inline-flex items-center gap-1.5 text-sm">

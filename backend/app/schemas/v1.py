@@ -321,6 +321,28 @@ class FacilityDetailOut(FacilityItemOut):
     source_effective_date: date | None = None
 
 
+class FacilityPointOut(BaseModel):
+    ch_fid: str | None
+    name: str | None
+    source_layer: str | None
+    facility_type: str | None
+    region_id: int | None
+    city: str | None
+    is_public: bool | None
+    license_status: str | None
+    latitude: float
+    longitude: float
+    geo_quality: str
+
+
+class FacilityPointsOut(BaseModel):
+    governance_notice: str
+    source_layers: list[str]
+    total: int
+    excluded_without_coordinates: int
+    items: list[FacilityPointOut]
+
+
 class PaginatedFacilitiesOut(BaseModel):
     governance_notice: str
     total: int

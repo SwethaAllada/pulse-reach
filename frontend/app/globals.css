@@ -2,60 +2,86 @@
 
 /*
  * PulseReach — "Prevention Atlas" design tokens.
- * Two complete, separately composed themes selected by [data-theme] on <html>.
- * Components reference semantic tokens only — never theme-specific colours.
+ * Two expressions of one brand, selected by [data-theme] on <html>. Components reference
+ * semantic tokens only — never theme-specific colours.
  *
- *  light  "Paper atlas"     warm ivory paper, deep teal ink, coral for human emphasis
- *  dark   "Night survey"    midnight teal, pearl text, neon lime reserved for selection
+ *  light  "Paper atlas"   ivory canvas · deep teal structure · coral emphasis
+ *  dark   "Night survey"  midnight canvas · slate + deep teal structure · seafoam action · warm coral emphasis
  *
- * The "plate" (--ink-*) is the deep editorial band used for workspace heroes;
- * it is re-composed per theme instead of being one fixed dark block.
+ * 60:30:10 — every page is composed as
+ *   60  canvas + primary surfaces          (--background, --surface-primary, --surface-secondary)
+ *   30  structure                          (--surface-brand, --brand-*, borders, navigation, selection)
+ *   10  accents                            (--accent-primary for interaction, --accent-warm for emphasis)
+ * Coral is brand emphasis — it never means danger; teal never means success. Status
+ * colours (--status-*, --success/--warning/--danger) are a separate, semantic vocabulary.
+ *
+ * Workspaces sit on one canvas: cards (--surface-elevated) carry content; teal marks brand,
+ * the primary action and selection; coral marks emphasis.
  */
 
 :root,
 [data-theme="light"] {
-  --bg: #f5f0e6;
-  --bg-elevated: #faf6ee;
-  --surface: #fbf8f1;
-  --surface-raised: #fffdf8;
-  --surface-sunken: #ece5d7;
-  --highlight: #d9e4da;
-  --border: #e2d9c7;
-  --border-strong: #c8bca5;
-  --rule: #263d3a;
-  --text: #263d3a;
-  --text-muted: #4d605c;
-  --text-faint: #56665f;
-  --accent: #0d4945;
-  --accent-strong: #08332f;
-  --accent-2: #2e6f8e;
-  --accent-soft: rgba(13, 73, 69, 0.08);
-  --on-accent: #f5f0e6;
-  /* Human emphasis / primary action. Text uses --action-text for contrast. */
-  --action: #f0785b;
-  --action-strong: #e2603f;
-  --on-action: #2a1510;
-  --action-text: #b2432a;
-  --action-soft: rgba(240, 120, 91, 0.14);
-  --focus: #0d4945;
-  --nav-active-bg: #d9e4da;
-  --shadow-popover: 0 18px 40px -18px rgba(38, 61, 58, 0.35), 0 2px 6px rgba(38, 61, 58, 0.08);
-  --shadow-card: none;
+  color-scheme: light;
 
-  --status-due: #c4532f;
-  --status-upcoming: #2e6f8e;
+  /* 60 — canvas and surfaces */
+  --background: #f5f0e6;
+  --surface-primary: #fbf7ee;
+  --surface-secondary: #eae5da;
+  --surface-elevated: #fffcf5;
+  --surface-nav: #fbf7ee;
+  /* 30 — brand structure */
+  --surface-brand: #0d4945;
+  --on-brand: #f5f0e6;
+  --brand-line: #2b6b64;
+  --brand-highlight: #a6dcd0;
+  --brand-primary: #0d4945;
+  --brand-secondary: #174f49;
+  --border-subtle: #d8d3c8;
+  --border-strong: #9a9180;
+  /* 10 — accents */
+  --accent-primary: #0d4945;
+  --accent-primary-strong: #08332f;
+  --on-accent-primary: #f5f0e6;
+  --accent-primary-soft: rgba(13, 73, 69, 0.08);
+  --accent-secondary: #174f49;
+  --accent-warm: #f0785b;
+  --accent-warm-strong: #e2603f;
+  --on-accent-warm: #2a1510;
+  --accent-warm-text: #ad4128;
+  --accent-warm-soft: rgba(240, 120, 91, 0.14);
+  /* text */
+  --text-primary: #18302e;
+  --text-secondary: #5a6965;
+  --text-tertiary: #5e6d69;
+  /* interaction */
+  --interactive-hover: rgba(13, 73, 69, 0.06);
+  --interactive-active: rgba(13, 73, 69, 0.12);
+  --interactive-selected: #dce6de;
+  --focus-ring: #0d4945;
+  /* status (semantic, never brand) */
+  --success: #276e45;
+  --warning: #855900;
+  --danger: #b3261e;
+
+  --shadow-popover: 0 18px 40px -18px rgba(24, 48, 46, 0.35), 0 2px 6px rgba(24, 48, 46, 0.08);
+  --shadow-card: none;
+  --shadow-lift: 0 10px 24px -16px rgba(24, 48, 46, 0.45);
+  --shadow-thumb: 0 1px 2px rgba(24, 48, 46, 0.1);
+
+  --status-due: #b44a28;
+  --status-upcoming: #2a6683;
   --status-eligible: #55625d;
-  --status-completed: #2c7a4d;
-  --status-not-eligible: #767d76;
-  --status-unknown: #69716c;
-  --status-insufficient: #946300;
+  --status-completed: #276e45;
+  --status-not-eligible: #6c736c;
+  --status-unknown: #646c67;
+  --status-insufficient: #855900;
   --status-review: #7a4e9e;
   --status-info: #2b5e78;
   --status-error: #b3261e;
 
   --cohort-1: #0d4945;
   --cohort-2: #3d5a99;
-  --cohort-3: #946300;
+  --cohort-3: #855900;
   --cohort-4: #7a4e9e;
   --cohort-5: #767d76;
 
@@ -66,112 +92,171 @@
   --programme-ifhas: #0f5f59;
   --programme-well-child: #3d5a99;
 
-  --field-star: rgba(38, 61, 58, 0.16);
-  --field-line: rgba(38, 61, 58, 0.07);
-  --grain: rgba(38, 61, 58, 0.035);
-  --glow: none;
+  /* Map layers (same meaning in both themes). */
+  --map-land: #ece6d9;
+  --map-water: #c9dcd7;
+  --map-road: #fffcf5;
+  --map-boundary: #9a9180;
+  --map-label: #4a5a56;
+  --map-label-halo: #f5f0e6;
+  --map-facility: #0d4945;
+  --map-facility-other: #7a827d;
+  --map-selected: #f0785b;
+  --map-extent: #f0785b;
 
-  /* Plate: deep teal editorial band on paper. */
-  --ink: #0d4945;
-  --ink-raised: #115550;
-  --ink-line: #2b6b64;
-  --ink-text: #f5f0e6;
-  --ink-muted: #c9dad2;
-  --ink-faint: #a3c1b8;
-  --ink-accent: #f59a82;
-  --ink-accent-2: #d9e4da;
-  --ink-on-accent: #2a1510;
-  --ink-due: #f59a82;
-  --ink-completed: #a6dcb2;
-  --ink-review: #d4bdf2;
-  --ink-insufficient: #f2c86e;
-  --ink-unknown: #b9c8c2;
-  --ink-segment-gap: #f59a82;
-  --ink-segment-available: #a6dcb2;
-  --ink-segment-partial: #f2c86e;
-  --ink-segment-unavailable: #b9c8c2;
-  --ink-programme-ifhas: #d9e4da;
-  --ink-programme-well-child: #c3cff5;
+  --field-star: rgba(24, 48, 46, 0.16);
+  --field-line: rgba(24, 48, 46, 0.07);
+  --grain: rgba(24, 48, 46, 0.035);
+  --glow-primary: transparent;
+  --glow-warm: transparent;
+
 }
 
 [data-theme="dark"] {
-  --bg: #092b2b;
-  --bg-elevated: #0c3232;
-  --surface: #0d3434;
-  --surface-raised: #174746;
-  --surface-sunken: #072424;
-  --highlight: #174746;
-  --border: #1c4a48;
-  --border-strong: #2b605d;
-  --rule: #e8ede7;
-  --text: #e8ede7;
-  --text-muted: #a7c1b9;
-  --text-faint: #86a49c;
-  --accent: #c5f36a;
-  --accent-strong: #b2e651;
-  --accent-2: #7fc6df;
-  --accent-soft: rgba(197, 243, 106, 0.1);
-  --on-accent: #0b2a1c;
-  --action: #c5f36a;
-  --action-strong: #d4f78b;
-  --on-action: #0b2a1c;
-  --action-text: #c5f36a;
-  --action-soft: rgba(197, 243, 106, 0.12);
-  --focus: #c5f36a;
-  --nav-active-bg: rgba(197, 243, 106, 0.08);
-  --shadow-popover: 0 24px 48px -16px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(197, 243, 106, 0.04);
+  color-scheme: dark;
+
+  /* 60 — midnight canvas and slate surfaces */
+  --background: #0b132b;
+  --surface-primary: #18213d;
+  --surface-secondary: #15203a;
+  --surface-elevated: #1c2541;
+  --surface-nav: #0f1832;
+  /* 30 — deep teal brand structure */
+  --surface-brand: #153b3a;
+  --on-brand: #f8fafc;
+  --brand-line: #2a5c5a;
+  --brand-highlight: #5ed6ca;
+  --brand-primary: #153b3a;
+  --brand-secondary: #1d4b49;
+  --border-subtle: #33415c;
+  --border-strong: #64779a;
+  /* 10 — seafoam interaction, warm coral emphasis, blue only where selective */
+  --accent-primary: #2ec4b6;
+  --accent-primary-strong: #5ed6ca;
+  --on-accent-primary: #0b132b;
+  --accent-primary-soft: rgba(46, 196, 182, 0.12);
+  --accent-secondary: #5b9bff;
+  --accent-warm: #f18b70;
+  --accent-warm-strong: #f5a38d;
+  --on-accent-warm: #1f0e08;
+  --accent-warm-text: #f18b70;
+  --accent-warm-soft: rgba(241, 139, 112, 0.14);
+  /* text */
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #8291a8;
+  /* interaction */
+  --interactive-hover: rgba(46, 196, 182, 0.07);
+  --interactive-active: rgba(46, 196, 182, 0.14);
+  --interactive-selected: #153b3a;
+  --focus-ring: #2ec4b6;
+  /* status */
+  --success: #6ee7a8;
+  --warning: #f2c14e;
+  --danger: #ff7a8a;
+
+  --shadow-popover: 0 24px 48px -16px rgba(2, 6, 23, 0.7), 0 0 0 1px rgba(46, 196, 182, 0.05);
   --shadow-card: none;
+  --shadow-lift: 0 12px 28px -18px rgba(2, 6, 23, 0.9);
+  --shadow-thumb: 0 1px 2px rgba(2, 6, 23, 0.5);
 
   --status-due: #ff9b7d;
   --status-upcoming: #86c3e6;
-  --status-eligible: #a9bdb6;
-  --status-completed: #8bdb9c;
-  --status-not-eligible: #6f8b85;
-  --status-unknown: #9eaea9;
+  --status-eligible: #a9b6c8;
+  --status-completed: #6ee7a8;
+  --status-not-eligible: #7d8aa0;
+  --status-unknown: #9aa6b8;
   --status-insufficient: #f2c14e;
   --status-review: #c7aaf6;
   --status-info: #a6cfe0;
-  --status-error: #ff8a7a;
+  --status-error: #ff7a8a;
 
-  --cohort-1: #6fd1c1;
+  --cohort-1: #2ec4b6;
   --cohort-2: #a9b8f5;
   --cohort-3: #f2c14e;
   --cohort-4: #c7aaf6;
-  --cohort-5: #9eaea9;
+  --cohort-5: #9aa6b8;
 
-  --segment-gap: #ff9b7d;
-  --segment-available: #74d3a8;
+  --segment-gap: #f18b70;
+  --segment-available: #6ee7a8;
   --segment-partial: #f2c14e;
-  --segment-unavailable: #8ea19b;
-  --programme-ifhas: #6fd1c1;
+  --segment-unavailable: #8592a8;
+  --programme-ifhas: #2ec4b6;
   --programme-well-child: #a9b8f5;
 
-  --field-star: rgba(156, 184, 176, 0.3);
-  --field-line: rgba(156, 184, 176, 0.08);
-  --grain: rgba(232, 237, 231, 0.025);
-  --glow: 0 0 22px rgba(197, 243, 106, 0.22);
+  --map-land: #111a33;
+  --map-water: #0a2a33;
+  --map-road: #1f2a48;
+  --map-boundary: #4a5a7a;
+  --map-label: #a7b3c6;
+  --map-label-halo: #0b132b;
+  --map-facility: #2ec4b6;
+  --map-facility-other: #7d8aa0;
+  --map-selected: #f18b70;
+  --map-extent: #f18b70;
 
-  /* Plate: a deeper survey sheet than the canvas, lime reserved for selection. */
-  --ink: #051f1f;
-  --ink-raised: #0a2b2b;
-  --ink-line: #1a4442;
-  --ink-text: #e8ede7;
-  --ink-muted: #a7c1b9;
-  --ink-faint: #86a49c;
-  --ink-accent: #c5f36a;
-  --ink-accent-2: #6fd1c1;
-  --ink-on-accent: #0b2a1c;
-  --ink-due: #ff9b7d;
-  --ink-completed: #8bdb9c;
-  --ink-review: #c7aaf6;
-  --ink-insufficient: #f2c14e;
-  --ink-unknown: #9eaea9;
-  --ink-segment-gap: #ff9b7d;
-  --ink-segment-available: #74d3a8;
-  --ink-segment-partial: #f2c14e;
-  --ink-segment-unavailable: #8ea19b;
-  --ink-programme-ifhas: #6fd1c1;
-  --ink-programme-well-child: #a9b8f5;
+  --field-star: rgba(148, 163, 184, 0.3);
+  --field-line: rgba(148, 163, 184, 0.06);
+  --grain: rgba(248, 250, 252, 0.02);
+  --glow-primary: rgba(46, 196, 182, 0.07);
+  --glow-warm: rgba(241, 139, 112, 0.05);
+
+}
+
+/*
+ * Compatibility layer: the component vocabulary (bg-surface, text-accent, bg-action…) is an
+ * alias of the semantic tokens above, resolved on <html> for whichever theme is active.
+ */
+:root,
+[data-theme] {
+  --bg: var(--background);
+  --bg-elevated: var(--surface-nav);
+  --surface: var(--surface-primary);
+  --surface-raised: var(--surface-elevated);
+  --surface-sunken: var(--surface-secondary);
+  --highlight: var(--interactive-selected);
+  --border: var(--border-subtle);
+  --rule: var(--text-primary);
+  --text: var(--text-primary);
+  --text-muted: var(--text-secondary);
+  --text-faint: var(--text-tertiary);
+  --accent: var(--accent-primary);
+  --accent-strong: var(--accent-primary-strong);
+  --accent-2: var(--accent-secondary);
+  --accent-soft: var(--accent-primary-soft);
+  --on-accent: var(--on-accent-primary);
+  /* Primary action = primary interaction (deep teal on paper, seafoam at night). */
+  --action: var(--accent-primary);
+  --action-strong: var(--accent-primary-strong);
+  --on-action: var(--on-accent-primary);
+  --action-soft: var(--accent-primary-soft);
+  --focus: var(--focus-ring);
+  --nav-active-bg: var(--interactive-selected);
+
+  /*
+   * Feature surface (historically the "ink plate"). It is a raised card in both themes, not a
+   * coloured band: workspaces stay on one canvas and teal is kept for brand, action and selection.
+   */
+  --ink: var(--surface-elevated);
+  --ink-raised: var(--surface-primary);
+  --ink-line: var(--border-subtle);
+  --ink-text: var(--text-primary);
+  --ink-muted: var(--text-secondary);
+  --ink-faint: var(--text-tertiary);
+  --ink-accent: var(--accent-primary);
+  --ink-accent-2: var(--accent-warm);
+  --ink-on-accent: var(--on-accent-primary);
+  --ink-due: var(--status-due);
+  --ink-completed: var(--status-completed);
+  --ink-review: var(--status-review);
+  --ink-insufficient: var(--status-insufficient);
+  --ink-unknown: var(--status-unknown);
+  --ink-segment-gap: var(--segment-gap);
+  --ink-segment-available: var(--segment-available);
+  --ink-segment-partial: var(--segment-partial);
+  --ink-segment-unavailable: var(--segment-unavailable);
+  --ink-programme-ifhas: var(--programme-ifhas);
+  --ink-programme-well-child: var(--programme-well-child);
 }
 
 :root {
@@ -205,7 +290,19 @@
   --color-action: var(--action);
   --color-action-strong: var(--action-strong);
   --color-on-action: var(--on-action);
-  --color-action-text: var(--action-text);
+  --color-warm: var(--accent-warm);
+  --color-warm-strong: var(--accent-warm-strong);
+  --color-on-warm: var(--on-accent-warm);
+  --color-warm-text: var(--accent-warm-text);
+  --color-warm-soft: var(--accent-warm-soft);
+  --color-brand: var(--brand-primary);
+  --color-brand-2: var(--brand-secondary);
+  --color-surface-brand: var(--surface-brand);
+  --color-hover: var(--interactive-hover);
+  --color-pressed: var(--interactive-active);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
   --color-action-soft: var(--action-soft);
   --color-focus: var(--focus);
   --color-nav-active-bg: var(--nav-active-bg);
@@ -284,8 +381,8 @@ body::before {
 
 [data-theme="dark"] body::before {
   background-image:
-    radial-gradient(900px 520px at 88% -12%, rgba(197, 243, 106, 0.05), transparent 70%),
-    radial-gradient(700px 460px at -8% 105%, rgba(111, 209, 193, 0.06), transparent 70%),
+    radial-gradient(900px 520px at 88% -12%, var(--glow-primary), transparent 70%),
+    radial-gradient(700px 460px at -8% 105%, var(--glow-warm), transparent 70%),
     linear-gradient(var(--field-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--field-line) 1px, transparent 1px);
   background-size:
@@ -301,9 +398,9 @@ body::before {
 }
 
 .figure {
-  font-family: var(--font-fraunces);
+  font-family: var(--font-geist-sans);
   font-variant-numeric: lining-nums tabular-nums;
-  font-variation-settings: "SOFT" 0, "WONK" 0;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
 
@@ -493,4 +590,41 @@ body::before {
   ::view-transition-new(*) {
     animation: none !important;
   }
+}
+
+/* ── MapLibre controls follow the theme ───────────────────────────────── */
+.maplibregl-ctrl-group,
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-attrib.maplibregl-compact,
+.maplibregl-popup-content,
+.maplibregl-ctrl-scale {
+  background: var(--surface-elevated) !important;
+  color: var(--text-secondary);
+  border-color: var(--border-subtle) !important;
+}
+.maplibregl-ctrl-group {
+  box-shadow: var(--shadow-popover) !important;
+}
+.maplibregl-ctrl-group button + button {
+  border-top-color: var(--border-subtle) !important;
+}
+[data-theme="dark"] .maplibregl-ctrl-icon,
+[data-theme="dark"] .maplibregl-ctrl-attrib-button {
+  filter: invert(1);
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--text-secondary);
+}
+.maplibregl-popup-content {
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  box-shadow: var(--shadow-popover);
+  padding: 10px 28px 10px 12px;
+}
+.maplibregl-popup-tip {
+  border-top-color: var(--surface-elevated) !important;
+  border-bottom-color: var(--surface-elevated) !important;
+}
+.maplibregl-popup-close-button {
+  color: var(--text-secondary);
 }

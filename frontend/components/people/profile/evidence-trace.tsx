@@ -209,7 +209,7 @@ function TraceDetail({ item, data, rule }: { item: TraceItem; data: PersonProfil
           </p>
         )}
         <div className="mt-3 rounded-md bg-surface-sunken px-3 py-2">
-          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-faint">Configured criteria (as printed)</p>
+          <p className="mb-1.5 text-xs font-medium text-faint">Configured criteria (as printed)</p>
           {detail.state?.status === "loading" && (
             <p className="flex items-center gap-2 text-xs">
               <LoaderCircle size={12} aria-hidden="true" className="animate-spin" /> Loading rule definition…

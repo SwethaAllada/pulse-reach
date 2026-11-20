@@ -58,6 +58,16 @@ is wedged (high CPU). Restart the machine with the same Podman install that crea
 (`/opt/podman/bin/podman machine stop && /opt/podman/bin/podman machine start`); a mismatched
 Homebrew `podman` fails to start the `libkrun` machine.
 
+Without restarting the machine (e.g. a running `prdeploy` stack), run the live suite *inside* the VM
+next to a disposable DB (~0.3 ms round trips, full suite ~7 min), reusing an image with the pinned deps:
+`docker run --rm --network container:pulsereach-test-pg -v "$PWD":/repo:ro -w /repo/backend -e PYTHONDONTWRITEBYTECODE=1
+-e PULSE_REACH_REPO_ROOT=/repo -e RULES_DIR=/repo/data-pipeline/rules -e DATA_DIR=/repo/data -e TEST_DATABASE_URL=… -e DATABASE_URL=…
+--entrypoint python prdeploy-backend:latest -m pytest -q -p no:cacheprovider` (URLs use `127.0.0.1:5432` inside the namespace).
+Live fixtures that set `DATA_SOURCE=db` must clear `get_identity_engine`/`get_population_engine` caches on teardown
+(`test_live_backend_completion._clear_store_engines`), or later memory-mode suites error.
+
+Deployment: `docs/deployment-gcp.md`; behind Cloud Run set `TRUSTED_PROXY_HOPS=1` (not uvicorn `--forwarded-allow-ips='*'`).
+
 Docker builds through the forwarded socket also wedge `gvproxy` (build context uploads at ~0.5 MB/min).
 Build inside the VM instead, then start Compose without building:
 `/opt/podman/bin/podman machine ssh "cd $PWD && podman build -f backend/Dockerfile -t prdeploy-backend:latest . && podman tag prdeploy-backend:latest prdeploy-db-init:latest"`,

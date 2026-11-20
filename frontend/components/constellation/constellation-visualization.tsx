@@ -350,7 +350,7 @@ function Tooltip({ cohort, x, y }: { cohort: Cohort; x: number; y: number }) {
       )}
       style={{ left: `${(Math.min(Math.max(x, 120), W - 120) / W) * 100}%`, top: `${(Math.max(y, 70) / H) * 100}%` }}
     >
-      <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-faint">
+      <p className="text-xs font-medium text-ink-faint">
         {pathwayLabel(cohort.pathway)}
       </p>
       <p className="text-sm font-semibold text-ink-text">{cohort.label}</p>

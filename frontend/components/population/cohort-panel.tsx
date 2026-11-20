@@ -24,7 +24,7 @@ export function CohortPanel({ model, selected, filters, onSelect }: Props) {
     <aside
       aria-label="Cohort details"
       aria-live="polite"
-      className="reveal flex h-full flex-col rounded-2xl border border-ink-line bg-ink-raised/60 p-5"
+      className="reveal flex h-full flex-col rounded-xl border border-border bg-surface-raised p-5"
       style={{ "--i": 4 } as React.CSSProperties}
     >
       {selected ? (
@@ -39,8 +39,8 @@ export function CohortPanel({ model, selected, filters, onSelect }: Props) {
 function CohortList({ model, onSelect }: { model: PopulationModel; onSelect: (id: CohortId) => void }) {
   return (
     <div>
-      <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
-        Cohorts · select to explore
+      <p className="mb-3 text-[15px] font-semibold text-foreground">
+        Cohorts
       </p>
       <div className="flex flex-col gap-4">
         {model.programmes.map((prog) => (
@@ -48,7 +48,7 @@ function CohortList({ model, onSelect }: { model: PopulationModel; onSelect: (id
             <button
               type="button"
               onClick={() => onSelect(prog.id)}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm font-semibold text-ink-text transition-colors hover:bg-ink-line/60"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm font-semibold text-ink-text transition-colors hover:bg-hover"
             >
               <span
                 aria-hidden="true"
@@ -66,7 +66,7 @@ function CohortList({ model, onSelect }: { model: PopulationModel; onSelect: (id
                     onClick={() => onSelect(seg.id)}
                     disabled={seg.people === 0}
                     aria-label={`${pathwayLabel(prog.pathway)} — ${seg.label}: ${seg.people} people`}
-                    className="flex w-full items-center gap-2.5 rounded-md py-1 pl-6 pr-2 text-left text-[13px] text-ink-muted transition-colors hover:bg-ink-line/60 hover:text-ink-text disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent"
+                    className="flex w-full items-center gap-2.5 rounded-md py-1 pl-6 pr-2 text-left text-[13px] text-ink-muted transition-colors hover:bg-hover hover:text-ink-text disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent"
                   >
                     <SegmentGlyph segment={seg.segment!} surface="ink" />
                     <span className="min-w-0 flex-1 truncate">{seg.label}</span>
@@ -114,11 +114,11 @@ function CohortDetail({
         <ArrowLeft size={13} aria-hidden="true" /> All cohorts
       </button>
 
-      <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: PROGRAMME_COLOR[cohort.pathway].ink }}>
+      <p className="flex items-center gap-2 text-xs font-medium" style={{ color: PROGRAMME_COLOR[cohort.pathway].ink }}>
         {pathwayLabel(cohort.pathway)}
         {!isProgramme && <span className="text-ink-faint">· segment</span>}
       </p>
-      <h2 className="mt-1 flex items-center gap-2 font-display text-xl font-normal text-ink-text">
+      <h2 className="mt-1 flex items-center gap-2 text-lg font-semibold text-ink-text">
         {cohort.segment && <SegmentGlyph segment={cohort.segment} surface="ink" size={14} />}
         {isProgramme ? "Whole programme" : cohort.label}
       </h2>
@@ -127,20 +127,20 @@ function CohortDetail({
       <dl className="mt-4 grid grid-cols-2 gap-3 border-y border-ink-line py-3">
         <div>
           <dt className="text-[11px] text-ink-faint">People</dt>
-          <dd className="figure text-3xl text-ink-text">{cohort.people}</dd>
+          <dd className="figure text-2xl text-ink-text">{cohort.people}</dd>
           {!isProgramme && (
             <dd className="text-[11px] text-ink-faint">of {programme.people} in programme</dd>
           )}
         </div>
         <div>
           <dt className="text-[11px] text-ink-faint">Open documented gaps</dt>
-          <dd className="figure text-3xl text-ink-text">{cohort.openGaps}</dd>
+          <dd className="figure text-2xl text-ink-text">{cohort.openGaps}</dd>
           <dd className="text-[11px] text-ink-faint">gap records, not people</dd>
         </div>
       </dl>
 
       <div className="mt-4">
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+        <p className="mb-2 text-xs font-medium text-ink-muted">
           Documented gaps by rule
         </p>
         {topRules.length === 0 ? (
@@ -221,7 +221,7 @@ function ExploreLink({
   forward?: boolean;
   children: React.ReactNode;
 }) {
-  const cls = buttonClass(secondary ? "plate" : "plate-primary", cn("w-full", secondary ? "mt-2" : "mt-3"));
+  const cls = buttonClass(secondary ? "secondary" : "primary", cn("w-full", secondary ? "mt-2" : "mt-3"));
   if (disabled) {
     return (
       <span aria-disabled="true" className={cn(cls, "cursor-not-allowed opacity-50")}>

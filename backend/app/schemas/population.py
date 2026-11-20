@@ -127,6 +127,7 @@ class MapAreaOut(BaseModel):
     care_facilities: int | None
     facility_association: str
     facility_point_extent: dict[str, Any] | None
+    representative_point: dict[str, Any] | None = None
     data_quality: dict[str, Any]
     suppressed: list[str] = Field(default_factory=list)
 

@@ -1,17 +1,12 @@
 import { Suspense } from "react";
-import { PopulationWorkspace } from "@/components/population/population-workspace";
-import { RequirePermission } from "@/components/auth/require-permission";
+import { RoleHome } from "@/components/home/role-home";
 import { PageTransition } from "@/components/ui/page-transition";
 
-export default function PopulationPage() {
+export default function HomePage() {
   return (
     <PageTransition>
-      <Suspense
-        fallback={<div aria-busy="true" aria-label="Loading population workspace" className="skeleton-ink h-[640px] w-full" />}
-      >
-        <RequirePermission anyOf={["insights.read"]} workspace="The Population workspace">
-          <PopulationWorkspace />
-        </RequirePermission>
+      <Suspense fallback={<div aria-busy="true" aria-label="Loading your workspace" className="skeleton h-[640px] w-full" />}>
+        <RoleHome />
       </Suspense>
     </PageTransition>
   );

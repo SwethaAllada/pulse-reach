@@ -26,8 +26,9 @@ Design: `docs/authentication-and-rbac.md`. Audit and gap analysis:
   ignored. Append-only `identity.audit_event` (triggers block UPDATE/DELETE/TRUNCATE).
 - [x] Patient accounts are linked to records only through staff-issued one-time codes plus date of
   birth; e-mail is never treated as proof of identity.
-- [ ] Behind a proxy (Cloud Run), run uvicorn with `--proxy-headers --forwarded-allow-ips=<proxy>`
-  so per-IP rate limits see the client address rather than the proxy.
+- [ ] Behind Cloud Run set `TRUSTED_PROXY_HOPS=1` so per-IP rate limits use the address Cloud Run
+  appends to `X-Forwarded-For`. Do **not** use uvicorn `--forwarded-allow-ips='*'`: it trusts the
+  leftmost, client-chosen entry, letting a caller rotate rate-limit buckets.
 - [ ] Frontend: send `Authorization: Bearer <access_token>`; keep the refresh token out of
   `localStorage` where possible (memory / httpOnly cookie via a BFF); never put tokens in URLs.
 - [ ] No e-mail/SMS integration exists: activation, reset and invitation codes are shown once to
@@ -72,7 +73,9 @@ WRITE_API_KEY=pulsereach-write-key:latest`) and share it out of band.
 ## 5. CORS, rate limiting, database access
 
 - **CORS:** `CORS_ORIGINS` defaults to `http://localhost:3000`; set it to the deployed frontend
-  origin(s) only. Never `*` (credentials are allowed).
+  origin(s) only. Never `*`. Credentials are not allowed cross-origin (bearer tokens only).
+- **Request size:** bodies above `MAX_REQUEST_BODY_BYTES` (default 1 MiB, declared
+  `Content-Length`) are refused with `413`; Cloud Run caps HTTP/1 requests at 32 MiB.
 - **Rate limiting:** authentication, registration, reset and portal-linking endpoints are limited
   in-process (per worker) and accounts lock after repeated failures. Use Cloud Run
   `--max-instances` (cost ceiling) and `--concurrency`, and Cloud Armor or the API gateway for
@@ -106,3 +109,38 @@ WRITE_API_KEY=pulsereach-write-key:latest`) and share it out of band.
 - Do not claim production readiness, clinical validation, or clinically reviewed rules
   (`clinical_review_status = not_reviewed`).
 - Do not present programme eligibility or rule-level review flags as individual clinical need.
+
+## 7. Phase 6 readiness status (2026-11-20)
+
+PASS = verified at runtime · FAIL = issue found and open · NOT RUN = not validated ·
+ACCEPTED LIMITATION = known, accepted for the hackathon. Runbook: `docs/deployment-gcp.md`.
+
+| Area | Status | Evidence / note |
+|---|---|---|
+| Authentication (login, expiry, refresh rotation, reuse detection, logout, password change/reset) | PASS | `test_auth.py` (offline + live PG `test_identity_live_pg.py`) |
+| Frontend holds data requests until a staff session exists | PASS (unit) | `lib/api/client.test.ts`, `components/auth`; browser check NOT RUN |
+| RBAC, five roles, permitted + forbidden operations | PASS | `test_rbac.py` matrix (every route declares a permission; 401 without token) |
+| Organisation isolation (ids, list filters, task mutations, mixed-ownership writes, assignees, portal) | PASS | `test_tenant_isolation.py`, `test_cross_org_probes.py` (new) |
+| Patient privacy: aggregate small-cell suppression | PASS | k=5; primary, cohort-complement, complementary suppression |
+| Differencing (parent − visible children with small hidden total) | PASS after fix | was FAIL: Abu Dhabi district diabetes 12-month new cases revealed a hidden area as 1–2; fixed in `population/privacy.py`, swept by `test_parent_minus_visible_children_never_reveals_a_small_cell` |
+| Differencing across nested time windows / trend direction of suppressed cells | ACCEPTED LIMITATION | documented in `geospatial-population-intelligence.md` §10 |
+| Programme summary suppression vs. exact member lists | ACCEPTED LIMITATION (by design) | summaries cover only the caller's own patient scope, which the caller may already list individually |
+| AI safety (no status changes, human approval, simulated outreach, guardrails, fallback) | PASS (mocked provider) | `test_ai_*.py`; live Gemini call NOT RUN (no key) |
+| Secrets server-side, never logged | PASS | `test_auth.py::test_secrets_never_logged`, `test_ai_service.py` |
+| Secret Manager in GCP | NOT RUN | no GCP resources exist yet |
+| Database migrations 0001→0013 on a fresh DB; idempotent init + seed | PASS | disposable PG 17: `app.db.init --seed` twice, `alembic current` = 0013, startup validation OK |
+| Live PostgreSQL regression | PASS | full suite inside the Podman VM (see final report) |
+| Database backups / restore | NOT RUN | Cloud SQL automated backups configured by the runbook; restore drill not performed |
+| HTTPS | ACCEPTED LIMITATION | provided by Cloud Run `run.app`; no HSTS header added by the app |
+| CORS | PASS | explicit origins, no credentials (`test_edge_hardening.py`) |
+| Rate limiting | PASS (in-process) / ACCEPTED LIMITATION (per instance) | `TRUSTED_PROXY_HOPS` spoof-resistant client address (`test_edge_hardening.py`); no distributed limiter |
+| Request size limit | PASS | 413 above 1 MiB |
+| Logging (structured JSON, request ids, PII redaction) | PASS | `test_observability.py` |
+| Monitoring / alerting | NOT RUN | use Cloud Run metrics + a billing budget alert |
+| Error handling (no stack traces/SQL in responses) | PASS | `app/core/errors.py`, tests |
+| Synthetic data only | PASS | DB `CHECK is_synthetic`, `SYNTH-*` ids |
+| Demo accounts | ACCEPTED LIMITATION | shared accounts can be locked for 15 min by 5 wrong passwords |
+| Public `/docs`, `/openapi.json` | ACCEPTED LIMITATION | schema only; every data route needs a token |
+| Rollback | NOT RUN | revision traffic switch documented |
+| Resource cleanup | NOT RUN | commands documented in the runbook |
+| Manual browser QA (themes, responsive, a11y, end-to-end demo) | NOT RUN | checklist in the Phase 6 report |

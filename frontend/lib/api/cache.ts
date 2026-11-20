@@ -19,6 +19,11 @@ export function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
   return p;
 }
 
+/** Drops cached entries a write may have changed; the next read goes back to the API. */
+export function evict(...keys: string[]): void {
+  keys.forEach((k) => store.delete(k));
+}
+
 /** Registers extra caches (e.g. per-hook module caches) to clear with this one. */
 export function onCacheReset(hook: () => void): void {
   resetHooks.add(hook);

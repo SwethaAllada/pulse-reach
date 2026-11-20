@@ -1272,7 +1272,7 @@ class MemoryReadRepository:
                 effective_date_precision=r["effective_date_precision"],
                 effective_date_from=r["effective_date_from"],
                 description=r["description"],
-                open_question_ids=oqs_by_rule.get((r["rule_id"], r["rule_version"]), []),
+                open_question_ids=sorted(oqs_by_rule.get((r["rule_id"], r["rule_version"]), [])),
             )
             for r in rules
         ]
@@ -1304,7 +1304,7 @@ class MemoryReadRepository:
                 verification_status=it["verification_status"],
                 status_is_verified=it["status_is_verified"],
                 effective_authority=it["effective_authority"],
-                open_question_ids=item_oqs_map.get((it["category"], it["code"]), []),
+                open_question_ids=sorted(item_oqs_map.get((it["category"], it["code"]), [])),
             )
             for it in bundle.items
             if it["rule_id"] == rule_id and it["rule_version"] == rver
@@ -1327,7 +1327,7 @@ class MemoryReadRepository:
             description=r["description"],
             notes=r["notes"],
             spec=r["spec"],
-            open_question_ids=rule_oqs,
+            open_question_ids=sorted(rule_oqs),
             items=rule_items,
         )
 
@@ -1530,7 +1530,7 @@ class MemoryReadRepository:
             for roq in bundle.rule_open_questions
             if roq["rule_id"] == rule_id and roq["rule_version"] == r_meta["rule_version"]
         ]
-        return ev_match, r_meta, h_status, eval_reasons, rule_oqs
+        return ev_match, r_meta, h_status, eval_reasons, sorted(rule_oqs)
 
     def get_patient_history(self, patient_id: str) -> PatientHistoryOut | None:
         idx = get_cached_index()
@@ -2474,7 +2474,7 @@ class PostgresReadRepository:
                 effective_date_precision=r.effective_date_precision,
                 effective_date_from=r.effective_date_from,
                 description=r.description,
-                open_question_ids=oqs_by_rule.get((r.rule_id, r.rule_version), []),
+                open_question_ids=sorted(oqs_by_rule.get((r.rule_id, r.rule_version), [])),
             )
             for r in rules
         ]
@@ -2527,7 +2527,7 @@ class PostgresReadRepository:
                 verification_status=it.verification_status,
                 status_is_verified=it.status_is_verified,
                 effective_authority=bool(it.status_is_verified and r.is_authoritative),
-                open_question_ids=item_oqs_map.get((it.category, it.code), []),
+                open_question_ids=sorted(item_oqs_map.get((it.category, it.code), [])),
             )
             for it in items_rows
         ]
@@ -2549,7 +2549,7 @@ class PostgresReadRepository:
             description=r.description,
             notes=r.notes,
             spec=r.spec,
-            open_question_ids=rule_oqs,
+            open_question_ids=sorted(rule_oqs),
             items=rule_items,
         )
 
@@ -2901,7 +2901,7 @@ class PostgresReadRepository:
                 meta["source_version"] = std.source_version
         except SQLAlchemyError as exc:
             raise _db_query_failed(exc) from exc
-        return _row_to_dict(ev), meta, h_status, eval_reasons, rule_oqs
+        return _row_to_dict(ev), meta, h_status, eval_reasons, sorted(rule_oqs)
 
     def get_patient_history(self, patient_id: str) -> PatientHistoryOut | None:
         try:

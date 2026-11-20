@@ -8,6 +8,7 @@ import {
   holdRequests,
   identityEndpointMissing,
   releaseRequests,
+  allowPortalRequests,
   resetIdentityProbe,
 } from "@/lib/api/client";
 import { clearApiCache } from "@/lib/api/cache";
@@ -45,6 +46,10 @@ export interface AuthContextValue {
   can: (...perms: string[]) => boolean;
   /** Staff-facing workspaces apply; patients and accounts without staff permissions are excluded. */
   isStaff: boolean;
+  /** A patient account: only the patient portal (`/portal/*`) applies. */
+  isPatient: boolean;
+  /** The signed-in role (null in legacy mode). */
+  role: string | null;
   scope: PatientScope;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -75,6 +80,8 @@ export function buildAuthValue(state: AuthState, actions: Pick<AuthContextValue,
     isStaff:
       state.status === "legacy" ||
       (me !== null && !isPatientAccount(me) && STAFF_PERMISSIONS.some((p) => me.permissions.includes(p))),
+    isPatient: me !== null && isPatientAccount(me),
+    role: me?.role ?? null,
     scope: me ? scopeOf(me) : null,
     ...actions,
   };
@@ -203,9 +210,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const legacy = state.status === "legacy" && legacyBackendAllowed();
     allowUnauthenticatedRequests(legacy);
+    allowPortalRequests(state.status === "signed_in" && value.isPatient);
     if (value.isStaff && (state.status === "signed_in" || legacy)) releaseRequests();
     else holdRequests();
-  }, [state, value.isStaff]);
+  }, [state, value.isStaff, value.isPatient]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

@@ -9,7 +9,8 @@
   state; local areas of a district plus the district's remainder of people without a recorded
   local area). Whenever a group contains a sensitive cell (small or suppressed, including a small
   remainder) but only one unknown cell, the smallest other non-zero member is suppressed too,
-  repeated until stable. The remainder is "known" only where it is published (the population
+  repeated until stable; likewise when several cells are unknown but their total (parent minus the
+  visible members) is itself small. The remainder is "known" only where it is published (the population
   remainder, or zero when a district has no people without a local area).
 - Derived values (prevalence, change, coverage) are suppressed when any input is. Trend
   direction and hotspot class stay visible (they only disclose the sign of a thresholded change).
@@ -85,7 +86,13 @@ class Suppressor:
                     hidden_remainders.add(parent)  # the published remainder itself is small
                     changed = True
                     continue
-                if not sensitive or unknowns >= 2:
+                # Several unknowns protect each other only when their published total is not small
+                # itself (parent − visible members); otherwise each is bounded to 1…k−1.
+                hidden_total = (
+                    sum(raw[m] for m in members if m in hidden) + (rem if rem_unknown else 0)
+                    if rem is not None and parent not in hidden else None
+                )
+                if not sensitive or (unknowns >= 2 and not self.small(hidden_total)):
                     continue
                 candidates = [(raw[m], m) for m in members if m not in hidden and _int(raw[m]) and raw[m] > 0]
                 if path == POPULATION_PATH and parent not in hidden_remainders and _int(rem) and rem > 0:

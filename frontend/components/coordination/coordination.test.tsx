@@ -203,6 +203,28 @@ describe("Follow-up workspace", () => {
     expect(lastRead("/follow-up-tasks").get("active")).toBeNull();
   });
 
+  it("guides the new follow-up: context first, due-date shortcuts, past dates refused inline, live review", async () => {
+    render(<FollowUpWorkspace />);
+    await screen.findByRole("list", { name: "Follow-up tasks" });
+    fireEvent.click(screen.getByRole("button", { name: /New follow-up/ }));
+    const form = screen.getByRole("form", { name: "New follow-up" });
+    expect(within(form).queryByRole("button", { name: "Create follow-up" })).toBeNull();
+    fireEvent.change(within(form).getByLabelText("Synthetic person ID"), { target: { value: "SYNTH-PAT-1" } });
+    fireEvent.click(within(form).getByRole("button", { name: /Look up/ }));
+    fireEvent.change(await within(form).findByLabelText(/^Care gap/), { target: { value: "G1" } });
+    expect(within(form).getByText(/identified/)).toBeTruthy();
+
+    fireEvent.change(within(form).getByLabelText("Due date"), { target: { value: "2000-01-01" } });
+    expect(within(form).getByRole("alert").textContent).toContain("cannot be in the past");
+    expect((within(form).getByRole("button", { name: "Create follow-up" }) as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(within(form).getByRole("button", { name: "In 30 days" }));
+    expect(within(form).queryByText(/cannot be in the past/)).toBeNull();
+    expect((within(form).getByRole("button", { name: "Create follow-up" }) as HTMLButtonElement).disabled).toBe(false);
+    expect(within(form).getByText(/Review:/).parentElement!.textContent).toMatch(/SYNTH-PAT-1 about .*priority, due \d{4}-\d{2}-\d{2}/);
+    expect(bodies("POST", "/follow-up-tasks")).toEqual([]);
+  });
+
   it("creates a follow-up with priority, internal note and portal visibility, then opens it", async () => {
     render(<FollowUpWorkspace />);
     await screen.findByRole("list", { name: "Follow-up tasks" });

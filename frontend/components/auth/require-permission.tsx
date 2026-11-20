@@ -21,7 +21,7 @@ export function RequirePermission({
   if (can(...anyOf)) return <>{children}</>;
   const role = state.status === "signed_in" ? state.me.role : null;
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-4 py-16 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1280px] px-4 py-16 sm:px-6 lg:px-8">
       <PermissionNotice title={`${workspace} is not available for your role`} permission={anyOf.join(" or ")}>
         Signed in as {roleLabel(role)}. Your organization administrator can change your role or access if you need this
         workspace.

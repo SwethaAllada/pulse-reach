@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { ApiError } from "@/lib/api/client";
-import { clearApiCache } from "@/lib/api/cache";
+import { cached, clearApiCache } from "@/lib/api/cache";
 import { fakeFetchResponse, resetCoordinationFixtures } from "@/test/fixtures";
 import { invalidateCoordination, useCoordinationVersion, useMutation, useTaskSummary } from "./use-coordination";
 
@@ -37,6 +37,20 @@ describe("useMutation", () => {
     expect(result.current.version).toBe(before + 1);
     expect(result.current.error).toBeNull();
     expect(result.current.pending).toBe(false);
+  });
+
+  it("evicts session-cached care-gap reference data a write can change (documented completion)", async () => {
+    const loads = { gaps: 0, summary: 0, rules: 0 };
+    const load = (k: keyof typeof loads) => () => Promise.resolve((loads[k] += 1));
+    const readAll = () =>
+      Promise.all([cached("care-gaps", load("gaps")), cached("dashboard-summary", load("summary")), cached("rules", load("rules"))]);
+    await readAll();
+    const { result } = renderHook(() => useProbe());
+    await act(async () => {
+      await result.current.run(async () => "closed");
+    });
+    await readAll();
+    expect(loads).toEqual({ gaps: 2, summary: 2, rules: 1 });
   });
 
   it("keeps the backend's own reason on failure and does not invalidate", async () => {

@@ -84,8 +84,9 @@ describe("PopulationWorkspace", () => {
     handler = async (url) =>
       url.includes("/care-gaps") ? new Response("boom", { status: 500 }) : ok(fakeBackend(url));
     render(<PopulationWorkspace />);
-    const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("Population data is unavailable");
+    /* The geographic overview reports its own (independent) API state; pick the workspace alert. */
+    const alert = (await screen.findAllByRole("alert")).find((a) => a.textContent?.includes("Population data is unavailable"))!;
+    expect(alert).toBeTruthy();
     expect(alert.textContent).toContain("500");
     expect(screen.queryByRole("region", { name: "Population overview" })).toBeNull();
     expect(screen.queryByRole("region", { name: "Documented care gaps by rule" })).toBeNull();
@@ -100,7 +101,8 @@ describe("PopulationWorkspace", () => {
       throw new TypeError("Failed to fetch");
     };
     render(<PopulationWorkspace />);
-    expect((await screen.findByRole("alert")).textContent).toContain("Could not reach the PulseReach API");
+    const alerts = await screen.findAllByRole("alert");
+    expect(alerts.some((a) => a.textContent?.includes("Could not reach the PulseReach API"))).toBe(true);
   });
 
   it("handles empty results and clears filters from the empty state", async () => {
@@ -111,9 +113,20 @@ describe("PopulationWorkspace", () => {
     expect(metric(await overview(), "People represented")).toBe("6");
   });
 
+  it("compares programme cohorts and selects a segment from the comparison bar", async () => {
+    render(<PopulationWorkspace />);
+    await overview();
+    const table = screen.getByRole("table", { name: "Programme cohort comparison" });
+    expect(within(table).getByRole("rowheader", { name: /With an open gap/ })).toBeTruthy();
+    const bar = screen.getByRole("group", { name: "IFHAS adult screening evidence segments" });
+    fireEvent.click(within(bar).getByRole("button", { name: /Open documented care gap: 1 people/ }));
+    expect(nav.get()).toBe("cohort=ifhas%3Aopen_gap");
+  });
+
   it("selects a cohort from the constellation and updates the detail panel", async () => {
     render(<PopulationWorkspace />);
     await overview();
+    fireEvent.click(screen.getByRole("button", { name: "People view" }));
     const mark = screen.getByRole("button", { name: /IFHAS adult screening — Open documented care gap: 1 person/ });
     fireEvent.click(mark);
     expect(nav.get()).toBe("cohort=ifhas%3Aopen_gap");
@@ -131,7 +144,7 @@ describe("PopulationWorkspace", () => {
     expect(within(panel).getByRole("heading", { name: /History unavailable/ })).toBeTruthy();
     expect(within(panel).getByText("No open documented care gaps in this cohort.")).toBeTruthy();
     fireEvent.keyDown(noHistory, { key: "Escape" });
-    expect(within(screen.getByRole("complementary", { name: "Cohort details" })).getByText(/Cohorts · select/)).toBeTruthy();
+    expect(within(screen.getByRole("complementary", { name: "Cohort details" })).getByText("Cohorts")).toBeTruthy();
   });
 
   it("applies a single filter through the backend query", async () => {

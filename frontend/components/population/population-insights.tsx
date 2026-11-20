@@ -20,10 +20,10 @@ const HISTORY_LABEL: Record<HistoryStatus, string> = {
   not_available: "Unavailable",
 };
 
-/** Editorial plate: a hairline rule opens the section; no boxed card. */
+/** Dashboard card. */
 function Card({ children, label }: { children: React.ReactNode; label: string }) {
   return (
-    <section aria-label={label} className="reveal min-w-0 border-t border-border-strong pt-5">
+    <section aria-label={label} className="reveal min-w-0 rounded-xl border border-border bg-surface-raised p-5">
       {children}
     </section>
   );

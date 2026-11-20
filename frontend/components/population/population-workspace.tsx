@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, RotateCcw, SearchX, Telescope } from "lucide-react";
 import { ConstellationVisualization } from "@/components/constellation/constellation-visualization";
@@ -13,10 +13,18 @@ import { PopulationOverview } from "./population-overview";
 import { CohortPanel } from "./cohort-panel";
 import { EvaluationStatusCard, EvidenceCard, GapsByRuleCard, SegmentationCard } from "./population-insights";
 import { UnavailableCapabilities } from "./unavailable-capabilities";
+import { PopulationMap } from "./geo/population-map";
+import { CohortComparison } from "./cohort-comparison";
+import { Segmented } from "@/components/ui/segmented";
 import { buttonClass } from "@/components/ui/button-styles";
+import { useAuth } from "@/lib/auth/auth-context";
+import { PageHeader } from "@/components/ui/page-header";
+import { Plate } from "@/components/ui/plate";
 
 export function PopulationWorkspace() {
   const searchParams = useSearchParams();
+  const { scope } = useAuth();
+  const [view, setView] = useState<"compare" | "people">("compare");
   const router = useRouter();
   const pathname = usePathname();
 
@@ -40,85 +48,105 @@ export function PopulationWorkspace() {
   const selected = model ? findCohort(model, selectedId) : null;
   const populationTotal = summary.status === "ready" ? summary.data.total_patients : null;
 
+  const panel = scope === "assigned";
   return (
-    <div className="pb-20">
-      <section aria-labelledby="population-heading" className="mb-14 bg-ink px-4 pb-10 pt-8 sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-[1200px] flex-col gap-7">
-          <header className="reveal">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="flex items-center gap-2.5 text-ink-accent">
-                <span className="font-mono text-[11px] text-ink-faint">01</span>
-                <Telescope size={14} aria-hidden="true" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.16em]">Population · Identify</span>
+    <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-6 px-4 pb-16 pt-6 sm:px-6 lg:px-8">
+      <PageHeader
+        title={panel ? "Panel insights" : "Population overview"}
+        subtitle={
+          panel
+            ? "Programme membership, documented care gaps and evidence completeness for the patients assigned to you."
+            : "Programme membership, documented care gaps and evidence completeness for the synthetic population in your scope."
+        }
+        meta={
+          summary.status === "ready" ? (
+            <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="inline-flex items-center gap-1.5">
+                <Telescope size={12} aria-hidden="true" /> Evaluation run{" "}
+                <span className="font-mono">{summary.data.evaluation_run_id}</span>
               </span>
-              {summary.status === "ready" && (
-                <span className="text-xs text-ink-faint">
-                  Evaluation run {summary.data.evaluation_run_id} · reference date {summary.data.reference_date}
-                </span>
-              )}
-            </div>
-            <h1
-              id="population-heading"
-              className="mt-4 max-w-4xl font-display text-4xl font-normal leading-[1.02] tracking-[-0.03em] text-ink-text sm:text-6xl"
-            >
-              See the signals. <em className="italic text-ink-accent">Prevent</em> the gaps.
-            </h1>
-            <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-ink-muted">
-              Explore the synthetic population by programme and documented evidence. Select a cohort in
-              the constellation to see its documented care gaps, then follow it into its programme and people.
-            </p>
-          </header>
+              <span>Reference date {summary.data.reference_date}</span>
+            </span>
+          ) : undefined
+        }
+      />
 
+      <section aria-labelledby="population-heading" className="flex flex-col gap-6">
+        <h2 id="population-heading" className="sr-only">
+          Population signals
+        </h2>
+        <div className="reveal rounded-xl border border-border bg-surface-raised px-4 py-3.5">
           <PopulationFilterBar filters={filters} onChange={(next) => navigate(next, selectedId)} />
-
-          {population.status === "loading" && <HeroLoading />}
-          {population.status === "error" && <HeroError message={population.message} onRetry={retry} />}
-          {model && model.totalPeople === 0 && (
-            <HeroEmpty filtered={hasActiveFilters(filters)} onClear={() => navigate({}, null)} />
-          )}
-          {model && model.totalPeople > 0 && (
-            <>
-              <PopulationOverview model={model} populationTotal={populationTotal} filters={filters} />
-              <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
-                <div className="reveal flex min-w-0 flex-col gap-3 rounded-2xl border border-ink-line p-3 sm:p-5" style={{ "--i": 3 } as React.CSSProperties}>
-                  <div className="aspect-[800/440] w-full">
-                    <ConstellationVisualization
-                      model={model}
-                      selectedId={selectedId}
-                      onSelect={(id) => navigate(filters, id)}
-                    />
-                  </div>
-                  <CohortLegend />
-                </div>
-                <CohortPanel
-                  model={model}
-                  selected={selected}
-                  filters={filters}
-                  onSelect={(id) => navigate(filters, id)}
-                />
-              </div>
-            </>
-          )}
         </div>
+
+        {population.status === "loading" && <HeroLoading />}
+        {population.status === "error" && <HeroError message={population.message} onRetry={retry} />}
+        {model && model.totalPeople === 0 && (
+          <HeroEmpty filtered={hasActiveFilters(filters)} onClear={() => navigate({}, null)} />
+        )}
+        {model && model.totalPeople > 0 && (
+          <>
+            <PopulationOverview model={model} populationTotal={populationTotal} filters={filters} />
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+              <Plate
+                title="Cohort comparison"
+                description="Programme cohorts side by side, split by documented evidence. Select a programme or segment to see its gaps."
+                className="[--i:3]"
+                actions={
+                  <Segmented
+                    label="Cohort view"
+                    value={view}
+                    onChange={setView}
+                    options={[
+                      { value: "compare", label: "Compare" },
+                      { value: "people", label: "People view" },
+                    ]}
+                  />
+                }
+              >
+                {view === "compare" ? (
+                  <div key="compare" className="reveal-fade">
+                    <CohortComparison model={model} selectedId={selectedId} onSelect={(id) => navigate(filters, id)} />
+                  </div>
+                ) : (
+                  <div key="people" className="reveal-fade">
+                    <div className="aspect-[800/400] w-full">
+                      <ConstellationVisualization model={model} selectedId={selectedId} onSelect={(id) => navigate(filters, id)} />
+                    </div>
+                    <div className="mt-3 border-t border-border pt-3">
+                      <CohortLegend />
+                    </div>
+                  </div>
+                )}
+              </Plate>
+              <CohortPanel
+                model={model}
+                selected={selected}
+                filters={filters}
+                onSelect={(id) => navigate(filters, id)}
+              />
+            </div>
+          </>
+        )}
       </section>
 
-      <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 lg:px-8">
-        {model && model.totalPeople > 0 && (
-          <div className="grid grid-cols-1 gap-x-12 gap-y-16 lg:grid-cols-2">
-            <GapsByRuleCard model={model} />
-            <EvidenceCard model={model} />
-            <SegmentationCard model={model} />
-            <EvaluationStatusCard summary={summary} />
-          </div>
-        )}
-        {population.status === "error" && (
-          <p className="text-sm text-muted">
-            Population insights are hidden until the API responds — no values are shown in place of real data.
-          </p>
-        )}
+      <PopulationMap />
 
-        <UnavailableCapabilities />
-      </div>
+      {model && model.totalPeople > 0 && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <GapsByRuleCard model={model} />
+          <EvidenceCard model={model} />
+          <SegmentationCard model={model} />
+          <EvaluationStatusCard summary={summary} />
+        </div>
+      )}
+      {population.status === "error" && (
+        <p className="text-sm text-muted">
+          Population insights are hidden until the API responds — no values are shown in place of real data.
+        </p>
+      )}
+
+      <UnavailableCapabilities />
     </div>
   );
 }
@@ -128,15 +156,15 @@ function HeroLoading() {
     <div aria-busy="true" aria-label="Loading population data" className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="skeleton-ink h-16 rounded-lg" style={{ animationDelay: `${i * 80}ms` }} />
+          <div key={i} className="skeleton h-[88px] rounded-xl" style={{ animationDelay: `${i * 80}ms` }} />
         ))}
       </div>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="skeleton-ink aspect-[800/440] w-full rounded-2xl" />
-        <div className="skeleton-ink h-64 rounded-2xl lg:h-auto" />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="skeleton aspect-[800/440] w-full rounded-xl" />
+        <div className="skeleton h-64 rounded-xl lg:h-auto" />
       </div>
-      <p className="flex items-center gap-3 text-xs text-ink-faint">
-        <span className="progress-track h-0.5 w-16 rounded-full bg-ink-line text-ink-accent" />
+      <p className="flex items-center gap-3 text-xs text-faint">
+        <span className="progress-track h-0.5 w-16 rounded-full bg-border text-accent" />
         Loading population data from the PulseReach API…
       </p>
     </div>
@@ -145,18 +173,18 @@ function HeroLoading() {
 
 function HeroError({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div role="alert" className="reveal flex flex-col items-start gap-3 rounded-2xl border border-ink-line p-6">
-      <span className="flex items-center gap-2 text-sm font-semibold text-ink-text">
-        <AlertTriangle size={16} aria-hidden="true" className="text-ink-due" />
+    <div role="alert" className="reveal flex flex-col items-start gap-3 rounded-xl border border-border bg-surface-raised p-6">
+      <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+        <AlertTriangle size={16} aria-hidden="true" className="text-status-error" />
         Population data is unavailable
       </span>
-      <p className="max-w-xl text-sm text-ink-muted">
+      <p className="max-w-xl text-sm text-muted">
         {message} No population figures are shown because none could be loaded.
       </p>
       <button
         type="button"
         onClick={onRetry}
-        className={buttonClass("plate")}
+        className={buttonClass("secondary")}
       >
         <RotateCcw size={14} aria-hidden="true" /> Retry
       </button>
@@ -166,10 +194,10 @@ function HeroError({ message, onRetry }: { message: string; onRetry: () => void 
 
 function HeroEmpty({ filtered, onClear }: { filtered: boolean; onClear: () => void }) {
   return (
-    <div className="reveal flex flex-col items-center gap-3 rounded-2xl border border-dashed border-ink-line px-6 py-12 text-center">
-      <SearchX size={24} strokeWidth={1.5} aria-hidden="true" className="text-ink-faint" />
-      <p className="text-sm font-semibold text-ink-text">No people match these filters</p>
-      <p className="max-w-sm text-sm text-ink-muted">
+    <div className="reveal flex flex-col items-center gap-3 rounded-xl border border-dashed border-border-strong bg-surface-raised px-6 py-12 text-center">
+      <SearchX size={24} strokeWidth={1.5} aria-hidden="true" className="text-faint" />
+      <p className="text-sm font-semibold text-foreground">No people match these filters</p>
+      <p className="max-w-sm text-sm text-muted">
         {filtered
           ? "The patients API returned no synthetic people for this combination."
           : "The patients API returned an empty population."}
@@ -178,7 +206,7 @@ function HeroEmpty({ filtered, onClear }: { filtered: boolean; onClear: () => vo
         <button
           type="button"
           onClick={onClear}
-          className={buttonClass("plate-primary")}
+          className={buttonClass("primary")}
         >
           Clear all filters
         </button>

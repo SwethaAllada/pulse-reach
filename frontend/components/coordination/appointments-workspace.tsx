@@ -82,7 +82,7 @@ export function AppointmentsWorkspace() {
   const retry = () => setAttempt((n) => n + 1);
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-4 pb-24 pt-8 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1280px] px-4 pb-16 pt-6 sm:px-6 lg:px-8">
       <PageHeader
         eyebrow="Coordinate"
         title="Appointments & Referrals"
@@ -103,11 +103,10 @@ export function AppointmentsWorkspace() {
           resource={counts}
           what="Appointment counts"
           onRetry={retry}
-          loading={<div aria-busy="true" aria-label="Loading appointment counts" className="skeleton-ink h-52 rounded-2xl" />}
+          loading={<div aria-busy="true" aria-label="Loading appointment counts" className="skeleton h-52 rounded-xl" />}
         >
           {(c) => (
-            <section aria-label="Appointments overview" className="reveal relative overflow-hidden rounded-2xl bg-ink p-6 text-ink-text sm:p-8">
-              <span aria-hidden="true" className="pointer-events-none absolute -left-16 -bottom-24 size-72 rounded-full border border-ink-line" />
+            <section aria-label="Appointments overview" className="reveal relative overflow-hidden rounded-xl border border-border bg-surface-raised p-6 text-ink-text sm:p-8">
               <div className="relative grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                 <dl className="grid grid-cols-2 gap-6 sm:grid-cols-3">
                   <Figure tone="plate" size="xl" className="col-span-2 sm:col-span-3" label="Upcoming appointments" value={c.upcoming} note="recorded or rescheduled, from now on" />
@@ -116,7 +115,7 @@ export function AppointmentsWorkspace() {
                   <Figure tone="plate" size="md" label="Awaiting outcome" value={<span className={c.pastUnresolved > 0 ? "text-ink-due" : undefined}>{c.pastUnresolved}</span>} note="time passed, status not updated" />
                 </dl>
                 <div>
-                  <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-faint">All appointments by status</p>
+                  <p className="mb-3 text-xs font-medium text-ink-faint">All appointments by status</p>
                   <DistributionBand
                     surface="ink"
                     label="Appointments by status"

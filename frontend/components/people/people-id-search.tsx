@@ -40,7 +40,7 @@ export function PeopleIdSearch({ value, onSearch, busy }: Props) {
 
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <label htmlFor="people-id-search" className="text-[11px] font-medium uppercase tracking-[0.08em] text-faint">
+      <label htmlFor="people-id-search" className="text-xs font-medium text-faint">
         Find by synthetic ID
       </label>
       <div className="relative w-full sm:max-w-sm">

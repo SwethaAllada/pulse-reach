@@ -33,7 +33,7 @@ function Compare({
   const max = Math.max(1, current ?? 0, previous ?? 0);
   return (
     <div className="reveal" style={{ "--i": i } as React.CSSProperties}>
-      <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-faint">{label}</p>
+      <p className="text-xs font-medium text-faint">{label}</p>
       <dl className="mt-2 flex flex-col gap-1.5">
         {(
           [
@@ -72,8 +72,8 @@ export function OrganizationTrend({ data }: { data: PopulationSummaryOut }) {
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
       <div className="reveal">
-        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-faint">Preventive coverage · all programmes</p>
-        <p className="figure mt-2 text-6xl text-foreground">
+        <p className="text-xs font-medium text-faint">Preventive coverage · all programmes</p>
+        <p className="figure mt-2 text-[40px] text-foreground">
           {coverage === null ? "—" : `${Math.round(coverage * 100)}`}
           {coverage !== null && <span className="text-3xl text-muted">%</span>}
         </p>

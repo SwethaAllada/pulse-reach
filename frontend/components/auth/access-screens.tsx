@@ -5,15 +5,14 @@ import { roleLabel, useAuth } from "@/lib/auth/auth-context";
 import { API_BASE_URL } from "@/lib/api/client";
 import { buttonClass } from "@/components/ui/button-styles";
 import { LogoMark } from "@/components/shell/logo";
-import { AtlasOrnament } from "./atlas-ornament";
 
-/** First paint while the session is checked against `GET /me` — the atlas plate, nothing else. */
+/** First paint while the session is checked against `GET /me`. */
 export function CheckingScreen() {
   return (
-    <div aria-busy="true" aria-label="Checking your session" className="flex min-h-screen items-center justify-center bg-ink">
-      <div className="flex flex-col items-center gap-6">
-        <AtlasOrnament className="w-48 opacity-80" />
-        <span className="progress-track h-0.5 w-24 rounded-full bg-ink-line text-ink-accent" />
+    <div aria-busy="true" aria-label="Checking your session" className="flex min-h-screen items-center justify-center">
+      <div className="flex flex-col items-center gap-5">
+        <LogoMark className="size-10" />
+        <span className="progress-track h-0.5 w-24 rounded-full bg-border text-accent" />
       </div>
     </div>
   );
@@ -30,12 +29,11 @@ export function AccessScreen({ kind, message }: { kind: "not_staff" | "unreachab
         {kind === "not_staff" ? (
           <>
             <h1 className="font-display text-3xl font-medium tracking-[-0.02em] text-foreground">
-              This workspace is for care teams
+              This account has no workspace
             </h1>
             <p className="mt-3 text-sm leading-relaxed text-muted">
-              You are signed in as <span className="text-foreground">{roleLabel(role)}</span>. Population, programme and
-              people views are staff-facing and are not available to this account. Patients use the PulseReach patient
-              portal.
+              You are signed in as <span className="text-foreground">{roleLabel(role)}</span>, which has no staff
+              workspace permissions. Ask your organization administrator to assign a role.
             </p>
           </>
         ) : kind === "unsupported" ? (

@@ -60,6 +60,12 @@ class Settings(BaseSettings):
     login_max_failures: int = Field(default=5, ge=1)
     login_lockout_seconds: int = Field(default=900, ge=1)
     auth_rate_limit_per_minute: int = Field(default=10, ge=1)
+    # Proxies in front of the API that append to X-Forwarded-For (Cloud Run: 1; behind an external
+    # load balancer as well: 2). 0 = use the socket peer. Only the entries those proxies appended
+    # are trusted, so a client-supplied X-Forwarded-For prefix cannot pick a rate-limit bucket.
+    trusted_proxy_hops: int = Field(default=0, ge=0, le=5)
+    # Largest accepted request body (declared Content-Length); larger requests get 413.
+    max_request_body_bytes: int = Field(default=1_048_576, ge=1024)
     self_registration_enabled: bool = True
     default_locale: Literal["en", "ar"] = "en"
     # Memory mode only: seed clearly synthetic demo organizations/users at startup with this

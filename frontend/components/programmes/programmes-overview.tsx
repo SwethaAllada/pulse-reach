@@ -1,5 +1,6 @@
 "use client";
 
+import { homeCrumb } from "@/components/shell/nav-items";
 import { useCallback, useMemo, ViewTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -37,7 +38,7 @@ export function ProgrammesOverview() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const { scope, state: auth } = useAuth();
+  const { scope, state: auth, role } = useAuth();
   const filters: ProgrammeFilters = useMemo(() => {
     const f = parsePeopleFilters(searchParams);
     return { region_id: f.region_id, sex: f.sex };
@@ -67,13 +68,13 @@ export function ProgrammesOverview() {
   const sum = summary.status === "ready" ? summary.data : null;
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-4 pb-24 pt-8 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1280px] px-4 pb-16 pt-6 sm:px-6 lg:px-8">
       <PageHeader
         index="02"
         eyebrow="Explain"
         title="Programmes"
         subtitle="The preventive-care programmes PulseReach evaluates — who they reach, which rules define them, and where documented care gaps open and close."
-        breadcrumbs={[{ label: "Population", href: "/" }, { label: "Programmes" }]}
+        breadcrumbs={[homeCrumb(role), { label: "Programmes" }]}
         meta={
           <span className="flex flex-wrap gap-x-4 gap-y-1">
             {sum && (
@@ -190,22 +191,14 @@ function ProgrammePlate({
   return (
     <article
       aria-labelledby={`programme-${pathway}`}
-      className="reveal group relative flex flex-col overflow-hidden rounded-2xl bg-ink p-6 text-ink-text sm:p-8"
+      className="reveal group relative flex flex-col overflow-hidden rounded-xl border border-border bg-surface-raised p-6 text-ink-text sm:p-8"
       style={{ "--i": i + 2 } as React.CSSProperties}
     >
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full border border-ink-line transition-transform duration-700 ease-[var(--ease-out)] group-hover:scale-110"
-      />
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-4 -top-4 size-32 rounded-full border border-dashed border-ink-line transition-transform duration-700 ease-[var(--ease-out)] group-hover:rotate-45"
-      />
-      <p className="relative text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-accent">
+      <p className="relative text-xs font-medium text-ink-faint">
         Programme · {meta.audience}
       </p>
       <ViewTransition name={`programme-title-${pathway}`} share="atlas-morph" default="none">
-        <h2 id={`programme-${pathway}`} className="relative mt-3 font-display text-5xl font-normal tracking-[-0.03em] text-ink-text">
+        <h2 id={`programme-${pathway}`} className="relative mt-1 font-display text-2xl font-medium tracking-[-0.01em] text-ink-text">
           {meta.name}
         </h2>
       </ViewTransition>
@@ -250,7 +243,7 @@ function ProgrammePlate({
         ) : programme.status === "error" ? (
           <InlineError tone="plate" message={programme.message} onRetry={onRetry} />
         ) : (
-          <div className="skeleton-ink h-3 rounded-full" />
+          <div className="skeleton h-3 rounded-full" />
         )}
       </div>
 
@@ -291,7 +284,7 @@ function Suppressed() {
 }
 
 function Dash() {
-  return <span aria-label="Loading" className="skeleton-ink inline-block h-7 w-14 rounded-md align-middle" />;
+  return <span aria-label="Loading" className="skeleton inline-block h-7 w-14 rounded-md align-middle" />;
 }
 
 const LEDGER_ROWS: {

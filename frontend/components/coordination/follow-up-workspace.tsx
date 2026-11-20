@@ -104,7 +104,7 @@ export function FollowUpWorkspace() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-4 pb-24 pt-8 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1280px] px-4 pb-16 pt-6 sm:px-6 lg:px-8">
       <PageHeader
         eyebrow="Connect"
         title="Follow-up"
@@ -140,7 +140,7 @@ export function FollowUpWorkspace() {
         resource={summary}
         what="Follow-up counts"
         onRetry={retry}
-        loading={<div aria-busy="true" aria-label="Loading follow-up counts" className="skeleton-ink h-64 rounded-2xl" />}
+        loading={<div aria-busy="true" aria-label="Loading follow-up counts" className="skeleton h-64 rounded-xl" />}
       >
         {(s) => <WorkloadPlate summary={s} filters={filters} onFilter={update} />}
       </ResourceView>
@@ -191,9 +191,7 @@ export function FollowUpWorkspace() {
 function WorkloadPlate({ summary: s, filters, onFilter }: { summary: TaskSummaryOut; filters: QueueFilters; onFilter: (p: Partial<QueueFilters>) => void }) {
   const toggleDue = (due: DueFilter) => onFilter({ due: filters.due === due ? "" : due, status: "active" });
   return (
-    <section aria-label="Follow-up overview" className="reveal relative overflow-hidden rounded-2xl bg-ink p-6 text-ink-text sm:p-8">
-      <span aria-hidden="true" className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full border border-ink-line" />
-      <span aria-hidden="true" className="pointer-events-none absolute -right-6 -top-10 size-40 rounded-full border border-ink-line opacity-60" />
+    <section aria-label="Follow-up overview" className="reveal relative overflow-hidden rounded-xl border border-border bg-surface-raised p-6 text-ink-text sm:p-8">
       <div className="relative grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <dl className="grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3">
           <Figure tone="plate" size="xl" className="col-span-2 sm:col-span-3" label="Active follow-ups" value={s.active} note={`of ${s.total} in scope · ${s.completed} completed · ${s.cancelled} cancelled`} />
@@ -209,7 +207,7 @@ function WorkloadPlate({ summary: s, filters, onFilter }: { summary: TaskSummary
         </dl>
         <div className="flex flex-col gap-6">
           <div>
-            <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-faint">All follow-ups by status</p>
+            <p className="mb-3 text-xs font-medium text-ink-faint">All follow-ups by status</p>
             <DistributionBand
               surface="ink"
               label="Follow-ups by status"
@@ -219,7 +217,7 @@ function WorkloadPlate({ summary: s, filters, onFilter }: { summary: TaskSummary
             />
           </div>
           <div>
-            <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-faint">Active by coordination priority</p>
+            <p className="mb-3 text-xs font-medium text-ink-faint">Active by coordination priority</p>
             <ul className="flex flex-col gap-2">
               {PRIORITY_ORDER.map((p) => {
                 const n = s.active_by_priority[p] ?? 0;
@@ -285,7 +283,7 @@ function FigureButton({ label, value, note, active, onClick, accent }: { label: 
 function QueueFilterBar({ filters, team, onChange, onReset }: { filters: QueueFilters; team: Map<string, CareTeamMemberOut> | null; onChange: (p: Partial<QueueFilters>) => void; onReset: () => void }) {
   const changed = JSON.stringify(filters) !== JSON.stringify(EMPTY);
   return (
-    <div role="search" aria-label="Follow-up filters" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div role="search" aria-label="Follow-up filters" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       <label className={labelClass}>
         Status
         <select className={inputClass} value={filters.status} onChange={(e) => onChange({ status: e.target.value as StatusFilter })}>

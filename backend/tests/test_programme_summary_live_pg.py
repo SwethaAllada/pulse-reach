@@ -33,7 +33,7 @@ PATIENT_QUERIES = [
 
 @pytest.fixture(scope="module")
 def pg():
-    from test_live_backend_completion import _seed
+    from test_live_backend_completion import _clear_store_engines, _seed
     from test_official_integrity import alembic_config, scratch_database
 
     with scratch_database() as url:
@@ -46,6 +46,7 @@ def pg():
             yield mp
         finally:
             mp.undo()
+            _clear_store_engines()
             eng.dispose()
 
 

@@ -65,7 +65,7 @@ export function RuleSpectrum({
           if (groupRows.length === 0) return null;
           return (
             <div key={group} className="flex min-w-0 flex-col" style={{ flexGrow: groupRows.length, flexBasis: 0 }}>
-              <p className="mb-3 flex items-baseline justify-between gap-2 border-b border-border pb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-faint">
+              <p className="mb-3 flex items-baseline justify-between gap-2 border-b border-border pb-2 text-xs font-medium text-faint">
                 <span className="truncate">{RULE_GROUP_META[group].title}</span>
                 <span className="font-mono tracking-normal">{groupRows.length}</span>
               </p>

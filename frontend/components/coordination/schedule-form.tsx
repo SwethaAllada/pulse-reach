@@ -96,7 +96,7 @@ export function ScheduleForm({
   };
 
   return (
-    <form onSubmit={submit} aria-label="Record appointment" className="reveal flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5">
+    <form onSubmit={submit} aria-label="Record appointment" className="reveal flex flex-col gap-4 rounded-xl border border-border bg-surface p-5">
       <p className="flex items-start gap-2 text-xs leading-relaxed text-muted">
         <Info size={14} aria-hidden="true" className="mt-px shrink-0 text-status-info" />
         {profiles.status === "ready"

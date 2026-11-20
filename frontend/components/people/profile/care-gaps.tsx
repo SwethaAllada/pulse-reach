@@ -92,7 +92,7 @@ function GapCard({
     <Surface className={cn("flex h-full flex-col p-4", !status.isOpen && "bg-surface-sunken")}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-faint">
+          <p className="text-xs font-medium text-faint">
             {type.label} · {rule ? pathwayLabel(rule.pathway, true) : "Programme unknown"}
           </p>
           <h4 className="mt-0.5 text-sm font-semibold text-foreground">{ruleShortLabel(rule, gap.rule_id)}</h4>
@@ -245,7 +245,7 @@ function PathwayCard({ entry }: { entry: PathwayEntry }) {
           <Route size={18} aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-faint">{pathwayLabel(rule.pathway)}</p>
+          <p className="text-xs font-medium text-faint">{pathwayLabel(rule.pathway)}</p>
           <h3 className="text-sm font-semibold text-foreground">{ruleShortLabel(rule, rule.rule_id)}</h3>
           <dl className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
             <div>
@@ -305,7 +305,7 @@ function PathwayCard({ entry }: { entry: PathwayEntry }) {
                   ) : (
                     groups.map((g) => (
                       <div key={g.category} className="mt-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-faint">{g.category}</p>
+                        <p className="text-xs font-medium text-faint">{g.category}</p>
                         <ul className="mt-1 flex flex-wrap gap-1.5">
                           {g.items.map((it, i) => (
                             <li

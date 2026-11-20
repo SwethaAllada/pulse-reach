@@ -26,7 +26,7 @@ export function Segmented<T extends string>({
     >
       <span
         aria-hidden="true"
-        className="absolute inset-y-0.5 left-0.5 rounded-full bg-surface-raised shadow-[0_1px_2px_rgba(0,0,0,0.08)] ring-1 ring-border-strong transition-transform duration-300 ease-[var(--ease-out)]"
+        className="absolute inset-y-0.5 left-0.5 rounded-full bg-surface-raised shadow-[var(--shadow-thumb)] ring-1 ring-border-strong transition-transform duration-300 ease-[var(--ease-out)]"
         style={{ width: `calc((100% - 4px) / ${options.length})`, transform: `translateX(${index * 100}%)` }}
       />
       {options.map((o) => (

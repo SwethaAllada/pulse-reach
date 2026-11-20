@@ -78,6 +78,7 @@ def db():
         assert again["clinical"]["load_id"] == first["clinical"]["load_id"]  # clinical load reused
         mp = pytest.MonkeyPatch()
         mp.setattr(settings, "data_source", "db")
+        _clear_store_engines()
         # Deployment configuration: writes go through the shared write key.
         mp.setattr(settings, "allow_unprotected_writes", False)
         mp.setattr(settings, "write_api_key", SecretStr("live-test-write-key"))
@@ -90,7 +91,18 @@ def db():
             app.dependency_overrides.pop(get_ai_service, None)
             client.headers.pop("X-PulseReach-Write-Key", None)
             mp.undo()
+            _clear_store_engines()
             eng.dispose()
+
+
+def _clear_store_engines() -> None:
+    """The identity/population stores cache their engine per data source; never let the
+    PostgreSQL engine leak into later memory-mode suites (their resets refuse non-SQLite stores)."""
+    from app.services.identity.store import get_identity_engine
+    from app.services.population.store import get_population_engine
+
+    get_identity_engine.cache_clear()
+    get_population_engine.cache_clear()
 
 
 def _count(eng, sql: str, **p) -> int:
