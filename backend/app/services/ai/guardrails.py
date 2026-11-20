@@ -175,3 +175,68 @@ def validate_outreach_output(
         if latin or not _ARABIC_LETTER_RE.search(text):
             out.append("language_mismatch")
     return out
+
+
+# --- patient-facing assistant -------------------------------------------------------------
+
+_SENT_RE = re.compile(
+    r"\b(?:has|have|had|was|were|been)\s+(?:already\s+)?sent\b|\bwe(?:'ve| have)?\s+sent\b|"
+    r"\bwill\s+(?:send|text|e-?mail)\s+you\b",
+    re.IGNORECASE,
+)
+_BOOKING_RE = re.compile(
+    r"\b(?:is|are|was|were|has been|have been)\s+(?:now\s+|already\s+)?(?:confirmed|booked|reserved)\b|"
+    r"\b(?:i|we)(?:'ve| have)?\s+(?:booked|confirmed|reserved|scheduled)\b",
+    re.IGNORECASE,
+)
+_DATE_WORD_RE = re.compile(
+    r"\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|"
+    r"june|july|august|september|october|november|december|today|tomorrow|tonight|"
+    r"next (?:week|month))\b|الاثنين|الثلاثاء|الأربعاء|الخميس|الجمعة|السبت|الأحد|يناير|فبراير|مارس|"
+    r"أبريل|مايو|يونيو|يوليو|أغسطس|سبتمبر|أكتوبر|نوفمبر|ديسمبر|غدًا|غدا|الليلة|الأسبوع القادم",
+    re.IGNORECASE,
+)
+_AR_ASSISTANT_CHECKS = tuple(
+    (rx, v) for rx, v in _AR_CHECKS
+    if v not in ("coercive_or_requirement", "invented_logistics")  # appointments are a legitimate topic
+) + (
+    (re.compile(r"تم إرسال|تم الإرسال|أُرسلت|أرسلنا|سنرسل"), "sent_claim"),
+    (re.compile(r"تم تأكيد|مؤكَّد|مؤكد|تم حجز|حجزنا"), "booking_claim"),
+)
+
+
+def validate_patient_assistant_output(
+    text: str | None, *, facts: Any, language: str, max_chars: int, allow_completed: bool
+) -> list[str]:
+    """Shared checks plus patient-assistant rules: no status/eligibility/due claims, no record ids,
+    no fear language, no claims that something was sent or booked, no dates or weekdays that are
+    not in the facts, plain text in the requested language."""
+    arabic = language == "ar"
+    if arabic and text:
+        text = text.translate(_EASTERN_DIGITS)
+    out = validate_output(
+        text, facts=facts, max_chars=max_chars, allow_completed=allow_completed, allow_due=False,
+        allow_eligibility=False,
+    )
+    if not text or not text.strip():
+        return out
+    checks = (
+        (_RECORD_ID_RE, "personal_identifier"),
+        (_FEAR_RE, "fear_language"),
+        (_MARKDOWN_RE, "format_markdown"),
+        (_SENT_RE, "sent_claim"),
+        (_BOOKING_RE, "booking_claim"),
+    )
+    out += [v for rx, v in checks if rx.search(text) and v not in out]
+    known = json.dumps(facts, default=str, ensure_ascii=False).lower()
+    if any(w.lower() not in known for w in _DATE_WORD_RE.findall(text)):
+        out.append("invented_date")
+    if not arabic and _NON_LATIN_LETTER_RE.search(text):
+        out.append("language_mismatch")
+    if arabic:
+        out += [v for rx, v in _AR_ASSISTANT_CHECKS if rx.search(text) and v not in out
+                and not (v == "completed_claim" and allow_completed)]
+        latin = {w for w in _LATIN_WORD_RE.findall(text) if w.lower() not in known}
+        if (latin or not _ARABIC_LETTER_RE.search(text)) and "language_mismatch" not in out:
+            out.append("language_mismatch")
+    return out

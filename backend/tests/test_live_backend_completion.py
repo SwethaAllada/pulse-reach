@@ -424,9 +424,9 @@ def test_migration_chain_upgrade_downgrade_safeguard_and_legacy_rows():
                 with pytest.raises(RuntimeError, match="Refusing to downgrade"):
                     command.downgrade(_alembic_cfg(), target)
             # env.py runs a downgrade in one transaction: the refused run is rolled back entirely
-            # (including the 0013..0011 steps that succeeded before 0010 refused), so we stay at head.
+            # (including the 0014..0011 steps that succeeded before 0010 refused), so we stay at head.
             with eng.connect() as c:
-                assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0013"
+                assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0014"
 
             # Explicitly allowed: back to the previous supported schema (0009).
             command.downgrade(_alembic_cfg(allow_data_loss=True), "0009")

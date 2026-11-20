@@ -149,6 +149,27 @@ class RecommendationExplanationOut(LocalizedOut):
     disclaimer: str
 
 
+AssistantTopic = Literal["why", "next_steps", "prepare_questions", "appointments"]
+
+
+class PatientAssistantIn(_In):
+    topic: AssistantTopic
+
+
+class PatientAssistantOut(LocalizedOut):
+    """Answer to a fixed topic about one of the patient's own recommendations. `answer` restates
+    portal facts (model text that passed the guardrails, or the deterministic template)."""
+
+    recommendation_id: str
+    topic: AssistantTopic
+    topic_label: str
+    answer: list[str]
+    generation_mode: Literal["llm_grounded", "deterministic_fallback"]
+    source_note: str
+    escalation: str
+    disclaimer: str
+
+
 class PortalAppointmentOut(BaseModel):
     appointment_id: str
     appointment_type: str
@@ -172,6 +193,7 @@ class PortalReferralOut(BaseModel):
     status: str
     status_label: str
     trigger_date: date
+    trigger_date_display: str
     initiated_date: date | None
     completed_date: date | None
 
@@ -212,16 +234,20 @@ class PatientRequestOut(BaseModel):
     request_type_label: str
     status: str
     status_label: str
+    status_hint: str
     follow_up_id: str | None
     recommendation_id: str | None
     appointment_id: str | None
     change_action: str | None
+    change_action_label: str | None
     preferred_dates: list[str]
     preferred_time_of_day: str | None
     message: str | None
     staff_response: str | None
     created_at: datetime
+    created_display: str
     updated_at: datetime
+    updated_display: str
 
 
 class PatientRequestDetailOut(LocalizedOut, PatientRequestOut):
@@ -252,6 +278,7 @@ class PortalFollowUpOut(BaseModel):
     recommendation_id: str | None
     status: str
     status_label: str
+    status_hint: str
     message: str
     due_date: date | None
     due_date_display: str | None
@@ -259,6 +286,7 @@ class PortalFollowUpOut(BaseModel):
     reported_completion_pending_verification: bool
     created_at: datetime
     updated_at: datetime
+    updated_display: str
 
 
 class PortalFollowUpsOut(LocalizedOut):

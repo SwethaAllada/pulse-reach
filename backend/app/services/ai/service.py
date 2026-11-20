@@ -5,7 +5,8 @@ The model restates facts the backend has already decided; it never decides them:
   rule citation) - status, reasons, citation and warnings stay the deterministic ones;
 - outreach drafts are only produced after the consent/authority gate allowed the preview and are
   always simulated (never sent);
-- population insights restate aggregate counts computed by the backend.
+- population insights restate aggregate counts computed by the backend;
+- the patient assistant restates the portal facts of one recommendation for its own patient.
 
 Every output is validated (`guardrails.validate_output`); disabled, misconfigured, failing or
 rejected generations fall back to the deterministic template, so AI never breaks core features.
@@ -23,7 +24,11 @@ from typing import Any
 from app.core.config import Settings, settings
 from app.db.session import get_engine
 from app.services.ai.audit import AIAuditLog, AIAuditRecord, PostgresAIAuditLog, sha256
-from app.services.ai.guardrails import validate_outreach_output, validate_output
+from app.services.ai.guardrails import (
+    validate_outreach_output,
+    validate_output,
+    validate_patient_assistant_output,
+)
 from app.services.ai.prompts import (
     EXPLANATION_PROMPT_VERSION,
     EXPLANATION_SYSTEM,
@@ -31,6 +36,10 @@ from app.services.ai.prompts import (
     OUTREACH_LANGUAGE_RULES,
     OUTREACH_PROMPT_VERSION,
     OUTREACH_SYSTEM,
+    PATIENT_ASSISTANT_LANGUAGE_RULES,
+    PATIENT_ASSISTANT_PROMPT_VERSION,
+    PATIENT_ASSISTANT_SYSTEM,
+    PATIENT_ASSISTANT_TOPICS,
     POPULATION_PROMPT_VERSION,
     POPULATION_SYSTEM,
     PROMPT_VERSIONS,
@@ -340,6 +349,48 @@ class AIService:
             validate=lambda t: validate_output(t, facts=facts, max_chars=1200, must_contain=("synthetic",)),
         )
         return PopulationInsight(facts=facts, summary_text=text or deterministic, meta=meta)
+
+    # -- patient assistant -----------------------------------------------------------------
+
+    def patient_assistant(
+        self,
+        facts: dict[str, Any],
+        *,
+        topic: str,
+        language: str,
+        fallback: list[str],
+        allow_completed: bool,
+        subject: dict[str, Any],
+        run_id: str | None,
+        actor: dict[str, Any] | None = None,
+    ) -> tuple[list[str], AIGenerationMeta]:
+        """Plain-language answer to a fixed portal topic about one recommendation.
+
+        `facts` are the minimum, de-identified portal facts already shown to the patient (no names,
+        ids, dates of birth, free text or staff notes); `fallback` is the deterministic answer built
+        from the same facts and is returned whenever the model is disabled, fails or is rejected.
+        """
+        max_chars = 900
+        text, meta = self._generate(
+            feature="patient_assistant",
+            prompt_version=PATIENT_ASSISTANT_PROMPT_VERSION,
+            system=PATIENT_ASSISTANT_SYSTEM.format(
+                topic_instruction=PATIENT_ASSISTANT_TOPICS[topic], language=language,
+                language_rules=PATIENT_ASSISTANT_LANGUAGE_RULES[language], max_chars=max_chars,
+            ),
+            facts=facts,
+            subject=subject,
+            validate=lambda t: validate_patient_assistant_output(
+                t, facts=facts, language=language, max_chars=max_chars, allow_completed=allow_completed
+            ),
+            extra={"topic": topic, "language": language},
+            fallback_text="\n".join(fallback),
+            run_id=run_id,
+            actor=actor,
+        )
+        if text is None:
+            return fallback, meta
+        return [line.strip() for line in text.splitlines() if line.strip()], meta
 
 
 def _deterministic_population_summary(f: dict[str, Any]) -> str:

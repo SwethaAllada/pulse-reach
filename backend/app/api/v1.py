@@ -1043,9 +1043,9 @@ def ai_status(
 @router.get("/ai/audit", response_model=AIAuditOut)
 def ai_audit(
     limit: int = Query(default=50, ge=1, le=500),
-    feature: Literal["explanation", "outreach_draft", "outreach_review", "population_insight"] | None = Query(
-        default=None
-    ),
+    feature: Literal[
+        "explanation", "outreach_draft", "outreach_review", "population_insight", "patient_assistant"
+    ] | None = Query(default=None),
     ai: AIService = Depends(get_ai_service),
     p: Principal = Depends(require("audit_logs.read")),
 ) -> AIAuditOut:

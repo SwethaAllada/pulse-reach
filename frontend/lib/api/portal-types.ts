@@ -95,6 +95,7 @@ export interface PortalReferralOut {
   status: string;
   status_label: string;
   trigger_date: string;
+  trigger_date_display: string;
   initiated_date: string | null;
   completed_date: string | null;
 }
@@ -128,16 +129,21 @@ export interface PatientRequestOut {
   request_type_label: string;
   status: string;
   status_label: string;
+  /** What happens next, localized by the backend. */
+  status_hint: string;
   follow_up_id: string | null;
   recommendation_id: string | null;
   appointment_id: string | null;
   change_action: string | null;
+  change_action_label: string | null;
   preferred_dates: string[];
   preferred_time_of_day: string | null;
   message: string | null;
   staff_response: string | null;
   created_at: string;
+  created_display: string;
   updated_at: string;
+  updated_display: string;
 }
 
 export interface PatientRequestDetailOut extends Localized, PatientRequestOut {
@@ -168,6 +174,7 @@ export interface PortalFollowUpOut {
   recommendation_id: string | null;
   status: string;
   status_label: string;
+  status_hint: string;
   message: string;
   due_date: string | null;
   due_date_display: string | null;
@@ -175,6 +182,7 @@ export interface PortalFollowUpOut {
   reported_completion_pending_verification: boolean;
   created_at: string;
   updated_at: string;
+  updated_display: string;
 }
 
 export interface PortalFollowUpsOut extends Localized {
@@ -185,4 +193,18 @@ export interface PortalFollowUpsOut extends Localized {
 export interface PortalFollowUpDetailOut extends Localized, PortalFollowUpOut {
   history: TaskEventPatientOut[];
   confirmation?: string | null;
+}
+
+export type AssistantTopic = "why" | "next_steps" | "prepare_questions" | "appointments";
+
+/** Answer to a fixed topic about one of the patient's own recommendations (portal facts only). */
+export interface PatientAssistantOut extends Localized {
+  recommendation_id: string;
+  topic: AssistantTopic;
+  topic_label: string;
+  answer: string[];
+  generation_mode: "llm_grounded" | "deterministic_fallback";
+  source_note: string;
+  escalation: string;
+  disclaimer: string;
 }

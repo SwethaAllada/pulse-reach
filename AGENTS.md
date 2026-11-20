@@ -51,6 +51,17 @@
 - Condition scenarios live in `synthetic_generator/conditions.py` on a separate RNG stream; never change the
   main generator's random sequence.
 
+## Patient portal assistant (Phase 9, migration 0014)
+
+- `POST /api/v1/portal/recommendations/{id}/assistant` `{topic: why|next_steps|prepare_questions|appointments}`:
+  facts/fallback in `app/services/portal_assistant.py`, generation via `AIService.patient_assistant` (prompt
+  `patient-assistant-v1`, guard `validate_patient_assistant_output`). Only de-identified portal facts reach the model.
+  AI audit feature `patient_assistant` (migration 0014 widens `ck_ai_audit_record_feature`). Tests: `tests/test_patient_assistant.py`.
+- Portal `format_datetime` renders UTC with a ` UTC` suffix (matches staff views).
+- Frontend: `/portal/*` requests issued before `allowPortalRequests(true)` wait in `waitForPortal` (child effects run before
+  the AuthProvider effect; prod builds otherwise hang the portal). Regression test in `lib/api/client.test.ts`.
+- Browser QA without the dev lock: `NEXT_PUBLIC_API_URL=http://localhost:8031 npm run build && npx next start -p 3130`.
+
 ## Environment gotcha (macOS + Podman)
 
 If PostgreSQL round trips through the published port take hundreds of ms, Podman's `gvproxy`
@@ -78,7 +89,7 @@ then `docker compose -p prdeploy --env-file <env> -f infrastructure/docker-compo
 - Backend: task `priority`, `contact_attempt` events, `GET /follow-up-tasks/summary`, `GET /care-team`,
   `GET /facility-service-profiles`, appointment filters. Tests: `tests/test_coordination.py` (memory, users mode);
   live PG: `test_identity_live_pg.py::test_task_priority_contact_attempts_and_summary_in_db_mode`,
-  `test_live_backend_completion.py` appointment/service-profile parity. Head revision is now `0013`.
+  `test_live_backend_completion.py` appointment/service-profile parity. Head revision is now `0014`.
 - FastAPI dependency classes cannot resolve `from __future__` string annotations (classes have no `__globals__`):
   use a function dependency (see `task_filters` in `app/api/engagement.py`).
 - Frontend: `lib/coordination/` (model + hooks; writes call `invalidateCoordination()` so every coordination read

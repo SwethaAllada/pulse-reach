@@ -1928,7 +1928,8 @@ class AIAuditRecord(Base):
         CheckConstraint("is_synthetic", name="is_synthetic"),
         CheckConstraint("audit_id ~ '^[0-9a-f]{32}$'", name="audit_id_format"),
         CheckConstraint(
-            "feature IN ('explanation', 'outreach_draft', 'outreach_review', 'population_insight')",
+            "feature IN ('explanation', 'outreach_draft', 'outreach_review', 'population_insight', "
+            "'patient_assistant')",
             name="feature",
         ),
         CheckConstraint(

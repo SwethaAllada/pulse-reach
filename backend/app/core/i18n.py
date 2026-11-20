@@ -15,7 +15,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any
 
 from fastapi import HTTPException, Request
@@ -183,6 +183,47 @@ MESSAGES: dict[str, dict[str, str]] = {
     "explain.next_due": {"en": "The next recommended date is {next_due_date}.", "ar": "التاريخ الموصى به التالي هو {next_due_date}."},
     "explain.history_unknown": {"en": "Some of your earlier history is not on file, so your care team may ask you about previous checks.", "ar": "بعض سجلك السابق غير متوفر، لذلك قد يسألك فريق الرعاية عن الفحوصات السابقة."},
     "explain.disclaimer": {"en": "This is general information from your preventive-care programme, not a diagnosis. Please consult a licensed healthcare professional with any questions. All records in this demo are synthetic.", "ar": "هذه معلومات عامة من برنامج الرعاية الوقائية وليست تشخيصًا. يُرجى استشارة مختص رعاية صحية مرخّص لأي استفسار. جميع السجلات في هذا العرض التجريبي مُصطنعة."},
+    # --- patient assistant (portal) --------------------------------------------------------
+    "assistant.topic.why": {"en": "Why this is recommended", "ar": "لماذا يُنصح بهذا"},
+    "assistant.topic.next_steps": {"en": "What happens next", "ar": "ما الخطوات التالية"},
+    "assistant.topic.prepare_questions": {"en": "Questions for your clinician", "ar": "أسئلة لمقدّم الرعاية الصحية"},
+    "assistant.topic.appointments": {"en": "Appointments and follow-up", "ar": "المواعيد والمتابعة"},
+    "assistant.escalation": {"en": "If anything is unclear, or if you have symptoms or health concerns, please contact your care team or a licensed healthcare professional. This assistant cannot answer clinical questions.", "ar": "إذا كان هناك أمر غير واضح، أو كانت لديك أعراض أو مخاوف صحية، يُرجى التواصل مع فريق الرعاية أو مختص رعاية صحية مرخّص. لا يستطيع هذا المساعد الإجابة عن الأسئلة السريرية."},
+    "assistant.source.ai": {"en": "Written by an AI assistant using only the information in your record, and checked by safety rules. It is not medical advice.", "ar": "كتبه مساعد ذكاء اصطناعي باستخدام المعلومات الموجودة في سجلك فقط، وتم فحصه وفق قواعد السلامة. وهو ليس نصيحة طبية."},
+    "assistant.source.standard": {"en": "Standard explanation built from the information in your record.", "ar": "شرح قياسي مبني على المعلومات الموجودة في سجلك."},
+    "assistant.closed": {"en": "This recommendation is no longer open: {status}.", "ar": "لم تعد هذه التوصية مفتوحة: {status}."},
+    "assistant.pathway.request": {"en": "You can request an appointment here in the portal or reply to a message from your care team.", "ar": "يمكنك طلب موعد هنا في البوابة أو الرد على رسالة من فريق الرعاية."},
+    "assistant.pathway.confirm": {"en": "Your care team reviews your request and arranges a time with you. A request is not a booking.", "ar": "يراجع فريق الرعاية طلبك ويرتّب معك الوقت المناسب. والطلب لا يعني حجزًا."},
+    "assistant.pathway.record": {"en": "After your visit, your care team records it. The recommendation closes only when they document it.", "ar": "بعد زيارتك، يسجّلها فريق الرعاية. ولا تُغلق التوصية إلا عندما يوثّقها الفريق."},
+    "assistant.pathway.elsewhere": {"en": "If you already had this done elsewhere, tell your care team. They will check it before your record changes.", "ar": "إذا سبق أن قمت بذلك في مكان آخر، فأبلغ فريق الرعاية، وسيتحقق منه قبل تحديث سجلك."},
+    "assistant.appointments.change": {"en": "You can ask to reschedule or cancel a scheduled appointment online until {hours} hours before it. After that, please contact your care team.", "ar": "يمكنك طلب إعادة جدولة موعد مجدول أو إلغائه عبر الإنترنت حتى {hours} ساعة قبل موعده. بعد ذلك، يُرجى التواصل مع فريق الرعاية."},
+    "assistant.appointments.staff_change": {"en": "An appointment changes only when your care team updates it. You can follow your request under My requests.", "ar": "لا يتغير الموعد إلا عندما يحدّثه فريق الرعاية. ويمكنك متابعة طلبك في قسم طلباتي."},
+    "assistant.appointments.messages": {"en": "Messages from your care team appear under Messages, where you can reply.", "ar": "تظهر رسائل فريق الرعاية في قسم الرسائل، ويمكنك الرد عليها هناك."},
+    "assistant.appointments.item": {"en": "{appointment_type} on {when}: {status}.", "ar": "{appointment_type} بتاريخ {when}: {status}."},
+    "assistant.appointments.none": {"en": "No appointment linked to this recommendation is recorded.", "ar": "لا يوجد موعد مسجّل مرتبط بهذه التوصية."},
+    "assistant.requests.item": {"en": "Your request ({request_type}): {status}.", "ar": "طلبك ({request_type}): {status}."},
+    "assistant.follow_ups.item": {"en": "Message from your care team: {status}.", "ar": "رسالة من فريق الرعاية: {status}."},
+    "assistant.missing.next_step": {"en": "No specific next step is recorded yet. Your care team can advise you.", "ar": "لم تُسجَّل خطوة تالية محددة بعد، ويمكن لفريق الرعاية إرشادك."},
+    "assistant.question.purpose": {"en": "What does this preventive check involve, and why is it part of {programme}?", "ar": "ماذا يتضمن هذا الفحص الوقائي، ولماذا هو جزء من {programme}؟"},
+    "assistant.question.prepare": {"en": "Is there anything I should do to prepare?", "ar": "هل هناك ما ينبغي أن أفعله للاستعداد؟"},
+    "assistant.question.timing": {"en": "When would be a good time for me to arrange it?", "ar": "ما الوقت المناسب لي لترتيبه؟"},
+    "assistant.question.after": {"en": "What happens afterwards, and how will I hear about the outcome?", "ar": "ماذا يحدث بعد ذلك، وكيف سأعرف النتيجة؟"},
+    "assistant.question.elsewhere": {"en": "If I had it done somewhere else, what information do you need from me?", "ar": "إذا أجريته في مكان آخر، فما المعلومات التي تحتاجونها مني؟"},
+    # --- what happens next (portal request and follow-up statuses) -------------------------
+    "request_hint.submitted": {"en": "Your care team will review your request.", "ar": "سيراجع فريق الرعاية طلبك."},
+    "request_hint.acknowledged": {"en": "Your care team is working on your request and will contact you.", "ar": "يعمل فريق الرعاية على طلبك وسيتواصل معك."},
+    "request_hint.scheduled": {"en": "An appointment has been arranged. See Appointments for the details.", "ar": "تم ترتيب موعد. راجع قسم المواعيد لمعرفة التفاصيل."},
+    "request_hint.declined": {"en": "Your care team could not arrange this. Please read their reply or contact them.", "ar": "تعذّر على فريق الرعاية ترتيب ذلك. يُرجى قراءة ردّهم أو التواصل معهم."},
+    "request_hint.closed": {"en": "This request is closed. No further action is needed from you.", "ar": "تم إغلاق هذا الطلب. لا يلزمك أي إجراء إضافي."},
+    "request_hint.cancelled": {"en": "You withdrew this request.", "ar": "لقد سحبت هذا الطلب."},
+    "task_hint.open": {"en": "Please reply to let your care team know how you would like to continue.", "ar": "يُرجى الرد لإبلاغ فريق الرعاية بالطريقة التي تفضّل المتابعة بها."},
+    "task_hint.awaiting_patient": {"en": "Please reply to let your care team know how you would like to continue.", "ar": "يُرجى الرد لإبلاغ فريق الرعاية بالطريقة التي تفضّل المتابعة بها."},
+    "task_hint.patient_responded": {"en": "Your care team has your reply and will follow up.", "ar": "استلم فريق الرعاية ردّك وسيتابع معك."},
+    "task_hint.in_progress": {"en": "Your care team is working on this.", "ar": "يعمل فريق الرعاية على ذلك."},
+    "task_hint.completed": {"en": "This follow-up is complete.", "ar": "اكتملت هذه المتابعة."},
+    "task_hint.cancelled": {"en": "This follow-up is closed. No action is needed.", "ar": "تم إغلاق هذه المتابعة. لا يلزم أي إجراء."},
+    "change_action.cancel": {"en": "Cancel", "ar": "إلغاء"},
+    "change_action.reschedule": {"en": "Reschedule", "ar": "إعادة جدولة"},
     # --- follow-up task message templates (message_key) -----------------------------------
     "task.screening_invitation": {"en": "Your care team invites you to arrange a preventive check. Reply here if you would like help or an appointment.", "ar": "يدعوك فريق الرعاية إلى ترتيب فحص وقائي. يمكنك الرد هنا إذا كنت ترغب في المساعدة أو حجز موعد."},
     "task.complete_outstanding": {"en": "Part of your preventive check is still open. Reply here to let your care team know how they can help.", "ar": "لا يزال جزء من فحصك الوقائي غير مكتمل. يمكنك الرد هنا لإبلاغ فريق الرعاية بكيفية مساعدتك."},
@@ -289,9 +330,11 @@ def format_date(value: date | datetime | None, locale: str) -> str | None:
 
 
 def format_datetime(value: datetime | None, locale: str) -> str | None:
+    """Shown in UTC and labelled as such, like the staff workspaces (naive values are UTC)."""
     if value is None:
         return None
-    return f"{format_date(value, locale)} {value.strftime('%H:%M')}"
+    utc = value.astimezone(timezone.utc) if value.tzinfo else value
+    return f"{format_date(utc, locale)} {utc.strftime('%H:%M')} UTC"
 
 
 def locale_meta(locale: str) -> dict[str, str]:

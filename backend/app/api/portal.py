@@ -30,6 +30,8 @@ from app.schemas.portal import (
     FollowUpResponseIn,
     HealthSummaryOut,
     HistoryItemOut,
+    PatientAssistantIn,
+    PatientAssistantOut,
     PatientEvaluationHistoryOut,
     PatientRequestDetailOut,
     PatientRequestOut,
@@ -52,10 +54,12 @@ from app.schemas.portal import (
     ScreeningItemOut,
     TaskEventPatientOut,
 )
+from app.services.ai import LLM_GROUNDED, AIService, get_ai_service
 from app.services.care_pathway import recommended_pathway
 from app.services.identity import directory, engagement
 from app.services.identity.audit import record_event
 from app.services.identity.store import identity_session
+from app.services.portal_assistant import AssistantContext, build_facts, deterministic_answer
 
 router = APIRouter(prefix="/api/v1/portal", tags=["portal"], dependencies=[Depends(_users_mode_only)])
 
@@ -281,13 +285,7 @@ def get_recommendation(
     loc, meta = _loc(request, p)
     gap = _own_gap(repo, p.patient_id, recommendation_id)
     rec = _recommendation(gap, loc, _next_step(repo, gap, {}))
-    timeline = [dict(occurred_on=gap.identified_date, event="identified")]
-    for ev in followups.list_follow_ups(gap.care_gap_id, limit=200, offset=0).items:
-        if ev.event_type in _TIMELINE_EVENTS:
-            timeline.append(dict(occurred_on=ev.recorded_at.date(), event=ev.event_type))
-    if gap.closed_date:
-        timeline.append(dict(occurred_on=gap.closed_date, event="closed"))
-    timeline.sort(key=lambda x: x["occurred_on"])
+    timeline = _timeline(followups, gap)
     with identity_session() as s:
         _, tasks = engagement.list_tasks(s, organization_id=p.organization_id, patient_ids=None,
                                          patient_id=p.patient_id, patient_visible_only=True, limit=200)
@@ -299,6 +297,17 @@ def get_recommendation(
         related_follow_up_ids=[tk.task_id for tk in tasks if tk.care_gap_id == gap.care_gap_id],
         disclaimer=t("explain.disclaimer", loc),
     )
+
+
+def _timeline(followups: FollowUpRepository, gap: Any) -> list[dict[str, Any]]:
+    timeline = [dict(occurred_on=gap.identified_date, event="identified")]
+    for ev in followups.list_follow_ups(gap.care_gap_id, limit=200, offset=0).items:
+        if ev.event_type in _TIMELINE_EVENTS:
+            timeline.append(dict(occurred_on=ev.recorded_at.date(), event=ev.event_type))
+    if gap.closed_date:
+        timeline.append(dict(occurred_on=gap.closed_date, event="closed"))
+    timeline.sort(key=lambda x: x["occurred_on"])
+    return timeline
 
 
 def _evidence(repo: ReadRepository, pid: str, gap: Any, loc: str) -> list[str]:
@@ -330,6 +339,79 @@ def explain_recommendation(
     return RecommendationExplanationOut(
         recommendation_id=gap.care_gap_id, title=rec["title"], paragraphs=_evidence(repo, p.patient_id, gap, loc),
         next_step_text=rec["next_step_text"], disclaimer=t("explain.disclaimer", loc), **meta,
+    )
+
+
+_OPEN_REQUEST_STATUSES = frozenset({"submitted", "acknowledged", "scheduled"})
+
+
+@router.post("/recommendations/{recommendation_id}/assistant", response_model=PatientAssistantOut)
+def ask_assistant(
+    recommendation_id: str,
+    req: PatientAssistantIn,
+    request: Request,
+    p: Principal = Depends(portal_patient),
+    repo: ReadRepository = Depends(get_read_repository),
+    followups: FollowUpRepository = Depends(get_followup_repository),
+    ai: AIService = Depends(get_ai_service),
+) -> PatientAssistantOut:
+    """Plain-language help on a fixed topic about one of the patient's own recommendations.
+
+    Patient and recommendation come from the session's account link (other patients' ids answer
+    404). Only the de-identified portal facts of this recommendation reach the model, which
+    restates them; nothing is changed, booked or sent. Disabled, failing or rejected generations
+    return the deterministic answer built from the same facts. Every answer is audited."""
+    check_rate_limit(f"portal_assistant:user:{p.user_id}", limit=20)
+    loc, meta = _loc(request, p)
+    gap = _own_gap(repo, p.patient_id, recommendation_id)
+    patient = repo.get_patient(p.patient_id)
+    if patient is None:
+        raise AppError(404, "portal.not_linked")
+    step = _next_step(repo, gap, {})
+    rec = _recommendation(gap, loc, step)
+    appts = sorted((a for a in _appointments(followups, p.patient_id) if a.care_gap_id == gap.care_gap_id),
+                   key=lambda a: a.scheduled_datetime, reverse=True)[:5]
+    appt_ids = {a.appointment_id for a in appts}
+    with identity_session() as s:
+        _, tasks = engagement.list_tasks(s, organization_id=p.organization_id, patient_ids=None,
+                                         patient_id=p.patient_id, patient_visible_only=True, active=True, limit=200)
+        _, reqs = engagement.list_requests(s, organization_id=p.organization_id, patient_ids=None,
+                                           patient_id=p.patient_id, limit=200)
+        follow_ups = [{"status": label("task_status", tk.status, loc), "due": format_date(tk.due_date, loc)}
+                      for tk in tasks if tk.care_gap_id == gap.care_gap_id]
+        open_requests = [{"type": label("request_type", r.request_type, loc),
+                          "status": label("request_status", r.status, loc)}
+                         for r in reqs if r.status in _OPEN_REQUEST_STATUSES
+                         and (r.care_gap_id == gap.care_gap_id or r.appointment_id in appt_ids)]
+    ctx = AssistantContext(
+        locale=loc, programme=rec["programme_label"], title=rec["title"], description=rec["description"],
+        status=gap.status, status_label=rec["status_label"], identified_on=rec["identified_date_display"],
+        evidence=_evidence(repo, p.patient_id, gap, loc), next_step_text=rec["next_step_text"],
+        next_step_documented=step is not None,
+        history=["{} ({})".format(t("timeline." + x["event"], loc), format_date(x["occurred_on"], loc))
+                 for x in _timeline(followups, gap)],
+        earlier_history_on_file=patient.history_by_pathway.get(rec["programme"]) != "not_available",
+        change_cutoff_hours=int(CHANGE_CUTOFF.total_seconds() // 3600),
+        appointments=[{"type": o.appointment_type_label, "when": o.scheduled_display, "status": o.status_label,
+                       "can_request_change_online": o.can_request_change}
+                      for o in (_appointment_out(a, loc) for a in appts)],
+        open_requests=open_requests, follow_ups=follow_ups,
+    )
+    answer, gen = ai.patient_assistant(
+        build_facts(ctx, req.topic), topic=req.topic, language=loc, fallback=deterministic_answer(ctx, req.topic),
+        allow_completed=gap.status == "closed_completed",
+        subject={"patient_id": p.patient_id, "care_gap_id": gap.care_gap_id, "rule_id": gap.rule_id},
+        run_id=patient.run_id, actor=p.audit_actor(),
+    )
+    record_event(p, "ai.patient_assistant", "care_gap", resource_id=gap.care_gap_id, patient_id=p.patient_id,
+                 status_code=200, permission="patients.read_self",
+                 details={"topic": req.topic, "generation_mode": gen.generation_mode, "ai_audit_id": gen.audit_id})
+    grounded = gen.generation_mode == LLM_GROUNDED
+    return PatientAssistantOut(
+        recommendation_id=gap.care_gap_id, topic=req.topic, topic_label=t(f"assistant.topic.{req.topic}", loc),
+        answer=answer, generation_mode=gen.generation_mode,
+        source_note=t("assistant.source.ai" if grounded else "assistant.source.standard", loc),
+        escalation=t("assistant.escalation", loc), disclaimer=t("explain.disclaimer", loc), **meta,
     )
 
 
@@ -382,7 +464,7 @@ def list_my_referrals(
     refs = followups.list_referrals(patient_id=p.patient_id, status=None, limit=200, offset=0).items
     items = [PortalReferralOut(referral_id=r.referral_id, referral_target=r.referral_target, status=r.status,
                                status_label=label("referral_status", r.status, loc), trigger_date=r.trigger_date,
-                               initiated_date=r.initiated_date, completed_date=r.completed_date) for r in refs]
+                               trigger_date_display=format_date(r.trigger_date, loc), initiated_date=r.initiated_date, completed_date=r.completed_date) for r in refs]
     return PortalReferralsOut(total=len(items), items=items, **meta)
 
 
@@ -405,10 +487,13 @@ def _request_out(r: PatientRequest, loc: str) -> dict[str, Any]:
     return dict(
         request_id=r.request_id, request_type=r.request_type,
         request_type_label=label("request_type", r.request_type, loc), status=r.status,
-        status_label=label("request_status", r.status, loc), follow_up_id=r.task_id,
-        recommendation_id=r.care_gap_id, appointment_id=r.appointment_id, change_action=r.change_action,
+        status_label=label("request_status", r.status, loc), status_hint=t(f"request_hint.{r.status}", loc),
+        follow_up_id=r.task_id, recommendation_id=r.care_gap_id, appointment_id=r.appointment_id,
+        change_action=r.change_action, change_action_label=label("change_action", r.change_action, loc),
         preferred_dates=list(r.preferred_dates or []), preferred_time_of_day=r.preferred_time_of_day,
-        message=r.message, staff_response=r.staff_response, created_at=r.created_at, updated_at=r.updated_at,
+        message=r.message, staff_response=r.staff_response, created_at=r.created_at,
+        created_display=format_datetime(r.created_at, loc), updated_at=r.updated_at,
+        updated_display=format_datetime(r.updated_at, loc),
     )
 
 
@@ -523,11 +608,12 @@ def cancel_my_request(request_id: str, request: Request, p: Principal = Depends(
 def _task_out(task: FollowUpTask, loc: str) -> dict[str, Any]:
     return dict(
         follow_up_id=task.task_id, recommendation_id=task.care_gap_id, status=task.status,
-        status_label=label("task_status", task.status, loc), message=t(f"task.{task.message_key}", loc),
+        status_label=label("task_status", task.status, loc), status_hint=t(f"task_hint.{task.status}", loc),
+        message=t(f"task.{task.message_key}", loc),
         due_date=task.due_date, due_date_display=format_date(task.due_date, loc),
         is_overdue=engagement.is_overdue(task),
         reported_completion_pending_verification=task.patient_reported_completion and task.status != "completed",
-        created_at=task.created_at, updated_at=task.updated_at,
+        created_at=task.created_at, updated_at=task.updated_at, updated_display=format_datetime(task.updated_at, loc),
     )
 
 

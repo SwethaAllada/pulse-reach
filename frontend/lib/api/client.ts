@@ -178,9 +178,23 @@ export function holdRequests(): void {
  * with a patient token.
  */
 let portalAllowed = false;
+/* Portal requests issued before the patient session resolved (child effects run first). */
+const portalWaiters: (() => void)[] = [];
 
 export function allowPortalRequests(allowed: boolean): void {
   portalAllowed = allowed;
+  if (allowed) portalWaiters.splice(0).forEach((resume) => resume());
+}
+
+function waitForPortal(signal?: AbortSignal | null): Promise<void> {
+  if (portalAllowed || !gate) return Promise.resolve();
+  const pending = gate.promise;
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(new DOMException("Aborted", "AbortError"));
+    signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+    portalWaiters.push(resolve);
+    pending.then(resolve);
+  });
 }
 
 export function releaseRequests(): void {
@@ -237,7 +251,7 @@ function notSignedIn(path: string): ApiError {
 async function apiRequest<T>(path: string, pathWithQuery: string, init: RequestInit): Promise<T> {
   const url = `${API_BASE_URL}/api/v1${pathWithQuery}`;
   const identity = UNGATED.has(path);
-  if (!identity && !(portalAllowed && path.startsWith("/portal/"))) await waitForGate(init.signal);
+  if (!identity) await (path.startsWith("/portal/") ? waitForPortal(init.signal) : waitForGate(init.signal));
   const send = () => {
     const session = getSession();
     if (!session && !identity && !unauthenticatedAllowed) throw notSignedIn(path);
@@ -392,6 +406,8 @@ export const portalApi = {
   requestAppointment: (body: P.AppointmentRequestIn) => apiPost<P.PatientRequestDetailOut>("/portal/appointment-requests", body),
   requestAppointmentChange: (appointmentId: string, body: P.AppointmentChangeIn) =>
     apiPost<P.PatientRequestDetailOut>(`/portal/appointments/${enc(appointmentId)}/change-requests`, body),
+  assistant: (recommendationId: string, topic: P.AssistantTopic) =>
+    apiPost<P.PatientAssistantOut>(`/portal/recommendations/${enc(recommendationId)}/assistant`, { topic }),
   requestAssistance: (message: string, preferredTime: P.TimeOfDay | null) =>
     apiPost<P.PatientRequestDetailOut>("/portal/assistance", { message, preferred_time_of_day: preferredTime }),
 };

@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  allowPortalRequests,
   allowUnauthenticatedRequests,
   api,
   ApiError,
   holdRequests,
   identityEndpointMissing,
+  portalApi,
   releaseRequests,
   resetIdentityProbe,
 } from "./client";
@@ -138,6 +140,24 @@ describe("authenticated API client", () => {
     releaseRequests();
     await pending;
     expect(pathOf(1)).toBe("/api/v1/rules");
+  });
+
+  it("sends portal requests issued before the patient session resolved, but never staff requests", async () => {
+    setSession(tokens(1));
+    fetchMock.mockImplementation(async () => json({}));
+    holdRequests();
+    // Child effects (portal views) run before the AuthProvider effect that allows the portal.
+    const portal = portalApi.summary();
+    const staff = api.rules();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(fetchMock).not.toHaveBeenCalled();
+    allowPortalRequests(true);
+    await portal;
+    await new Promise((r) => setTimeout(r, 10));
+    expect(fetchMock.mock.calls.map((_, i) => pathOf(i))).toEqual(["/api/v1/portal/summary"]);
+    allowPortalRequests(false);
+    releaseRequests();
+    await staff;
   });
 
   it("aborts a held request without sending it", async () => {

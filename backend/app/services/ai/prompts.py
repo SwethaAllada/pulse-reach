@@ -13,11 +13,13 @@ from typing import Any
 EXPLANATION_PROMPT_VERSION = "explanation-v2"
 OUTREACH_PROMPT_VERSION = "outreach-v3"
 POPULATION_PROMPT_VERSION = "population-v1"
+PATIENT_ASSISTANT_PROMPT_VERSION = "patient-assistant-v1"
 
 PROMPT_VERSIONS = {
     "explanation": EXPLANATION_PROMPT_VERSION,
     "outreach_draft": OUTREACH_PROMPT_VERSION,
     "population_insight": POPULATION_PROMPT_VERSION,
+    "patient_assistant": PATIENT_ASSISTANT_PROMPT_VERSION,
 }
 
 _COMMON_RULES = (
@@ -75,6 +77,39 @@ POPULATION_SYSTEM = (
     "percentages or trends; do not speculate about causes. Mention that the data are synthetic. "
     "Write 3 to 5 sentences."
 )
+
+
+PATIENT_ASSISTANT_SYSTEM = (
+    "You help a member of the public understand one preventive-care recommendation shown in their "
+    "patient portal. "
+    + _COMMON_RULES
+    + " The facts were decided by the programme's rule-based evaluation and by the care team; you only "
+    "restate them in plain, friendly language. Never diagnose and never say whether the person is "
+    "eligible. Never change, question or reinterpret any status. Never say care was completed unless "
+    "recommendation_status_code is closed_completed. Never confirm or promise an appointment, "
+    "availability, facility, time or cost that is not in the facts, and never say a message was sent. "
+    "Do not use the phrase 'you have'. Do not use fear or urgency. If the facts do not answer the topic, "
+    "say that this information is not in the record and that the care team can help. "
+    "Topic: {topic_instruction} Write in the language with code '{language}'. {language_rules} "
+    "Maximum {max_chars} characters."
+)
+PATIENT_ASSISTANT_TOPICS = {
+    "why": "explain why this recommendation appears, using only evidence, history and "
+    "missing_information, in 2 to 4 sentences.",
+    "next_steps": "explain what the person can do next and how the care pathway continues, using only "
+    "next_step, pathway_steps and missing_information, in 2 to 4 sentences.",
+    "prepare_questions": "suggest 3 to 5 short questions the person could ask their clinician or care "
+    "team about this recommendation and its process. Do not name diagnoses, tests, medicines or "
+    "treatments. Write one question per line, without bullets or numbers.",
+    "appointments": "explain how appointments, requests and follow-up messages work for this "
+    "recommendation, using only appointments, open_requests, follow_ups and appointment_process, in "
+    "2 to 4 sentences.",
+}
+PATIENT_ASSISTANT_LANGUAGE_RULES = {
+    "en": "Use plain English.",
+    "ar": "Use Modern Standard Arabic only; keep programme names exactly as written in the facts; use "
+    "Western digits only.",
+}
 
 
 def facts_json(facts: dict[str, Any]) -> str:

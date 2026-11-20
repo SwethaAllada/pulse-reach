@@ -1,4 +1,4 @@
-"""AI assistance layer (explanations, simulated outreach drafts, population insights)."""
+"""AI assistance layer (explanations, simulated outreach drafts, population insights, patient assistant)."""
 
 from app.services.ai.audit import AIAuditLog, AIAuditRecord, DuplicateReviewError, PostgresAIAuditLog
 from app.services.ai.provider import LLMCompletion, LLMProvider, LLMProviderError, build_provider

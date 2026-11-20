@@ -103,7 +103,7 @@ def test_status_never_exposes_the_key():
     finally:
         app.dependency_overrides.pop(get_ai_service, None)
     assert body["llm_enabled"] is True and body["model"] == "gpt-x"
-    assert set(body["prompt_versions"]) == {"explanation", "outreach_draft", "population_insight"}
+    assert set(body["prompt_versions"]) == {"explanation", "outreach_draft", "population_insight", "patient_assistant"}
     assert SECRET not in json.dumps(body)
 
 

@@ -12,12 +12,12 @@ import {
   LifeBuoy,
   LogOut,
   MessageSquare,
+  Sparkles,
 } from "lucide-react";
 import { portalApi, apiErrorMessage } from "@/lib/api/client";
 import { useResource, type Resource } from "@/lib/api/resource";
-import type { PatientResponse, PortalAppointmentOut, PortalFollowUpOut, RecommendationOut, TimeOfDay } from "@/lib/api/portal-types";
+import type { AssistantTopic, PatientAssistantOut, PatientRequestOut, PatientResponse, PortalAppointmentOut, PortalFollowUpOut, RecommendationOut, TimeOfDay } from "@/lib/api/portal-types";
 import { useAuth } from "@/lib/auth/auth-context";
-import { formatDateTime } from "@/lib/coordination/model";
 import { LogoMark, LogoWordmark } from "@/components/shell/logo";
 import { SyntheticBanner } from "@/components/shell/synthetic-banner";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
@@ -250,8 +250,8 @@ function RecommendationCard({ rec, open, onToggle, onChanged }: { rec: Recommend
       <button type="button" aria-expanded={open} onClick={onToggle} className="flex w-full items-start gap-3 px-5 py-4 text-left">
         <HeartPulse size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-warm-text" />
         <span className="min-w-0 flex-1">
-          <span className="block font-medium text-foreground">{rec.title}</span>
-          <span className="mt-0.5 block text-sm text-muted">{rec.description}</span>
+          <span dir="auto" className="block font-medium text-foreground">{rec.title}</span>
+          <span dir="auto" className="mt-0.5 block text-sm text-muted">{rec.description}</span>
           <span className="mt-2 flex flex-wrap gap-x-3 text-xs text-faint">
             <span>{rec.programme_label}</span>
             <span>Identified {rec.identified_date_display}</span>
@@ -267,18 +267,18 @@ function RecommendationCard({ rec, open, onToggle, onChanged }: { rec: Recommend
               <div className="grid gap-5 md:grid-cols-2">
                 <div>
                   <h3 className="text-xs font-medium text-muted">Why this is recommended</h3>
-                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-foreground">
+                  <ul dir="auto" className="mt-2 list-disc space-y-1 ps-5 text-sm text-foreground">
                     {d.evidence.map((e, i) => (
                       <li key={i}>{e}</li>
                     ))}
                   </ul>
-                  <p className="mt-3 rounded-lg bg-accent-soft px-3 py-2 text-sm text-foreground">
+                  <p dir="auto" className="mt-3 rounded-lg bg-accent-soft px-3 py-2 text-sm text-foreground">
                     <span className="font-medium">Next step:</span> {d.next_step_text}
                   </p>
                 </div>
                 <div>
                   <h3 className="text-xs font-medium text-muted">History</h3>
-                  <ol className="mt-2 space-y-2 border-l border-border pl-4 text-sm">
+                  <ol dir="auto" className="mt-2 space-y-2 border-s border-border ps-4 text-sm">
                     {d.history.map((h, i) => (
                       <li key={i}>
                         <span className="text-foreground">{h.label}</span> <span className="text-xs text-faint">· {h.occurred_on_display}</span>
@@ -290,6 +290,7 @@ function RecommendationCard({ rec, open, onToggle, onChanged }: { rec: Recommend
               </div>
             )}
           </ResourceView>
+          <RecommendationAssistant recommendationId={rec.recommendation_id} />
           {rec.status === "open" &&
             (requesting ? (
               <AppointmentRequestForm recommendationId={rec.recommendation_id} onDone={() => (setRequesting(false), onChanged())} onCancel={() => setRequesting(false)} />
@@ -301,6 +302,121 @@ function RecommendationCard({ rec, open, onToggle, onChanged }: { rec: Recommend
         </div>
       )}
     </li>
+  );
+}
+
+/* ── Recommendation assistant ─────────────────────────────────────────── */
+
+const TOPICS: { id: AssistantTopic; label: string }[] = [
+  { id: "why", label: "Why is this recommended?" },
+  { id: "next_steps", label: "What happens next?" },
+  { id: "prepare_questions", label: "Questions for my clinician" },
+  { id: "appointments", label: "Appointments and follow-up" },
+];
+
+/**
+ * Plain-language help on fixed topics about this recommendation. The backend answers from the
+ * patient's own portal facts (a guarded AI answer when enabled, otherwise the standard
+ * explanation); it never changes, books or sends anything.
+ */
+function RecommendationAssistant({ recommendationId }: { recommendationId: string }) {
+  const [topic, setTopic] = useState<AssistantTopic | null>(null);
+  const [state, setState] = useState<{ pending: boolean; error: string | null; data: PatientAssistantOut | null }>({ pending: false, error: null, data: null });
+  const [asking, setAsking] = useState(false);
+  const ask = async (t: AssistantTopic) => {
+    setTopic(t);
+    setState({ pending: true, error: null, data: null });
+    try {
+      setState({ pending: false, error: null, data: await portalApi.assistant(recommendationId, t) });
+    } catch (err) {
+      setState({ pending: false, error: apiErrorMessage(err), data: null });
+    }
+  };
+  const d = state.data;
+  return (
+    <section aria-label="Understand this recommendation" className="mt-5 rounded-xl border border-border bg-surface p-4">
+      <h3 className="flex items-center gap-2 text-sm font-medium text-foreground">
+        <Sparkles size={15} aria-hidden="true" className="text-accent" /> Understand this recommendation
+      </h3>
+      <div role="group" aria-label="Choose a topic" className="mt-3 flex flex-wrap gap-2">
+        {TOPICS.map((x) => (
+          <button key={x.id} type="button" aria-pressed={topic === x.id} disabled={state.pending} onClick={() => void ask(x.id)} className={cn(buttonClass("secondary"), topic === x.id && "border-accent bg-accent-soft")}>
+            {x.label}
+          </button>
+        ))}
+      </div>
+      <div aria-live="polite" className="mt-3">
+        {state.pending && <p className="skeleton h-16 rounded-lg" aria-label="Preparing an answer" />}
+        {state.error && (
+          <div className="flex flex-wrap items-center gap-3">
+            <FormError message={state.error} />
+            {topic && (
+              <button type="button" className={buttonClass("secondary")} onClick={() => void ask(topic)}>
+                Try again
+              </button>
+            )}
+          </div>
+        )}
+        {d && (
+          <div dir={d.direction} lang={d.locale} className="reveal-fade flex flex-col gap-2 text-sm">
+            <h4 className="font-medium text-foreground">{d.topic_label}</h4>
+            {d.topic === "prepare_questions" ? (
+              <ul className="list-disc space-y-1 ps-5 text-foreground">{d.answer.map((a, i) => <li key={i}>{a}</li>)}</ul>
+            ) : (
+              d.answer.map((a, i) => <p key={i} className="text-foreground">{a}</p>)
+            )}
+            <p className="rounded-lg bg-surface-sunken px-3 py-2 text-foreground">{d.escalation}</p>
+            <p className="text-xs text-faint">{d.source_note}</p>
+          </div>
+        )}
+      </div>
+      {d &&
+        (asking ? (
+          <HelpForm initial={`${d.topic_label}: `} onDone={() => setAsking(false)} onCancel={() => setAsking(false)} />
+        ) : (
+          <button type="button" className={buttonClass("primary", "mt-3")} onClick={() => setAsking(true)}>
+            <LifeBuoy size={15} aria-hidden="true" /> Ask your care team
+          </button>
+        ))}
+    </section>
+  );
+}
+
+function HelpForm({ initial = "", onDone, onCancel }: { initial?: string; onDone: () => void; onCancel: () => void }) {
+  const [msg, setMsg] = useState(initial);
+  const [state, setState] = useState<{ pending: boolean; error: string | null; done: string | null }>({ pending: false, error: null, done: null });
+  if (state.done) return <div className="mt-3"><Confirmation>{state.done}</Confirmation></div>;
+  return (
+    <form
+      aria-label="Ask for help"
+      className="reveal mt-3 flex flex-col gap-3 rounded-xl border border-border bg-surface-raised p-4"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setState({ pending: true, error: null, done: null });
+        try {
+          const out = await portalApi.requestAssistance(msg.trim(), null);
+          setState({ pending: false, error: null, done: out.confirmation ?? "Your request was sent to your care team." });
+          setTimeout(onDone, 1500);
+        } catch (err) {
+          setState({ pending: false, error: apiErrorMessage(err), done: null });
+        }
+      }}
+    >
+      <label className={labelClass}>
+        How can your care team help?
+        <textarea dir="auto" className={textareaClass} maxLength={1000} value={msg} onChange={(e) => setMsg(e.target.value)} required />
+      </label>
+      <FormError message={state.error} />
+      <div className="flex gap-2">
+        <button type="submit" className={buttonClass("primary")} disabled={!msg.trim() || state.pending}>
+          {state.pending ? "Sending…" : "Send"}
+        </button>
+        <button type="button" className={buttonClass("secondary")} onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+      <p className="text-xs text-faint">Your care team replies here in the portal. PulseReach does not send e-mail or SMS.</p>
+    </form>
   );
 }
 
@@ -356,7 +472,7 @@ function AppointmentRequestForm({ recommendationId, followUpId, onDone, onCancel
       </div>
       <label className={labelClass}>
         Message to your care team (optional)
-        <textarea className={textareaClass} maxLength={1000} value={message} onChange={(e) => setMessage(e.target.value)} />
+        <textarea dir="auto" className={textareaClass} maxLength={1000} value={message} onChange={(e) => setMessage(e.target.value)} />
       </label>
       <FormError message={error} />
       <div className="flex gap-2">
@@ -412,8 +528,8 @@ function Appointments({ attempt, onChanged }: { attempt: number; onChanged: () =
                 {r.items.map((x) => (
                   <li key={x.referral_id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
                     <span>
-                      <span className="block text-foreground">{x.referral_target}</span>
-                      <span className="text-xs text-faint">Since {x.trigger_date}</span>
+                      <span dir="auto" className="block text-foreground">{x.referral_target}</span>
+                      <span className="text-xs text-faint">Since {x.trigger_date_display}</span>
                     </span>
                     <span className="rounded-full border border-border px-2.5 py-0.5 text-xs text-foreground">{x.status_label}</span>
                   </li>
@@ -471,7 +587,7 @@ function AppointmentRow({ appt, onChanged }: { appt: PortalAppointmentOut; onCha
         >
           <label className={labelClass}>
             {action === "cancel" ? "Reason for cancelling (optional)" : "Which times suit you better? (optional)"}
-            <textarea className={textareaClass} maxLength={1000} value={message} onChange={(e) => setMessage(e.target.value)} />
+            <textarea dir="auto" className={textareaClass} maxLength={1000} value={message} onChange={(e) => setMessage(e.target.value)} />
           </label>
           <FormError message={state.error} />
           <div className="flex gap-2">
@@ -532,12 +648,13 @@ function MessageCard({ item, open, onToggle, onChanged }: { item: PortalFollowUp
       <button type="button" aria-expanded={open} onClick={onToggle} className="flex w-full items-start gap-3 px-5 py-4 text-left">
         <MessageSquare size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-accent" />
         <span className="min-w-0 flex-1">
-          <span className="line-clamp-2 block text-sm text-foreground">{item.message}</span>
+          <span dir="auto" className="line-clamp-2 block text-sm text-foreground">{item.message}</span>
           <span className="mt-1.5 flex flex-wrap gap-x-3 text-xs text-faint">
             <span>{item.status_label}</span>
             {item.due_date_display && <span className={item.is_overdue ? "text-status-due" : undefined}>Due {item.due_date_display}</span>}
-            <span>{formatDateTime(item.updated_at)}</span>
+            <span>{item.updated_display}</span>
           </span>
+          <span dir="auto" className="mt-1 block text-xs text-muted">{item.status_hint}</span>
         </span>
         <ChevronRight size={16} aria-hidden="true" className={cn("mt-1 text-faint transition-transform duration-200", open && "rotate-90")} />
       </button>
@@ -551,7 +668,7 @@ function MessageCard({ item, open, onToggle, onChanged }: { item: PortalFollowUp
                     <span className="block text-xs text-faint">
                       {h.from_care_team ? "Care team" : "You"} · {h.created_display}
                     </span>
-                    <span className="text-foreground">{h.response_label ? `${h.response_label}${h.message ? ` — ${h.message}` : ""}` : (h.message ?? h.label)}</span>
+                    <span dir="auto" className="text-foreground">{h.response_label ? `${h.response_label}${h.message ? ` — ${h.message}` : ""}` : (h.message ?? h.label)}</span>
                   </li>
                 ))}
               </ol>
@@ -595,7 +712,7 @@ function MessageCard({ item, open, onToggle, onChanged }: { item: PortalFollowUp
                     ))}
                   </div>
                 </fieldset>
-                <textarea aria-label="Message (optional)" placeholder="Add a message (optional)" className={textareaClass} maxLength={1000} value={message} onChange={(e) => setMessage(e.target.value)} />
+                <textarea dir="auto" aria-label="Message (optional)" placeholder="Add a message (optional)" className={textareaClass} maxLength={1000} value={message} onChange={(e) => setMessage(e.target.value)} />
                 {response === "already_done" && (
                   <p className="text-xs text-faint">Thanks — your care team will verify this. A report does not close a recommendation on its own.</p>
                 )}
@@ -617,8 +734,6 @@ function MessageCard({ item, open, onToggle, onChanged }: { item: PortalFollowUp
 function Requests({ attempt, onChanged }: { attempt: number; onChanged: () => void }) {
   const list = useResource(`p-req|${attempt}`, "patients.read_self", (s) => portalApi.requests(s), attempt);
   const [help, setHelp] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [state, setState] = useState<{ pending: boolean; error: string | null }>({ pending: false, error: null });
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -629,74 +744,16 @@ function Requests({ attempt, onChanged }: { attempt: number; onChanged: () => vo
           </button>
         )}
       </div>
-      {help && (
-        <form
-          aria-label="Ask for help"
-          className="reveal flex flex-col gap-3 rounded-xl border border-border bg-surface-raised p-4"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            setState({ pending: true, error: null });
-            try {
-              await portalApi.requestAssistance(msg.trim(), null);
-              setHelp(false);
-              setMsg("");
-              onChanged();
-            } catch (err) {
-              setState({ pending: false, error: apiErrorMessage(err) });
-            }
-          }}
-        >
-          <label className={labelClass}>
-            How can your care team help?
-            <textarea className={textareaClass} maxLength={1000} value={msg} onChange={(e) => setMsg(e.target.value)} required />
-          </label>
-          <FormError message={state.error} />
-          <div className="flex gap-2">
-            <button type="submit" className={buttonClass("primary")} disabled={!msg.trim() || state.pending}>
-              Send
-            </button>
-            <button type="button" className={buttonClass("secondary")} onClick={() => setHelp(false)}>
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+      {help && <HelpForm onDone={() => (setHelp(false), onChanged())} onCancel={() => setHelp(false)} />}
       <ResourceView resource={list} what="Requests">
         {(l) =>
           l.items.length === 0 ? (
-            <QuietEmpty title="No requests yet" />
+            <QuietEmpty title="No requests yet">Requests you send to your care team, and their replies, appear here.</QuietEmpty>
           ) : (
             <Plate title="Requests" flush>
               <ul className="divide-y divide-border">
                 {l.items.map((r) => (
-                  <li key={r.request_id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-3.5 text-sm">
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-medium text-foreground">{r.request_type_label}</span>
-                      {r.message && <span className="block text-muted">{r.message}</span>}
-                      {r.staff_response && <span className="mt-1 block rounded-lg bg-surface-sunken px-3 py-2 text-foreground">Care team: {r.staff_response}</span>}
-                      <span className="mt-1 block text-xs text-faint">Sent {formatDateTime(r.created_at)}</span>
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <span className="rounded-full border border-border px-2.5 py-0.5 text-xs text-foreground">{r.status_label}</span>
-                      {["submitted", "acknowledged"].includes(r.status) && (
-                        <button
-                          type="button"
-                          className={buttonClass("quiet", "text-status-error")}
-                          onClick={async () => {
-                            if (!window.confirm("Withdraw this request?")) return;
-                            try {
-                              await portalApi.cancelRequest(r.request_id);
-                              onChanged();
-                            } catch (err) {
-                              window.alert(apiErrorMessage(err));
-                            }
-                          }}
-                        >
-                          Withdraw
-                        </button>
-                      )}
-                    </span>
-                  </li>
+                  <RequestRow key={r.request_id} request={r} onChanged={onChanged} />
                 ))}
               </ul>
             </Plate>
@@ -704,6 +761,60 @@ function Requests({ attempt, onChanged }: { attempt: number; onChanged: () => vo
         }
       </ResourceView>
     </>
+  );
+}
+
+function RequestRow({ request: r, onChanged }: { request: PatientRequestOut; onChanged: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [state, setState] = useState<{ pending: boolean; error: string | null }>({ pending: false, error: null });
+  const withdraw = async () => {
+    setState({ pending: true, error: null });
+    try {
+      await portalApi.cancelRequest(r.request_id);
+      onChanged();
+    } catch (err) {
+      setState({ pending: false, error: apiErrorMessage(err) });
+    }
+  };
+  return (
+    <li className="flex flex-wrap items-start justify-between gap-3 px-5 py-3.5 text-sm">
+      <span className="min-w-0 flex-1">
+        <span className="block font-medium text-foreground">
+          {r.request_type_label}
+          {r.change_action_label && ` · ${r.change_action_label}`}
+        </span>
+        {r.message && <span dir="auto" className="block text-muted">{r.message}</span>}
+        {r.staff_response && (
+          <span className="mt-1 block rounded-lg bg-surface-sunken px-3 py-2 text-foreground">
+            Care team: <span dir="auto">{r.staff_response}</span>
+          </span>
+        )}
+        <span dir="auto" className="mt-1 block text-xs text-foreground">{r.status_hint}</span>
+        <span className="mt-1 block text-xs text-faint">
+          Sent {r.created_display}
+          {r.updated_at !== r.created_at && ` · Updated ${r.updated_display}`}
+        </span>
+        <FormError message={state.error} />
+      </span>
+      <span className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full border border-border px-2.5 py-0.5 text-xs text-foreground">{r.status_label}</span>
+        {["submitted", "acknowledged"].includes(r.status) &&
+          (confirming ? (
+            <>
+              <button type="button" className={buttonClass("warm")} disabled={state.pending} onClick={() => void withdraw()}>
+                {state.pending ? "Withdrawing…" : "Yes, withdraw"}
+              </button>
+              <button type="button" className={buttonClass("secondary")} onClick={() => setConfirming(false)}>
+                Keep request
+              </button>
+            </>
+          ) : (
+            <button type="button" className={buttonClass("quiet", "text-status-error")} onClick={() => setConfirming(true)}>
+              Withdraw
+            </button>
+          ))}
+      </span>
+    </li>
   );
 }
 
