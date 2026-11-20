@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { evict } from "@/lib/api/cache";
 import { PopulationMap } from "./population-map";
 
 /* jsdom has no WebGL: the canvas is replaced; the panel, list and fallback are what is tested. */
@@ -56,19 +57,41 @@ function backend(path: string, q: URLSearchParams) {
       items: [{ alert_id: "AL1", area_id: "A-MUS", area: null, category: "case_increase", condition_name: "Type 2 diabetes", severity: "HIGH", title: "Recorded cases increased in Mussafah", explanation: "Threshold signal.", status: "NEW", last_detected_at: "2026-11-16T00:00:00Z" }],
     };
   if (path === "/facilities/points")
-    return { governance_notice: "", source_layers: ["hospitals"], total: 2, excluded_without_coordinates: 1, items: [] };
+    return { governance_notice: "", source_layers: ["hospitals"], total: 2, excluded_without_coordinates: 1, ...(register ? { register } : {}), items: POINTS };
+  if (path === "/facilities/F1") return FACILITY;
+  if (path.startsWith("/facilities/")) return NOT_FOUND;
   throw new Error(`unexpected ${path}`);
 }
 
+const NOT_FOUND = Symbol("404");
+const point = (id: string, name: string) => ({
+  ch_fid: id, name, source_layer: "hospitals", facility_type: "Hospital", region_id: 1, city: "Abu Dhabi", is_public: true,
+  license_status: "Active", latitude: 24.4539, longitude: 54.3773, geo_quality: "ok",
+});
+const POINTS = [point("F1", "Sheikh Khalifa Medical City"), point("F2", "Unlisted Clinic")];
+const FACILITY = {
+  ch_fid: "F1", facility_name: "Sheikh Khalifa Medical City", facility_name_ar: "مدينة الشيخ خليفة الطبية", source_layer: "hospitals",
+  facility_type: "Hospital", subtype: "General", category: null, region_id: 1, city: "Abu Dhabi", is_public: true,
+  license_status: "Active", license_no: "MF-123", latitude: 24.453912, longitude: 54.377301, geo_quality: "ok", has_insurance: null,
+  inpatient_bed_capacity: 586, specialities_raw: null, emergency_department: true, pediatric_emergency_department: null,
+  maternity_emergency_care: false, home_care_services: null, source_effective_date: "2025-06-30", capability_basis: "published_flags",
+  governance_notice: "Department of Health SDI open data; published facts only.",
+};
+let register: Record<string, unknown> | null = null;
+
 const fetchMock = vi.fn(async (url: string) => {
   const u = new URL(url);
-  return new Response(JSON.stringify(backend(u.pathname.replace("/api/v1", ""), u.searchParams)), { status: 200, headers: { "Content-Type": "application/json" } });
+  const body = backend(u.pathname.replace("/api/v1", ""), u.searchParams);
+  if (body === NOT_FOUND) return new Response(JSON.stringify({ detail: "Not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
 });
 
 afterEach(cleanup);
 
 beforeEach(() => {
   search = "";
+  register = null;
+  evict("facility-points");
   replace.mockReset();
   canvasProps.mockReset();
   fetchMock.mockClear();
@@ -131,5 +154,93 @@ describe("PopulationMap", () => {
     onError("The base map could not be loaded. Facility and area data are still listed.");
     expect(await screen.findByText(/base map could not be loaded/)).toBeTruthy();
     expect(screen.getByRole("list", { name: /Areas ranked/ })).toBeTruthy();
+    expect(screen.queryByTestId("map-canvas")).toBeNull();
+    const before = canvasProps.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Retry map" }));
+    expect(await screen.findByTestId("map-canvas")).toBeTruthy();
+    expect(screen.queryByText(/base map could not be loaded/)).toBeNull();
+    expect(canvasProps.mock.calls.length).toBeGreaterThan(before);
+  });
+
+  it("opens a deep-linked facility with published facts only, and closing clears the param", async () => {
+    search = "facility=F1&tab=x";
+    render(<PopulationMap />);
+    expect(await screen.findByRole("heading", { name: "Sheikh Khalifa Medical City" })).toBeTruthy();
+    const ar = screen.getByText("مدينة الشيخ خليفة الطبية");
+    expect(ar.getAttribute("dir")).toBe("rtl");
+    expect(ar.getAttribute("lang")).toBe("ar");
+    expect(screen.getByText("Hospital · General")).toBeTruthy();
+    expect(screen.getByText(/Abu Dhabi · /)).toBeTruthy();
+    expect(screen.getByText("Public")).toBeTruthy();
+    expect(screen.getByText("MF-123")).toBeTruthy();
+    const coords = screen.getByText("24.45391, 54.37730");
+    expect(coords.getAttribute("dir")).toBe("ltr");
+    expect(screen.getByText("Emergency department")).toBeTruthy();
+    expect(screen.getByText("Maternity emergency")).toBeTruthy();
+    expect(screen.getByText("586")).toBeTruthy();
+    expect(screen.queryByText("Paediatric emergency")).toBeNull(); // null flag = not published, omitted
+    expect(screen.queryByText("Home care")).toBeNull();
+    expect(screen.getByText("2025-06-30")).toBeTruthy();
+    expect(screen.getByText(/published facts only/)).toBeTruthy();
+    expect(screen.getByText(/opening hours, contact details, appointment availability and referral acceptance are not published/)).toBeTruthy();
+    expect(screen.queryByText(/phone|telephone|email|open now|opening hours:/i)).toBeNull();
+    expect(screen.getByRole("link", { name: /Open in facility directory/ }).getAttribute("href")).toBe("/facilities?facility=F1");
+    await waitFor(() => expect(canvasProps).toHaveBeenLastCalledWith(expect.objectContaining({ selectedFacilityId: "F1" })));
+    fireEvent.click(screen.getByRole("button", { name: "Clear facility selection" }));
+    expect(replace).toHaveBeenLastCalledWith("/?tab=x", { scroll: false });
+  });
+
+  it("reports a facility that is not in the published register", async () => {
+    search = "facility=F9";
+    render(<PopulationMap />);
+    expect(await screen.findByText("Facility not found in the published register")).toBeTruthy();
+    search = "facility=F2"; // in the points, but the detail endpoint 404s
+    cleanup();
+    render(<PopulationMap />);
+    expect(await screen.findByText("Facility not found in the published register")).toBeTruthy();
+  });
+
+  it("selecting a facility clears the area and selecting an area clears the facility", async () => {
+    search = "area=A-MUS";
+    render(<PopulationMap />);
+    await screen.findByRole("heading", { name: "Mussafah" });
+    const { onSelectFacility } = canvasProps.mock.calls.at(-1)![0] as { onSelectFacility: (id: string) => void };
+    onSelectFacility("F1");
+    expect(replace).toHaveBeenLastCalledWith("/?facility=F1", { scroll: false });
+    cleanup();
+    search = "facility=F1";
+    render(<PopulationMap />);
+    await screen.findByRole("heading", { name: "Sheikh Khalifa Medical City" });
+    const { onSelect } = canvasProps.mock.calls.at(-1)![0] as { onSelect: (id: string) => void };
+    onSelect("A-KC");
+    expect(replace).toHaveBeenLastCalledWith("/?area=A-KC", { scroll: false });
+  });
+
+  it("shows the area's period, provenance, marker kind and suppressed fields", async () => {
+    search = "area=A-MUS";
+    render(<PopulationMap />);
+    expect(await screen.findByText(/Last 90 days · as of 2026-11-16/)).toBeTruthy();
+    expect(screen.getByText("Approximate area position: median of 12 published facility locations.")).toBeTruthy();
+    expect(screen.getByText(/Synthetic patient records, aggregated server-side/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Back to all areas/ }));
+    expect(replace).toHaveBeenLastCalledWith("/", { scroll: false });
+    cleanup();
+    search = "area=A-JIMI";
+    render(<PopulationMap />);
+    expect(await screen.findByText("Not mapped — fewer than 3 published facility locations.")).toBeTruthy();
+    expect(screen.getByText("Suppressed: Registered population")).toBeTruthy();
+  });
+
+  it("legend names the measure and period, a selected swatch and the register counts", async () => {
+    register = {
+      register_total: 2010, in_layers: 1900, excluded_unidentified: 5, excluded_license_status: 200,
+      excluded_invalid_coordinates: 70, mappable: 1625, license_statuses_included: ["Active"],
+    };
+    render(<PopulationMap />);
+    await screen.findByRole("list", { name: /Areas ranked/ });
+    expect(await screen.findByText("Size: Open care gaps · last 90 days")).toBeTruthy();
+    expect(screen.getByText("Selected area or facility")).toBeTruthy();
+    const count = await screen.findByText("1,625 mapped of 2,010 published records");
+    expect(count.getAttribute("title")).toMatch(/200 by licence status.*70 with missing or invalid coordinates/);
   });
 });

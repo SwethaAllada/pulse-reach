@@ -167,6 +167,20 @@ def test_service_profiles_match_memory_mode(db):
     assert any(p["facility_name"] for p in api["items"])  # joined from the official register in DB mode
 
 
+def test_facility_points_and_register_summary_match_memory_mode(db):
+    """The map layer and its register reconciliation are identical on both repositories."""
+    from app.api.v1 import facility_register_summary
+
+    with Session(db) as s:
+        pg_counts = PostgresReadRepository(s).facility_register_counts()
+    mem_counts = MemoryReadRepository().facility_register_counts()
+    assert sorted(pg_counts, key=repr) == sorted(mem_counts, key=repr)
+    api = client.get("/api/v1/facilities/points").json()
+    layers = ("hospitals", "health_centres", "clinics")
+    assert api["register"] == facility_register_summary(mem_counts, layers).model_dump(mode="json")
+    assert api["register"]["mappable"] == api["total"] == len(api["items"])
+
+
 def test_explanation_in_db_mode_is_audited_durably(db):
     resp = client.post("/api/v1/explanations", json={"patient_id": PID, "rule_id": RULE})
     assert resp.status_code == 200, resp.text

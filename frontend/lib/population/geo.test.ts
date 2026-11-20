@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
 import type { FacilityPointOut, MapAreaOut, PopulationAlertOut } from "@/lib/api/geo-types";
-import { areaMarkersGeoJSON, facilitiesGeoJSON, maxSeverityByArea, metricText, unmappedAreas } from "./geo";
+import {
+  areaMarkersGeoJSON,
+  coordinateText,
+  facilitiesGeoJSON,
+  facilityCountText,
+  geoQualityLabel,
+  maxSeverityByArea,
+  metricText,
+  periodLabel,
+  publishedServiceFlags,
+  sectorLabel,
+  suppressedLabels,
+  unmappedAreas,
+} from "./geo";
 
 const area = (id: string, extent: MapAreaOut["facility_point_extent"], alerts = 0, value: number | null = 10): MapAreaOut => ({
   area: { area_id: id, level: "local_area", parent_area_id: "AE-AZ-AD", name: id, region_id: 1 },
@@ -54,5 +67,38 @@ describe("population geo helpers", () => {
     expect(metricText("open_care_gaps", null)).toBe("—");
     expect(metricText("open_care_gaps", 0)).toBe("0");
     expect(metricText("preventive_coverage", 0.355)).toBe("35.5%");
+  });
+
+  it("labels periods, suppressed fields, coordinates and sectors honestly", () => {
+    expect(periodLabel("90d")).toBe("Last 90 days");
+    expect(periodLabel("1y")).toBe("Last 1 year");
+    expect(periodLabel("custom")).toBe("custom");
+    expect(periodLabel("")).toBeNull();
+    expect(suppressedLabels(["population", "open_care_gaps", "population", "disease.weird_field"])).toEqual([
+      "Registered population",
+      "Open care gaps",
+      "Disease weird field",
+    ]);
+    expect(coordinateText(24.123456, 54.9)).toBe("24.12346, 54.90000");
+    expect(coordinateText(null, 54.9)).toBeNull();
+    expect(sectorLabel(null)).toBe("Unknown");
+    expect(sectorLabel(true)).toBe("Public");
+    expect(sectorLabel(false)).toBe("Private");
+    expect(geoQualityLabel("swapped_repaired")).toMatch(/repaired/);
+    expect(geoQualityLabel(null)).toBe("—");
+  });
+
+  it("lists only published service flags (null = not published, omitted)", () => {
+    expect(
+      publishedServiceFlags({ emergency_department: true, pediatric_emergency_department: null, maternity_emergency_care: false, home_care_services: null, inpatient_bed_capacity: null })
+    ).toEqual([
+      ["Emergency department", "Yes"],
+      ["Maternity emergency", "No"],
+    ]);
+  });
+
+  it("describes the mapped share of the published register", () => {
+    expect(facilityCountText(1625)).toBe("1,625");
+    expect(facilityCountText(1625, { mappable: 1625, register_total: 2010 })).toBe("1,625 mapped of 2,010 published records");
   });
 });

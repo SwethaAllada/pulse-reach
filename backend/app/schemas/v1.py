@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from typing import Annotated
 
-from pydantic import BaseModel, Field, StringConstraints, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 # Accountable actor for every write (audit trail); blank values are rejected. In AUTH_MODE=users the
 # value is ignored and replaced by the authenticated user id (`app.core.auth.with_actor`); in
@@ -335,12 +335,27 @@ class FacilityPointOut(BaseModel):
     geo_quality: str
 
 
+class FacilityRegisterSummary(BaseModel):
+    """How the published register reconciles to the plotted points (exclusions applied in field order)."""
+
+    register_total: int
+    in_layers: int
+    excluded_unidentified: int
+    excluded_license_status: int
+    excluded_invalid_coordinates: int
+    mappable: int
+    license_statuses_included: list[str]
+
+
 class FacilityPointsOut(BaseModel):
     governance_notice: str
     source_layers: list[str]
     total: int
     excluded_without_coordinates: int
+    model_config = ConfigDict(populate_by_name=True)
+
     items: list[FacilityPointOut]
+    register_summary: FacilityRegisterSummary | None = Field(default=None, alias="register")
 
 
 class PaginatedFacilitiesOut(BaseModel):

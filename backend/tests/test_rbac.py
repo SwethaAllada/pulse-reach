@@ -68,6 +68,7 @@ MATRIX = [
     ("get", "/api/v1/rules", None, (200, 200, 200, 200, 403)),
     ("get", "/api/v1/open-questions", None, (200, 200, 200, 200, 403)),
     ("get", "/api/v1/facilities?limit=1", None, (200, 200, 200, 200, 200)),
+    ("get", "/api/v1/facilities/points?source_layer=hospitals", None, (200, 200, 200, 200, 200)),
     ("get", "/api/v1/care-gaps?limit=1", None, (403, 200, 200, 200, 403)),
     ("get", "/api/v1/care-gaps/{gap_a}", None, (403, 200, 200, 200, 403)),
     ("get", "/api/v1/care-gaps/{gap_a}/follow-ups", None, (403, 200, 200, 200, 403)),

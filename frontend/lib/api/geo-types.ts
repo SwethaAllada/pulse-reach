@@ -82,10 +82,55 @@ export interface FacilityPointOut {
   geo_quality: string;
 }
 
+/** How the published register reduces to the mappable subset (same filters as the directory). */
+export interface FacilityRegisterSummary {
+  /** Every published SDI record, all layers. */
+  register_total: number;
+  /** Records in the requested layers. */
+  in_layers: number;
+  excluded_unidentified: number;
+  excluded_license_status: number;
+  /** Missing, placeholder (0,0) or out-of-bounds coordinates (after the licence filter). */
+  excluded_invalid_coordinates: number;
+  /** Shown on the map and in the directory. */
+  mappable: number;
+  license_statuses_included: string[];
+}
+
 export interface FacilityPointsOut {
   governance_notice: string;
   source_layers: string[];
   total: number;
   excluded_without_coordinates: number;
+  register?: FacilityRegisterSummary;
   items: FacilityPointOut[];
+}
+
+/** `GET /facilities/{ch_fid}` — published SDI facts only (no hours, contacts or availability). */
+export interface FacilityDetailOut {
+  ch_fid: string | null;
+  facility_name: string | null;
+  facility_name_ar: string | null;
+  source_layer: string | null;
+  facility_type: string | null;
+  subtype: string | null;
+  category: string | null;
+  region_id: number | null;
+  city: string | null;
+  is_public: boolean | null;
+  license_status: string | null;
+  license_no: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  geo_quality: string | null;
+  has_insurance: boolean | null;
+  inpatient_bed_capacity: number | null;
+  specialities_raw: string | null;
+  emergency_department: boolean | null;
+  pediatric_emergency_department: boolean | null;
+  maternity_emergency_care: boolean | null;
+  home_care_services: boolean | null;
+  source_effective_date: string | null;
+  capability_basis: string;
+  governance_notice: string;
 }

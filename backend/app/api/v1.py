@@ -21,6 +21,7 @@ from app.repositories.followup_repo import (
     PostgresFollowUpRepository,
 )
 from app.repositories.read_repo import (
+    _USABLE_LICENSE_STATUSES,
     MemoryReadRepository,
     PostgresReadRepository,
     ReadRepository,
@@ -31,6 +32,7 @@ from app.repositories.read_repo import (
 from app.schemas.v1 import (
     FacilityPointOut,
     FacilityPointsOut,
+    FacilityRegisterSummary,
     AppointmentCreateIn,
     AppointmentOut,
     AppointmentPatchIn,
@@ -589,8 +591,38 @@ def list_facility_points(
                 region_id=f.region_id, city=f.city, is_public=f.is_public, license_status=f.license_status,
                 latitude=f.latitude, longitude=f.longitude, geo_quality=f.geo_quality,
             ))
+    register = facility_register_summary(repo.facility_register_counts(), layers)
     return FacilityPointsOut(governance_notice=_FACILITY_NOTICE_POINTS, source_layers=list(layers), total=len(items),
-                             excluded_without_coordinates=excluded, items=items)
+                             excluded_without_coordinates=excluded + register.excluded_invalid_coordinates,
+                             items=items, register=register)
+
+
+def facility_register_summary(
+    counts: list[tuple[str, str, str | None, str | None, int]], layers: tuple[str, ...]
+) -> FacilityRegisterSummary:
+    """Reconcile the full published register to the mappable rows of `layers`. Exclusions apply in order:
+    identity, licence status, coordinates (same criteria the repositories use to list facilities)."""
+    register_total = in_layers = unidentified = licence = coords = mappable = 0
+    statuses: set[str] = set()
+    for source_layer, identity_status, geo_quality, license_status_raw, n in counts:
+        register_total += n
+        if source_layer not in layers:
+            continue
+        in_layers += n
+        if identity_status != "identified":
+            unidentified += n
+        elif license_status_raw not in _USABLE_LICENSE_STATUSES:
+            licence += n
+        elif geo_quality != "ok":
+            coords += n
+        else:
+            mappable += n
+            statuses.add(license_status_raw)
+    return FacilityRegisterSummary(
+        register_total=register_total, in_layers=in_layers, excluded_unidentified=unidentified,
+        excluded_license_status=licence, excluded_invalid_coordinates=coords, mappable=mappable,
+        license_statuses_included=sorted(statuses),
+    )
 
 
 _FACILITY_NOTICE_POINTS = (

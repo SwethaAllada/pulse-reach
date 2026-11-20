@@ -208,6 +208,10 @@ class ReadRepository(Protocol):
         q: str | None = None,
     ) -> PaginatedFacilitiesOut: ...
     def get_facility(self, ch_fid: str) -> FacilityDetailOut | None: ...
+    def facility_register_counts(self) -> list[tuple[str, str, str | None, str | None, int]]:
+        """Grouped counts of ALL published facility rows (unfiltered):
+        (source_layer, identity_status, geo_quality, license_status_raw, count)."""
+        ...
     def list_open_questions(
         self, status: str | None = None, category: str | None = None
     ) -> PaginatedOpenQuestionsOut: ...
@@ -327,8 +331,8 @@ _USABLE_LICENSE_STATUSES = ("Active", "Temporary Closure")
 
 
 @lru_cache(maxsize=1)
-def get_cached_facilities() -> list[dict[str, Any]]:
-    """Usable SDI facility rows as published (no invented facilities if the files are absent)."""
+def get_cached_facility_rows() -> list[dict[str, Any]]:
+    """All parsed SDI facility rows as published, unfiltered (empty if the files are absent)."""
     root = repo_root()
     sdi_dir = root / "data" / "raw" / "abudhabi_sdi"
     if not (sdi_dir / "acquisition_log.json").exists():
@@ -338,9 +342,15 @@ def get_cached_facilities() -> list[dict[str, Any]]:
         layer: f"data/raw/abudhabi_sdi/{layer}.geojson" for layer in official_parse.SDI_LAYERS
     }
     fac_unit = official_parse.parse_facilities(root, sdi_to_region, file_rels)
+    return [{"facility_id": None, **r} for r in fac_unit.rows]
+
+
+@lru_cache(maxsize=1)
+def get_cached_facilities() -> list[dict[str, Any]]:
+    """Usable SDI facility rows as published (no invented facilities if the files are absent)."""
     return [
-        {"facility_id": None, **r}
-        for r in fac_unit.rows
+        r
+        for r in get_cached_facility_rows()
         if r["identity_status"] == "identified"
         and r["geo_quality"] == "ok"
         and r["license_status_raw"] in _USABLE_LICENSE_STATUSES
@@ -1476,6 +1486,13 @@ class MemoryReadRepository:
     def get_facility(self, ch_fid: str) -> FacilityDetailOut | None:
         row = next((r for r in get_cached_facilities() if r["ch_fid"] == ch_fid), None)
         return _facility_detail(row) if row is not None else None
+
+    def facility_register_counts(self) -> list[tuple[str, str, str | None, str | None, int]]:
+        counts: dict[tuple[str, str, str | None, str | None], int] = {}
+        for r in get_cached_facility_rows():
+            key = (r["source_layer"], r["identity_status"], r.get("geo_quality"), r.get("license_status_raw"))
+            counts[key] = counts.get(key, 0) + 1
+        return [(*k, n) for k, n in counts.items()]
 
     def list_open_questions(
         self, status: str | None = None, category: str | None = None
@@ -2736,6 +2753,14 @@ class PostgresReadRepository:
             workflow_events=workflow_events,
             reviews=reviews,
         )
+
+    def facility_register_counts(self) -> list[tuple[str, str, str | None, str | None, int]]:
+        cols = (Facility.source_layer, Facility.identity_status, Facility.geo_quality, Facility.license_status_raw)
+        try:
+            rows = self._session.execute(select(*cols, func.count()).group_by(*cols)).all()
+        except SQLAlchemyError as exc:
+            raise _db_query_failed(exc) from exc
+        return [(r[0], r[1], r[2], r[3], int(r[4])) for r in rows]
 
     def _facility_stmt(self):
         return select(Facility).where(

@@ -95,3 +95,78 @@ export function areaMarkersGeoJSON(areas: MapAreaOut[], severity: Map<string, Se
 export function unmappedAreas(areas: MapAreaOut[]): MapAreaOut[] {
   return areas.filter((a) => !a.representative_point);
 }
+
+/** Map response `period` ("90d", "12m", "1y") as a readable window; unknown codes are shown as-is. */
+export function periodLabel(period: string | null | undefined): string | null {
+  if (!period) return null;
+  const m = /^(\d+)\s*([dwmy])$/i.exec(period.trim());
+  if (!m) return period;
+  const n = Number(m[1]);
+  const unit = { d: "day", w: "week", m: "month", y: "year" }[m[2].toLowerCase() as "d" | "w" | "m" | "y"];
+  return `Last ${n} ${unit}${n === 1 ? "" : "s"}`;
+}
+
+const SUPPRESSED_FIELD_LABELS: Record<string, string> = {
+  population: "Registered population",
+  metric_value: "Selected measure",
+  open_care_gaps: "Open care gaps",
+  preventive_coverage: "Preventive coverage",
+  care_facilities: "Care facilities",
+  new_cases: "New diagnoses",
+  prevalence: "Prevalence",
+  disease: "Condition statistics",
+  "disease.new_cases": "New diagnoses",
+  "disease.prevalence": "Prevalence",
+};
+
+/** Friendly names for an area's suppressed fields (deduplicated, original order). */
+export function suppressedLabels(fields: string[]): string[] {
+  const out: string[] = [];
+  for (const f of fields) {
+    const label = SUPPRESSED_FIELD_LABELS[f] ?? f.replace(/[._]/g, " ").replace(/^./, (c) => c.toUpperCase());
+    if (!out.includes(label)) out.push(label);
+  }
+  return out;
+}
+
+/** "lat, lon" to 5 dp, or null when either coordinate is unpublished. */
+export function coordinateText(lat: number | null | undefined, lon: number | null | undefined): string | null {
+  if (lat === null || lat === undefined || lon === null || lon === undefined) return null;
+  return `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+}
+
+export function sectorLabel(isPublic: boolean | null | undefined): string {
+  if (isPublic === null || isPublic === undefined) return "Unknown";
+  return isPublic ? "Public" : "Private";
+}
+
+export function geoQualityLabel(q: string | null | undefined): string {
+  if (!q) return "—";
+  if (q === "swapped_repaired") return "Published coordinates were transposed and have been repaired";
+  if (q === "ok" || q === "valid") return "As published";
+  return q.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+}
+
+/** Published service flags that are present (null = not published → omitted). */
+export function publishedServiceFlags(d: {
+  emergency_department: boolean | null;
+  pediatric_emergency_department: boolean | null;
+  maternity_emergency_care: boolean | null;
+  home_care_services: boolean | null;
+  inpatient_bed_capacity: number | null;
+}): [string, string][] {
+  const yn = (v: boolean) => (v ? "Yes" : "No");
+  const rows: [string, string][] = [];
+  if (d.emergency_department !== null) rows.push(["Emergency department", yn(d.emergency_department)]);
+  if (d.pediatric_emergency_department !== null) rows.push(["Paediatric emergency", yn(d.pediatric_emergency_department)]);
+  if (d.maternity_emergency_care !== null) rows.push(["Maternity emergency", yn(d.maternity_emergency_care)]);
+  if (d.home_care_services !== null) rows.push(["Home care", yn(d.home_care_services)]);
+  if (d.inpatient_bed_capacity !== null) rows.push(["Inpatient beds", d.inpatient_bed_capacity.toLocaleString("en")]);
+  return rows;
+}
+
+/** Legend facility count: "<mappable> mapped of <register_total> published records" when the register summary exists. */
+export function facilityCountText(total: number, register?: { mappable: number; register_total: number } | null): string {
+  if (register) return `${register.mappable.toLocaleString("en")} mapped of ${register.register_total.toLocaleString("en")} published records`;
+  return total.toLocaleString("en");
+}

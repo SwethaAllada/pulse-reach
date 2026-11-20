@@ -264,3 +264,27 @@ Region-3 local areas (8–14 people) additionally demonstrate small-population h
 - Limitations: no boundaries or patient locations (no choropleth geometry, no distance); current
   denominators for historical prevalence; facility association by label only; threshold rules
   without statistical testing; polling only; synthetic, illustrative condition rates.
+
+## Facility dataset reconciliation (Phase 7 audit, 2026-11-20)
+
+Computed from `data/raw/abudhabi_sdi/*.geojson` with the loader (`official_parse.parse_facilities`):
+
+| Step | Count | Excluded |
+|---|---|---|
+| Published SDI register (9 layers) | 5,339 | — |
+| Care layers (hospitals 114, health centres 1,290, clinics 1,250) | 2,654 | 2,685 other layers (pharmacy 1,715, rehabilitation 434, …) |
+| Care layers with usable coordinates (`ok` 2,646 + `swapped_repaired` 4) | 2,650 | 4 (3 at `(0,0)`, 1 out of bounds) — the earlier "~2,650" figure |
+| Care layers, `identified`, `geo_quality = ok`, licence `Active` (repository filter) | **1,625** | 1,028 non-`Active` licences, 1 `Active` clinic at `(0,0)` |
+
+- `/facilities/points` (map **and** directory) = 1,625: hospitals 71, health centres 808, clinics 746;
+  regions 1/2/3 = 979/461/185. The directory and the map use the same subset.
+- The repository filter (`_USABLE_LICENSE_STATUSES = ("Active", "Temporary Closure")` in `read_repo.py`
+  and `population/facts.py`) never matches its second value: the register publishes `Temporary Closed` (73
+  rows, 41 in care layers). The effective policy is therefore **Active only**. Not changed — licence policy
+  is decision D13 (open); including `Temporary Closed` would add facilities that may not be operating.
+- The repository already drops unusable geometry and `swapped_repaired` rows (no `Active` care facility
+  needed repair). `/facilities/points` therefore reports the reduction from the unfiltered register in
+  `register` (`register_total`, `in_layers`, `excluded_unidentified`, `excluded_license_status`,
+  `excluded_invalid_coordinates`, `mappable`, `license_statuses_included`), computed from
+  `facility_register_counts()` in both repositories; `excluded_without_coordinates` is now 1 (was always 0).
+  The directory shows "Published register" (5,339) and "Listed & mapped" (1,625) separately.

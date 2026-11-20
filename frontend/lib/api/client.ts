@@ -366,6 +366,7 @@ export const api = {
     apiGet<G.MapOut>("/population/map", { period: "90d", limit: 500, ...query }, signal),
   populationAlerts: (signal?: AbortSignal) => apiGet<G.AlertsOut>("/population/alerts", { active_only: true, limit: 200 }, signal),
   facilityPoints: (signal?: AbortSignal) => apiGet<G.FacilityPointsOut>("/facilities/points", {}, signal),
+  facilityDetail: (chFid: string, signal?: AbortSignal) => apiGet<G.FacilityDetailOut>(`/facilities/${enc(chFid)}`, {}, signal),
 };
 
 const enc = encodeURIComponent;

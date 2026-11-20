@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { Map as MlMap, StyleSpecification, GeoJSONSource, Popup } from "maplibre-gl";
+import type { Map as MlMap, StyleSpecification, GeoJSONSource } from "maplibre-gl";
 import type { FacilityPointOut, MapAreaOut, Severity } from "@/lib/api/geo-types";
 import { FACILITY_LAYER_META, SEVERITY_META, areaMarkersGeoJSON, facilitiesGeoJSON } from "@/lib/population/geo";
 
@@ -149,7 +149,26 @@ function addDataLayers(map: MlMap) {
     },
     paint: { "text-color": token("--text-primary"), "text-halo-color": token("--map-label-halo"), "text-halo-width": 1.6 },
   });
+  // Selected facility: a ring at its published coordinates, drawn above the area markers so a
+  // deep-linked facility stays visible. Re-added here so it survives theme restyles.
+  map.addLayer({
+    id: "facility-selected",
+    type: "circle",
+    source: "facilities",
+    filter: ["==", ["get", "ch_fid"], ""],
+    paint: {
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 7, 6, 12, 10, 15, 13],
+      "circle-color": "transparent",
+      "circle-stroke-color": token("--map-selected"),
+      "circle-stroke-width": 3,
+    },
+  });
 }
+
+const MAP_FALLBACK = "The base map could not be loaded. Facility and area data are still listed.";
+const OFFLINE_FALLBACK = "You appear to be offline, so the base map could not be loaded. Facility and area data are still listed.";
+/** Network-level failures (style, TileJSON, glyphs or tiles), not data or rendering bugs. */
+const NETWORK_ERROR = /Failed to fetch|NetworkError|Load failed|AJAXError|ERR_INTERNET_DISCONNECTED|ERR_NAME_NOT_RESOLVED/i;
 
 export interface MapCanvasProps {
   areas: MapAreaOut[];
@@ -159,8 +178,11 @@ export interface MapCanvasProps {
   showFacilities: boolean;
   showAlerts: boolean;
   selectedId: string | null;
+  /** `ch_fid` of the selected facility (ringed and flown to). */
+  selectedFacilityId?: string | null;
   theme: string;
   onSelect: (areaId: string | null) => void;
+  onSelectFacility?: (chFid: string) => void;
   onError: (message: string) => void;
 }
 
@@ -173,27 +195,42 @@ export default function MapCanvas(props: MapCanvasProps) {
   const map = useRef<MlMap | null>(null);
   const ready = useRef(false);
   const latest = useRef(props);
-  const popup = useRef<Popup | null>(null);
+  /** Whether the map has fired `load` (later tile hiccups don't replace the whole map). */
+  const loaded = useRef(false);
   /** Theme the current basemap style was built for. */
   const styledFor = useRef<string | null>(null);
   useEffect(() => {
     latest.current = props;
   });
 
+  /** Facility GeoJSON (~1,600 points) is only re-sent when the `facilities` array changes. */
+  const syncFacilities = () => {
+    const m = map.current;
+    if (!m || !ready.current) return;
+    (m.getSource("facilities") as GeoJSONSource | undefined)?.setData(facilitiesGeoJSON(latest.current.facilities) as never);
+  };
+
   const sync = () => {
     const m = map.current;
     if (!m || !ready.current) return;
     const p = latest.current;
     (m.getSource("areas") as GeoJSONSource | undefined)?.setData(areaMarkersGeoJSON(p.areas, p.severity, p.metric) as never);
-    (m.getSource("facilities") as GeoJSONSource | undefined)?.setData(facilitiesGeoJSON(p.facilities) as never);
     m.setFilter("area-selected", ["==", ["get", "area_id"], p.selectedId ?? ""]);
+    m.setFilter("facility-selected", ["==", ["get", "ch_fid"], p.selectedFacilityId ?? ""]);
     for (const id of ["area-halo", "area-core", "area-selected", "area-labels"]) m.setLayoutProperty(id, "visibility", p.showAlerts ? "visible" : "none");
-    m.setLayoutProperty("facilities", "visibility", p.showFacilities ? "visible" : "none");
+    // A selected facility keeps the facility layer visible.
+    const facilitiesVisible = p.showFacilities || Boolean(p.selectedFacilityId);
+    m.setLayoutProperty("facilities", "visibility", facilitiesVisible ? "visible" : "none");
+    m.setLayoutProperty("facility-selected", "visibility", p.selectedFacilityId ? "visible" : "none");
   };
 
   useEffect(() => {
     let cancelled = false;
     let hovered: string | number | null = null;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      latest.current.onError(OFFLINE_FALLBACK);
+      return;
+    }
     import("maplibre-gl")
       .then((ml) => {
         if (cancelled || !el.current) return;
@@ -213,18 +250,31 @@ export default function MapCanvas(props: MapCanvasProps) {
         m.addControl(new ml.ScaleControl({ unit: "metric" }), "bottom-left");
         styledFor.current = latest.current.theme;
         m.on("load", () => {
+          loaded.current = true;
           addDataLayers(m);
           ready.current = true;
+          syncFacilities();
           sync();
           restyle();
           frame();
         });
         m.on("error", (e) => {
-          const msg = String(e.error?.message ?? "");
-          if (/Failed to fetch|NetworkError|tiles|style/i.test(msg)) latest.current.onError("The base map could not be loaded. Facility and area data are still listed.");
+          const err = e.error as (Error & { status?: number; name?: string }) | undefined;
+          const msg = `${err?.name ?? ""} ${err?.message ?? ""}`;
+          // Only network failures before the first load (style, TileJSON, first tiles) replace the map;
+          // individual tile errors afterwards leave the working map in place.
+          if (loaded.current) return;
+          if (NETWORK_ERROR.test(msg) || (typeof navigator !== "undefined" && navigator.onLine === false)) latest.current.onError(MAP_FALLBACK);
         });
-        m.on("click", "area-halo", (e) => {
-          const id = e.features?.[0]?.properties?.area_id as string | undefined;
+        // One click handler: a facility under the pointer wins over the (larger) area halo.
+        m.on("click", (e) => {
+          if (!ready.current) return;
+          const layers = ["facilities", "area-halo"].filter((id) => m.getLayer(id));
+          const hits = m.queryRenderedFeatures(e.point, { layers });
+          const facility = hits.find((f) => f.layer.id === "facilities");
+          const fid = facility?.properties?.ch_fid as string | undefined;
+          if (fid) return latest.current.onSelectFacility?.(fid);
+          const id = hits.find((f) => f.layer.id === "area-halo")?.properties?.area_id as string | undefined;
           if (id) latest.current.onSelect(id);
         });
         m.on("mousemove", "area-halo", (e) => {
@@ -242,48 +292,23 @@ export default function MapCanvas(props: MapCanvasProps) {
           m.on("mouseenter", id, () => (m.getCanvas().style.cursor = "pointer"));
           m.on("mouseleave", id, () => (m.getCanvas().style.cursor = ""));
         }
-        m.on("click", "facilities", (e) => {
-          const f = e.features?.[0];
-          if (!f) return;
-          const p = f.properties as Record<string, string | boolean>;
-          const body = document.createElement("div");
-          body.className = "text-xs";
-          const title = document.createElement("p");
-          title.className = "font-semibold text-foreground";
-          title.textContent = String(p.name);
-          const meta = document.createElement("p");
-          meta.className = "mt-0.5 text-muted";
-          meta.textContent = [FACILITY_LAYER_META[String(p.layer)]?.label ?? p.type, p.city, p.is_public === "unknown" ? null : p.is_public, p.license]
-            .filter(Boolean)
-            .join(" · ");
-          body.append(title, meta);
-          if (p.repaired) {
-            const note = document.createElement("p");
-            note.className = "mt-1 text-faint";
-            note.textContent = "Published coordinates were transposed and have been repaired.";
-            body.append(note);
-          }
-          popup.current?.remove();
-          popup.current = new ml.Popup({ closeButton: true, maxWidth: "260px", className: "pr-popup" })
-            .setLngLat((f.geometry as unknown as { coordinates: [number, number] }).coordinates)
-            .setDOMContent(body)
-            .addTo(m);
-        });
       })
       .catch(() => latest.current.onError("The interactive map could not start in this browser. Facility and area data are still listed."));
     return () => {
       cancelled = true;
-      popup.current?.remove();
       map.current?.remove();
       map.current = null;
       ready.current = false;
+      loaded.current = false;
     };
     // One map per mount; handlers read the latest props through refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Data / layer visibility changes.
-  useEffect(sync, [props.areas, props.metric, props.severity, props.facilities, props.showAlerts, props.showFacilities, props.selectedId]);
+  // Facility points: only when the array changes (selection changes don't re-send ~1,600 points).
+  useEffect(syncFacilities, [props.facilities]);
+  // Area data, selection and layer visibility.
+  useEffect(sync, [props.areas, props.metric, props.severity, props.showAlerts, props.showFacilities, props.selectedId, props.selectedFacilityId]);
 
   // Theme change: rebuild the recoloured style, then re-add the data layers. A change while the
   // map is still loading is applied by the load handler.
@@ -296,19 +321,27 @@ export default function MapCanvas(props: MapCanvasProps) {
     m.once("style.load", () => {
       addDataLayers(m);
       ready.current = true;
+      syncFacilities();
       sync();
     });
     m.setStyle(baseStyle(), { diff: false });
   }
   useEffect(restyle, [props.theme]);
 
-  // Fly to the selected area's representative point; otherwise frame the mapped area markers
-  // (the emirate when there are none). Also run once the map has loaded.
+  // Fly to the selected facility's published point or the selected area's representative point;
+  // otherwise frame the mapped area markers (the emirate when there are none). Also run once the
+  // map has loaded.
   function frame() {
     const m = map.current;
     if (!m) return;
-    const { areas, selectedId } = latest.current;
+    const { areas, selectedId, selectedFacilityId, facilities } = latest.current;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (selectedFacilityId) {
+      const f = facilities.find((p) => p.ch_fid === selectedFacilityId);
+      if (f) m.flyTo({ center: [f.longitude, f.latitude], zoom: Math.max(m.getZoom(), 13), duration: reduce ? 0 : 800 });
+      // Not (yet) among the loaded points: leave the view; the panel explains.
+      return;
+    }
     const pt = areas.find((a) => a.area.area_id === selectedId)?.representative_point;
     if (pt) {
       m.flyTo({ center: [pt.longitude, pt.latitude], zoom: Math.max(m.getZoom(), 11), duration: reduce ? 0 : 800 });
@@ -323,7 +356,18 @@ export default function MapCanvas(props: MapCanvasProps) {
       : EMIRATE_BOUNDS;
     m.fitBounds(bounds, { padding: 80, maxZoom: 11.5, duration: reduce ? 0 : 700 });
   }
-  useEffect(frame, [props.selectedId, props.areas]);
+  // `facilities` only matters for a facility deep link that arrives before the points do.
+  const frameFacilities = props.selectedFacilityId ? props.facilities : null;
+  useEffect(frame, [props.selectedId, props.areas, props.selectedFacilityId, frameFacilities]);
 
-  return <div ref={el} role="region" aria-label="Map of Abu Dhabi Emirate with care facilities and approximate area markers" className="h-full w-full" />;
+  // The canvas and MapLibre controls are never mirrored in RTL.
+  return (
+    <div
+      ref={el}
+      dir="ltr"
+      role="region"
+      aria-label="Map of Abu Dhabi Emirate with care facilities and approximate area markers"
+      className="h-full w-full"
+    />
+  );
 }
