@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import copy
 import dataclasses
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 from fastapi import HTTPException
@@ -455,7 +455,8 @@ def test_api_rejects_non_completed_screening_for_same_rule(status):
     ("performed", "reason"),
     [
         (None, "evidence_date_missing"),
-        (date(2026, 11, 20), "evidence_date_in_future"),
+        # Future = after the documentation date (today), not merely after the evaluation run.
+        (datetime.now(timezone.utc).date() + timedelta(days=1), "evidence_date_in_future"),
         (date(2025, 6, 1), "evaluation_not_completed"),
     ],
 )
@@ -810,3 +811,55 @@ def test_pg_repo_valid_completion_duplicate_and_historical_evaluation(pg_session
     assert api_after.superseded_by_completion is True
     assert api_after.superseded_by_care_gap_id == F01_VISION_GAP
     assert next(g for g in evals.care_gaps if g.care_gap_id == F01_VISION_GAP).status == "closed_completed"
+
+
+# --- Evidence recorded after the evaluation run (browser QA blocker B) ------------------------
+
+
+def _utc_today() -> date:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).date()
+
+
+def test_api_referral_completed_through_the_app_after_the_run_closes_the_gap():
+    """The app stamps a completed referral with today's date (after the 2026-11-16 run). The rule is
+    re-evaluated as of the documentation date, so valid evidence closes the gap."""
+    assert _utc_today() > REF_DATE
+    today = _utc_today().isoformat()  # what the coordination UI sends
+    assert client.patch(f"/api/v1/referrals/{REFERRAL_ID}", json={
+        "status": "initiated", "initiated_date": today, "recorded_by": "t"}).status_code == 200
+    assert client.patch(f"/api/v1/referrals/{REFERRAL_ID}", json={
+        "status": "completed", "completed_date": today, "recorded_by": "t"}).status_code == 200
+    ok = client.post(f"/api/v1/care-gaps/{REFERRAL_GAP}/follow-ups", json=_close_body(REFERRAL_ID))
+    assert ok.status_code == 201, ok.text
+    gap = _gap(REFERRAL_GAP)
+    assert (gap["status"], gap["closed_by_referral_id"], gap["closed_date"]) == ("closed_completed", REFERRAL_ID, _utc_today())
+
+
+def test_api_evidence_dated_after_today_is_still_rejected():
+    from datetime import timedelta
+
+    tomorrow = _utc_today() + timedelta(days=1)
+    r = client.patch(f"/api/v1/referrals/{REFERRAL_ID}", json={
+        "status": "completed", "completed_date": tomorrow.isoformat(), "recorded_by": "t"})
+    if r.status_code == 422:  # the referral API itself refuses a future completion date: also safe
+        return
+    assert r.status_code == 200, r.text
+    before = copy.deepcopy(_gap(REFERRAL_GAP))
+    resp = client.post(f"/api/v1/care-gaps/{REFERRAL_GAP}/follow-ups", json=_close_body(REFERRAL_ID))
+    assert resp.status_code == 422 and "evidence_date_in_future" in resp.json()["detail"]
+    _assert_gap_untouched(REFERRAL_GAP, before)
+
+
+def test_completion_as_of_advances_only_for_evidence_after_the_run():
+    from app.services.followup.completion import completion_as_of
+
+    ev = lambda d: CompletionEvidence(kind="referral", evidence_id="E", patient_id="P", rule_id="R",  # noqa: E731
+                                      rule_version="1", status="completed", evidence_date=d)
+    today = date(2026, 11, 20)
+    assert completion_as_of(REF_DATE, ev(date(2026, 10, 1)), today=today) == REF_DATE
+    assert completion_as_of(REF_DATE, ev(None), today=today) == REF_DATE
+    assert completion_as_of(REF_DATE, None, today=today) == REF_DATE
+    assert completion_as_of(REF_DATE, ev(date(2026, 11, 19)), today=today) == today
+    assert completion_as_of(REF_DATE, ev(date(2026, 11, 25)), today=today) == today  # then rejected as future

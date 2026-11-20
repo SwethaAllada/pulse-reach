@@ -271,7 +271,7 @@ export function AssignmentsAdmin() {
   const [attempt, setAttempt] = useState(0);
   const bump = () => setAttempt((n) => n + 1);
   const list = useResource(`asg|${activeOnly}|${page}|${attempt}`, "assignments.manage", (s) => adminApi.assignments({ active_only: activeOnly, limit: PAGE, offset: (page - 1) * PAGE }, s), attempt);
-  const staff = useResource(`asg-staff|${attempt}`, "users.read", (s) => adminApi.users({ limit: 200, offset: 0 }, s).then((p) => p.items.filter((u) => u.role !== "PATIENT")), attempt);
+  const staff = useResource(`asg-staff|${attempt}`, "assignments.manage", (s) => adminApi.assignableStaff(s), attempt);
   const names = new Map(staff.status === "ready" ? staff.data.map((u) => [u.user_id, u.full_name]) : []);
   const [form, setForm] = useState({ staff: "", patient: "" });
   const w = useWrite(bump);

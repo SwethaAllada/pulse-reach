@@ -14,6 +14,8 @@ function backend(method: string, path: string, body: unknown): unknown {
   if (path === "/admin/users" && method === "POST")
     return { member: { ...MEMBERS[1], user_id: "U-NEW", full_name: "New Person" }, activation: { purpose: "activation", token: "ACT-123", expires_at: "2099-01-01T00:00:00Z", delivery: "out_of_band" } };
   if (path.startsWith("/admin/users/") && method === "PATCH") return { ...MEMBERS[1], ...(body as object) };
+  if (path === "/admin/assignments/staff" && method === "GET")
+    return { items: [{ user_id: "U-COORD", full_name: "Cora Coordinator", role: "CARE_COORDINATOR" }] };
   if (path === "/admin/assignments" && method === "GET") return { total: 0, limit: 25, offset: 0, items: [] };
   if (path === "/admin/assignments" && method === "POST") return { assignment_id: "AS1", organization_id: "O", staff_user_id: "U-COORD", patient_id: "SYNTH-PAT-1", is_active: true, created_at: "2026-11-20T00:00:00Z", created_by: "U-ADMIN" };
   if (path === "/audit-events")
@@ -72,6 +74,7 @@ describe("Administration", () => {
     fireEvent.change(within(form).getByLabelText("Synthetic patient ID"), { target: { value: "SYNTH-PAT-1" } });
     fireEvent.click(within(form).getByRole("button", { name: /Assign/ }));
     await waitFor(() => expect(calls.find((c) => c.method === "POST")?.body).toEqual({ staff_user_id: "U-COORD", patient_id: "SYNTH-PAT-1" }));
+    expect(calls.some((c) => c.path === "/admin/users")).toBe(false);
   });
 
   it("shows denied events and filters the audit log by outcome", async () => {

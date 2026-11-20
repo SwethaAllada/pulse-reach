@@ -74,6 +74,7 @@ from app.services.followup import (
     CompletionEvidence,
     FollowUpService,
     FollowUpValidationError,
+    completion_as_of,
     evaluate_current_rule,
 )
 
@@ -509,7 +510,7 @@ class MemoryFollowUpRepository:
                 if ref is not None
                 else None
             )
-            as_of = ds.evaluation_run["reference_date"]
+            as_of = completion_as_of(ds.evaluation_run["reference_date"], evidence)
             result = self._svc.validate_completion_evidence(
                 gap=gap,
                 rule=rule,
@@ -1210,19 +1211,20 @@ class PostgresFollowUpRepository:
                     if row is not None:
                         evidence = factory(self._row_dict(row))
                         break
+                as_of = completion_as_of(er.reference_date, evidence)
                 result = self._svc.validate_completion_evidence(
                     gap=self._row_dict(gap),
                     rule=rule_dict,
                     evidence=evidence,
                     documented_evidence=req.documented_evidence,
                     evidence_reference=req.evidence_reference,
-                    as_of=er.reference_date,
+                    as_of=as_of,
                     current_evaluation=evaluate_current_rule(
                         get_cached_engine(),
                         PostgresReadRepository(self._session).get_patient_context(gap.patient_id),
                         rule_id=gap.rule_id,
                         rule_version=gap.rule_version,
-                        as_of=er.reference_date,
+                        as_of=as_of,
                         look_ahead_days=er.look_ahead_days,
                     ),
                 )
@@ -1230,7 +1232,7 @@ class PostgresFollowUpRepository:
                     raise HTTPException(status_code=422, detail=result.message)
                 setattr(gap, result.closed_by_field, result.evidence_id)
                 gap.status = "closed_completed"
-                gap.closed_date = er.reference_date
+                gap.closed_date = as_of
                 outcome_status = "completed"
 
             if req.event_type == "outreach_attempted":

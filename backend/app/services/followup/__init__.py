@@ -3,6 +3,7 @@
 from app.services.followup.completion import (
     CompletionEvidence,
     CompletionValidationResult,
+    completion_as_of,
     evaluate_current_rule,
     validate_completion_evidence,
 )
@@ -13,6 +14,7 @@ __all__ = [
     "CompletionValidationResult",
     "FollowUpService",
     "FollowUpValidationError",
+    "completion_as_of",
     "evaluate_current_rule",
     "validate_completion_evidence",
 ]

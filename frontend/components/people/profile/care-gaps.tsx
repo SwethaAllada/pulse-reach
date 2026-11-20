@@ -17,6 +17,11 @@ import {
   type TraceItem,
 } from "@/lib/people/person";
 import { useRuleDetail, type PersonProfileData } from "@/lib/people/use-people-data";
+import { api } from "@/lib/api/client";
+import { useAuth } from "@/lib/auth/auth-context";
+import { useMutation } from "@/lib/coordination/use-coordination";
+import { buttonClass } from "@/components/ui/button-styles";
+import { Confirmation, FormError, inputClass, labelClass } from "@/components/coordination/primitives";
 import { cn } from "@/lib/cn";
 import { ProfileSection, UnavailableNote } from "./profile-section";
 
@@ -33,6 +38,8 @@ export function CareGapsSection({
   const open = gaps.filter((g) => gapStatusMeta(g.status).isOpen);
   const closed = gaps.filter((g) => !gapStatusMeta(g.status).isOpen);
   const byGap = new Map(pathways.map((p) => [p.gap.care_gap_id, p]));
+  /* Kept here: a documented completion closes the gap, so its card moves to the closed group and remounts. */
+  const [documented, setDocumented] = useState<{ gapId: string; evidence: string } | null>(null);
 
   return (
     <ProfileSection
@@ -40,6 +47,15 @@ export function CareGapsSection({
       title="Care Gaps"
       description="Care-gap records produced by the deterministic engine for this person. Only “Closed — completed” means a service was documented as done."
     >
+      {documented && (
+        <div className="mb-4">
+          <Confirmation>
+            Completion documented on <span className="font-mono">{documented.gapId}</span> with evidence{" "}
+            <span className="font-mono">{documented.evidence}</span>. The engine re-checked the rule; a linked follow-up is completed from
+            its task page.
+          </Confirmation>
+        </div>
+      )}
       {gaps.length === 0 ? (
         <p className="rounded-md border border-dashed border-border-strong px-4 py-3 text-sm text-muted">
           No care-gap records for this person in evaluation run {data.evaluations.evaluation_run_id}. This does not mean every
@@ -60,7 +76,7 @@ export function CareGapsSection({
                   <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                     {group.list.map((g) => (
                       <li key={g.care_gap_id}>
-                        <GapCard gap={g} data={data} pathway={byGap.get(g.care_gap_id)} onTrace={onTrace} />
+                        <GapCard gap={g} data={data} pathway={byGap.get(g.care_gap_id)} onTrace={onTrace} onDocumented={setDocumented} />
                       </li>
                     ))}
                   </ul>
@@ -78,11 +94,13 @@ function GapCard({
   data,
   pathway,
   onTrace,
+  onDocumented,
 }: {
   gap: CareGapOut;
   data: PersonProfileData;
   pathway: PathwayEntry | undefined;
   onTrace: (evaluationId: string) => void;
+  onDocumented: (done: { gapId: string; evidence: string }) => void;
 }) {
   const rule = data.rules.get(gap.rule_id);
   const status = gapStatusMeta(gap.status);
@@ -148,7 +166,69 @@ function GapCard({
       >
         <ArrowDownRight size={13} aria-hidden="true" /> Trace the evidence for this gap
       </button>
+      {status.isOpen && <DocumentCompletion gap={gap} onDocumented={onDocumented} />}
     </Surface>
+  );
+}
+
+/**
+ * Documented completion on the care gap itself (`care_gaps.complete`): clinicians record evidence
+ * without follow-up management rights. The backend re-runs the gap's rule on the cited record and
+ * refuses mismatched or future evidence; a linked follow-up is completed from its task page.
+ */
+function DocumentCompletion({ gap, onDocumented }: { gap: CareGapOut; onDocumented: (done: { gapId: string; evidence: string }) => void }) {
+  const { can } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [evidence, setEvidence] = useState("");
+  const [note, setNote] = useState("");
+  const { run, pending, error } = useMutation();
+  if (!can("care_gaps.complete")) return null;
+  if (!open)
+    return (
+      <button type="button" className={buttonClass("secondary", "mt-3 self-start")} onClick={() => setOpen(true)}>
+        Document completion
+      </button>
+    );
+  return (
+    <form
+      aria-label={`Document completion for ${gap.care_gap_id}`}
+      className="mt-3 flex flex-col gap-3 border-t border-border pt-3"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const out = await run(() =>
+          api.createCareGapFollowUp(gap.care_gap_id, {
+            event_type: "completion_documented",
+            close_gap: true,
+            documented_evidence: true,
+            evidence_reference: evidence.trim(),
+            note: note.trim() || null,
+          })
+        );
+        if (out) {
+          setOpen(false);
+          onDocumented({ gapId: gap.care_gap_id, evidence: evidence.trim() });
+        }
+      }}
+    >
+      <label className={labelClass}>
+        Evidence record ID
+        <input className={`${inputClass} font-mono`} required value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder="SYNTH-SCR-… / SYNTH-VIS-… / SYNTH-REF-…" />
+        <span className="normal-case tracking-normal text-faint">The completed record must belong to this person and satisfy the gap’s rule.</span>
+      </label>
+      <label className={labelClass}>
+        Note (internal)
+        <input className={inputClass} value={note} onChange={(e) => setNote(e.target.value)} />
+      </label>
+      <FormError message={error} />
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" className={buttonClass("primary")} disabled={pending || !evidence.trim()}>
+          {pending ? "Checking evidence…" : "Document completion and close"}
+        </button>
+        <button type="button" className={buttonClass("quiet")} onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }
 

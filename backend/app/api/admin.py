@@ -19,6 +19,8 @@ from app.models.identity import Membership, Organization, PatientAssignment, Pat
 from app.repositories.read_repo import ReadRepository
 from app.schemas.identity import (
     AccountStatusOut,
+    AssignableStaffListOut,
+    AssignableStaffOut,
     AssignmentIn,
     AssignmentOut,
     AuditEventOut,
@@ -272,6 +274,16 @@ def list_assignments(
                                                  limit=limit, offset=offset)
         items = [_assignment_out(a) for a in rows]
     return PaginatedAssignmentsOut(total=total, limit=limit, offset=offset, items=items)
+
+
+@router.get("/admin/assignments/staff", response_model=AssignableStaffListOut)
+def list_assignable_staff(p: Principal = Depends(require("assignments.manage"))) -> AssignableStaffListOut:
+    """Staff of the caller's organization who can be assigned patients (id, name, role only), for the
+    assignment workflow. Unlike `/admin/users` (users.read) it exposes no account administration data."""
+    with identity_session() as s:
+        items = [AssignableStaffOut(user_id=u.user_id, full_name=u.full_name, role=m.role)
+                 for u, m in directory.assignable_staff(s, _org(p))]
+    return AssignableStaffListOut(items=items)
 
 
 @router.post("/admin/assignments", response_model=AssignmentOut, status_code=201)

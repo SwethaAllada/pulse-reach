@@ -1344,6 +1344,14 @@ def generate_synthetic_dataset(
             }
         )
 
+    # Demo journey (browser QA): scenario 9 (pending referral SYNTH-REF-000001 behind an open
+    # referral_not_initiated gap) also grants contact, so one person carries the whole workflow:
+    # contact attempt, simulated outreach, referral progression and documented completion.
+    # Added after every patient so existing consent ids and random streams are unchanged; contact
+    # consent does not affect any evaluation.
+    if total_patients >= 9:
+        _add_consent(_next_id("PAT", 9), consent_type="contact", state="granted", scope_pathway="ifhas")
+
     condition_records = generate_condition_records(
         patients, reference_date=reference_date, run_id=run_id, seed=seed
     )

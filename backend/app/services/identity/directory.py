@@ -254,6 +254,19 @@ def release_patients(session: Session, *, organization_id: str, patient_ids: Ite
 # --- assignments -------------------------------------------------------------------------
 
 
+def assignable_staff(session: Session, organization_id: str) -> list[tuple[UserAccount, Membership]]:
+    """Active staff of the organization who may hold patient assignments (same rule as
+    `create_assignment`: active account and membership, role in STAFF_ROLES)."""
+    rows = session.execute(
+        select(UserAccount, Membership)
+        .join(Membership, Membership.user_id == UserAccount.user_id)
+        .where(Membership.organization_id == organization_id, Membership.is_active, UserAccount.is_active,
+               Membership.role.in_([r.value for r in STAFF_ROLES]))
+        .order_by(UserAccount.full_name)
+    ).all()
+    return [(u, m) for u, m in rows]
+
+
 def create_assignment(
     session: Session, *, organization_id: str, staff_user_id: str, patient_id: str, created_by: str
 ) -> PatientAssignment:

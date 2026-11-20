@@ -94,6 +94,7 @@ MATRIX = [
     ("get", "/api/v1/admin/users", None, (200, 403, 403, 403, 403)),
     ("get", "/api/v1/admin/organizations", None, (200, 403, 403, 403, 403)),
     ("get", "/api/v1/admin/assignments", None, (200, 200, 403, 403, 403)),
+    ("get", "/api/v1/admin/assignments/staff", None, (200, 200, 403, 403, 403)),
     ("get", "/api/v1/admin/patient-links", None, (200, 403, 403, 403, 403)),
     ("get", "/api/v1/audit-events", None, (200, 403, 403, 403, 403)),
     ("get", "/api/v1/follow-up-tasks", None, (403, 200, 200, 200, 403)),
@@ -224,3 +225,48 @@ def test_frontend_role_fixture_matches_the_backend_matrix():
         pytest.skip("frontend fixtures are not part of this checkout")
     expected = {r.value: sorted(permissions_for(r.value, a)) for r, a in DEFAULT_PATIENT_ACCESS.items()}
     assert json.loads(fixture.read_text()) == expected
+
+
+def test_assignment_staff_directory_is_minimal_scoped_and_eligible_only(world):
+    """`GET /admin/assignments/staff` (assignments.manage): who can be assigned patients, nothing more."""
+    r = client.get("/api/v1/admin/assignments/staff", headers=world.h("phm_a"))
+    assert r.status_code == 200, r.text
+    items = r.json()["items"]
+    assert items and all(set(i) == {"user_id", "full_name", "role"} for i in items)
+    ids = {i["user_id"] for i in items}
+    assert {world.users[a] for a in ("phm_a", "cc_a", "clin_a")} <= ids
+    # Never: administrators or patients (not assignable), other organizations' staff.
+    assert not ids & {world.users[a] for a in ("admin_a", "patient_a", "admin_b", "phm_b", "cc_b")}
+    assert {i["role"] for i in items} <= {"POPULATION_HEALTH_MANAGER", "CARE_COORDINATOR", "CLINICIAN"}
+    assert "@" not in r.text  # no e-mail addresses
+    # Organization B sees only its own staff.
+    ids_b = {i["user_id"] for i in client.get("/api/v1/admin/assignments/staff", headers=world.h("phm_b")).json()["items"]}
+    assert world.users["cc_b"] in ids_b and not ids_b & ids
+    # Deactivated staff drop out of the directory.
+    assert client.post(f"/api/v1/admin/users/{world.users['clin_a']}/deactivate", headers=world.h("admin_a")).status_code == 200
+    after = {i["user_id"] for i in client.get("/api/v1/admin/assignments/staff", headers=world.h("phm_a")).json()["items"]}
+    assert world.users["clin_a"] not in after
+
+
+def test_manager_gets_assignment_staff_but_not_user_administration(world):
+    h = world.h("phm_a")
+    assert client.get("/api/v1/admin/assignments/staff", headers=h).status_code == 200
+    assert client.get("/api/v1/admin/users", headers=h).status_code == 403
+    assert client.get(f"/api/v1/admin/users/{world.users['cc_a']}", headers=h).status_code == 403
+    assert "users.read" not in permissions_for("POPULATION_HEALTH_MANAGER", "organization")
+    admin = world.h("admin_a")
+    assert client.get("/api/v1/admin/users?limit=200", headers=admin).status_code == 200
+    assert client.get("/api/v1/admin/assignments/staff", headers=admin).status_code == 200
+
+
+def test_assignments_still_validate_assignees(world):
+    h = world.h("phm_a")
+    ok = client.post("/api/v1/admin/assignments", headers=h,
+                     json={"staff_user_id": world.users["clin_a"], "patient_id": world.pid_a_unassigned})
+    assert ok.status_code == 201, ok.text
+    for alias in ("admin_a", "patient_a"):  # listed nowhere in the directory, refused by the API too
+        r = client.post("/api/v1/admin/assignments", headers=h,
+                        json={"staff_user_id": world.users[alias], "patient_id": world.pid_a_unassigned})
+        assert r.status_code == 422, (alias, r.text)
+    end = client.post(f"/api/v1/admin/assignments/{ok.json()['assignment_id']}/end", headers=h)
+    assert end.status_code == 200 and end.json()["is_active"] is False

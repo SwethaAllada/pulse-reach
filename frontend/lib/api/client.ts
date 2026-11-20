@@ -404,6 +404,8 @@ export const adminApi = {
   setUserActive: (id: string, active: boolean) =>
     apiPost<A.AccountStatusOut>(`/admin/users/${enc(id)}/${active ? "activate" : "deactivate"}`, undefined),
   issuePasswordReset: (id: string) => apiPost<A.OneTimeTokenOut>(`/admin/users/${enc(id)}/password-reset`, undefined),
+  assignableStaff: (signal?: AbortSignal) =>
+    apiGet<{ items: A.AssignableStaffOut[] }>("/admin/assignments/staff", {}, signal).then((r) => r.items),
   assignments: (query: { staff_user_id?: string; patient_id?: string; active_only?: boolean; limit: number; offset: number }, signal?: AbortSignal) =>
     apiGet<A.Page<A.AssignmentOut>>("/admin/assignments", query, signal),
   createAssignment: (staffUserId: string, patientId: string) =>

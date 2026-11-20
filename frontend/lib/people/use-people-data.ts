@@ -10,6 +10,7 @@ import type {
   RuleSummaryOut,
 } from "@/lib/api/types";
 import { onCacheReset } from "@/lib/api/cache";
+import { useCoordinationVersion } from "@/lib/coordination/use-coordination";
 import type { LoadState } from "@/lib/population/use-population-data";
 import type { PopulationFilters } from "@/lib/population/filters";
 import {
@@ -146,7 +147,10 @@ export type ProfileState = LoadState<PersonProfileData> | { status: "not_found";
 
 export function usePersonProfile(personId: string) {
   const [attempt, setAttempt] = useState(0);
-  const requestId = `${attempt}|${personId}`;
+  /* A coordination write (e.g. documented completion) can close a gap: refetch, keeping the shown data meanwhile. */
+  const version = useCoordinationVersion();
+  const shownId = `${attempt}|${personId}`;
+  const requestId = `${shownId}|${version}`;
   const [settled, setSettled] = useState<{ requestId: string; state: ProfileState } | null>(null);
 
   useEffect(() => {
@@ -178,7 +182,8 @@ export function usePersonProfile(personId: string) {
   }, [personId, requestId]);
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
-  const state: ProfileState = settled?.requestId === requestId ? settled.state : { status: "loading" };
+  const current = settled?.requestId === requestId || (settled?.state.status === "ready" && settled.requestId.startsWith(`${shownId}|`));
+  const state: ProfileState = current && settled ? settled.state : { status: "loading" };
   return { state, retry };
 }
 

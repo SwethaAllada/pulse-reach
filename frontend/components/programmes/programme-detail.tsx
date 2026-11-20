@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, ViewTransition } from "react";
+import { useCallback, useMemo, useState, ViewTransition } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, ChevronRight, Info } from "lucide-react";
@@ -60,9 +60,14 @@ function detailToParams(s: DetailState): URLSearchParams {
 }
 
 export function ProgrammeDetail() {
-  const params = useParams<{ programme: string }>();
-  const pathway = pathwayFromSlug(params.programme ?? "");
-  if (!pathway) return <UnknownProgramme slug={params.programme ?? ""} />;
+  const params = useParams<{ programme?: string }>();
+  /* While this route is hidden (Cache Components keep it in <Activity>), `useParams` reports the visible
+     route, which has no `programme`; keep the last slug so the page and its loaded data survive. */
+  const [lastSlug, setLastSlug] = useState(params.programme ?? "");
+  if (params.programme !== undefined && params.programme !== lastSlug) setLastSlug(params.programme);
+  const slug = params.programme ?? lastSlug;
+  const pathway = pathwayFromSlug(slug);
+  if (!pathway) return <UnknownProgramme slug={slug} />;
   return <ProgrammeDetailBody pathway={pathway} />;
 }
 

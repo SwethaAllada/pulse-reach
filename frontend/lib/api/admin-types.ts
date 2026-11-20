@@ -22,6 +22,13 @@ export interface MemberOut {
   password_set: boolean;
 }
 
+/** `GET /admin/assignments/staff` (assignments.manage): only what choosing an assignee needs. */
+export interface AssignableStaffOut {
+  user_id: string;
+  full_name: string;
+  role: string;
+}
+
 export interface StaffCreateIn {
   email: string;
   full_name: string;

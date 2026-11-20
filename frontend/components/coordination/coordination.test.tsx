@@ -672,6 +672,64 @@ describe("Profile coordination section", () => {
   });
 });
 
+/* ── Documented completion on the profile (care_gaps.complete, not followups.update) ── */
+
+describe("Profile documented completion", () => {
+  const openGapCard = async () => {
+    await screen.findByRole("heading", { name: "Overview", level: 2 });
+    const gaps = screen.getByRole("region", { name: "Care Gaps" });
+    return within(gaps).getAllByRole("listitem")[0];
+  };
+
+  it("lets a CLINICIAN document completion without follow-up update rights, and refreshes the profile", async () => {
+    asRole("CLINICIAN", <PersonProfile />);
+    expect(ROLE_PERMISSIONS.CLINICIAN).toContain("care_gaps.complete");
+    expect(ROLE_PERMISSIONS.CLINICIAN).not.toContain("followups.update");
+    const card = await openGapCard();
+    const evaluationsBefore = reads("/patients/SYNTH-PAT-1/evaluations").length;
+    fireEvent.click(within(card).getByRole("button", { name: "Document completion" }));
+    const form = within(card).getByRole("form", { name: /Document completion for/ });
+    const submit = within(form).getByRole("button", { name: "Document completion and close" }) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    fireEvent.change(within(form).getByLabelText(/Evidence record ID/), { target: { value: " SYNTH-REF-000001 " } });
+    fireEvent.click(submit);
+    expect(await screen.findByText(/Completion documented on/)).toBeTruthy();
+    const [body] = fetchMock.mock.calls
+      .filter(([u, i]) => i?.method === "POST" && /\/care-gaps\/[^/]+\/follow-ups$/.test(new URL(String(u)).pathname))
+      .map(([, i]) => JSON.parse(String(i!.body)));
+    expect(body).toEqual({ event_type: "completion_documented", close_gap: true, documented_evidence: true, evidence_reference: "SYNTH-REF-000001", note: null });
+    expect(sent("PATCH", "/follow-up-tasks/T-1")).toHaveLength(0);
+    expect(fetchMock.mock.calls.filter(([u]) => /\/follow-up-tasks\/[^/]+\/complete$/.test(new URL(String(u)).pathname))).toHaveLength(0);
+    await waitFor(() => expect(reads("/patients/SYNTH-PAT-1/evaluations").length).toBeGreaterThan(evaluationsBefore));
+  });
+
+  it("shows the backend's reason when the evidence is refused", async () => {
+    override = (u, method) =>
+      method === "POST" && /\/care-gaps\/[^/]+\/follow-ups$/.test(u.pathname)
+        ? json(errorBody("validation_error", "Evidence 'X' is dated 2026-12-01, after 2026-11-20. (reason_code: evidence_date_in_future)"), 422)
+        : null;
+    asRole("CARE_COORDINATOR", <PersonProfile />);
+    const card = await openGapCard();
+    fireEvent.click(within(card).getByRole("button", { name: "Document completion" }));
+    const form = within(card).getByRole("form", { name: /Document completion for/ });
+    fireEvent.change(within(form).getByLabelText(/Evidence record ID/), { target: { value: "X" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Document completion and close" }));
+    expect(await within(card).findByText(/evidence_date_in_future/)).toBeTruthy();
+    expect(screen.queryByText(/Completion documented on/)).toBeNull();
+  });
+
+  it.each(["POPULATION_HEALTH_MANAGER", "SYSTEM_ADMIN"] as const)("%s gets no completion action", async (role) => {
+    asRole(role, <PersonProfile />);
+    if (role === "SYSTEM_ADMIN") {
+      await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+      expect(screen.queryByRole("button", { name: "Document completion" })).toBeNull();
+      return;
+    }
+    await openGapCard();
+    expect(screen.queryByRole("button", { name: "Document completion" })).toBeNull();
+  });
+});
+
 /* ── Roles ───────────────────────────────────────────────────────────────────── */
 
 describe("Role-based coordination views", () => {

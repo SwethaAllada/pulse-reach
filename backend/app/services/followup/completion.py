@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Any
 
 from app.services.evaluation.engine import EvaluationEngine, PatientContext, RuleEvaluationResult
@@ -153,6 +153,21 @@ def _screening_frequency_resolved(rule: Mapping[str, Any]) -> bool:
         and rule.get("interval_value") is not None
         and rule.get("interval_unit") == "years"
     )
+
+
+def completion_as_of(
+    reference_date: date, evidence: CompletionEvidence | None, *, today: date | None = None
+) -> date:
+    """The date a completion is validated, and its rule re-evaluated (`evaluate_current_rule`), as of.
+
+    The evaluation run's reference date, advanced to the documentation date (today, UTC) only when
+    the cited evidence postdates the run: a referral or screening recorded after the evaluation is
+    judged by re-running the engine on the day it is documented. Never later than today, so evidence
+    dated in the future is still rejected (`evidence_date_in_future`).
+    """
+    if evidence is None or evidence.evidence_date is None or evidence.evidence_date <= reference_date:
+        return reference_date
+    return max(reference_date, today or datetime.now(timezone.utc).date())
 
 
 def evaluate_current_rule(

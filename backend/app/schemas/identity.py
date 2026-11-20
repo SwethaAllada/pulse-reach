@@ -233,6 +233,18 @@ class AssignmentOut(BaseModel):
     ended_at: datetime | None = None
 
 
+class AssignableStaffOut(BaseModel):
+    """Minimum needed to choose an assignee: no e-mail, account state or other user metadata."""
+
+    user_id: str
+    full_name: str
+    role: str
+
+
+class AssignableStaffListOut(BaseModel):
+    items: list[AssignableStaffOut]
+
+
 class PaginatedAssignmentsOut(BaseModel):
     total: int
     limit: int
