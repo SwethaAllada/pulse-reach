@@ -13,6 +13,7 @@ import {
 } from "@/lib/api/client";
 import { clearApiCache } from "@/lib/api/cache";
 import type { MeOut } from "@/lib/api/types";
+import { t, type Translate } from "@/lib/i18n/translate";
 import { legacyBackendAllowed } from "./mode";
 import { clearSession, getSession, setSession, subscribeSession } from "./session";
 
@@ -127,7 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     api
       .me(ctrl.signal)
       .then((me) => {
-        if (!isMe(me)) throw new ApiError("The API at this address did not return a PulseReach identity.", null, "/me");
+        if (!isMe(me)) throw new ApiError(t("api.not_identity"), null, "/me");
         setState({ status: "signed_in", me });
       })
       .catch((err) => {
@@ -142,7 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         setState({
           status: "unreachable",
-          message: err instanceof ApiError ? err.message : "Unexpected error while checking your session.",
+          message: err instanceof ApiError ? err.message : t("api.session_check_failed"),
         });
       });
     return () => ctrl.abort();
@@ -181,7 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     if (!isMe(me)) {
       clearSession();
-      throw new ApiError("The API at this address did not return a PulseReach identity.", null, "/me");
+      throw new ApiError(t("api.not_identity"), null, "/me");
     }
     clearApiCache();
     setState({ status: "signed_in", me });
@@ -217,32 +218,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function roleLabel(role: string | null | undefined): string {
-  switch (role) {
-    case "POPULATION_HEALTH_MANAGER":
-      return "Population health manager";
-    case "CARE_COORDINATOR":
-      return "Care coordinator";
-    case "CLINICIAN":
-      return "Clinician";
-    case "SYSTEM_ADMIN":
-      return "System administrator";
-    case "PATIENT":
-      return "Patient";
-    default:
-      return role ? role.replace(/_/g, " ").toLowerCase() : "No role";
-  }
+const KNOWN_ROLES = ["POPULATION_HEALTH_MANAGER", "CARE_COORDINATOR", "CLINICIAN", "SYSTEM_ADMIN", "PATIENT"] as const;
+
+/** Localized role name; an unknown role id is shown as its (untranslated) identifier. */
+export function roleLabel(role: string | null | undefined, tr: Translate): string {
+  if (!role) return tr("role.none");
+  return (KNOWN_ROLES as readonly string[]).includes(role)
+    ? tr(`role.${role as (typeof KNOWN_ROLES)[number]}`)
+    : role.replace(/_/g, " ").toLowerCase();
 }
 
-export function scopeLabel(scope: PatientScope): string {
-  switch (scope) {
-    case "organization":
-      return "All patients of your organization";
-    case "assigned":
-      return "Only patients assigned to you";
-    case "self":
-      return "Your own record only";
-    default:
-      return "No patient-level access";
-  }
+export function scopeLabel(scope: PatientScope, tr: Translate): string {
+  return tr(scope ? `scope.${scope}` : "scope.none");
 }

@@ -23,6 +23,7 @@ import {
 import { pathwayLabel } from "@/lib/population/filters";
 import { PROGRAMME_COLOR, SEGMENT_COLOR, SegmentMark } from "@/components/population/segment-glyph";
 import { cn } from "@/lib/cn";
+import { useLocale } from "@/lib/i18n/use-locale";
 
 const W = 800;
 const H = 440;
@@ -123,6 +124,7 @@ interface Props {
 }
 
 export function ConstellationVisualization({ model, selectedId, onSelect }: Props) {
+  const { t, tp } = useLocale();
   const [hoverId, setHoverId] = useState<CohortId | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -192,7 +194,7 @@ export function ConstellationVisualization({ model, selectedId, onSelect }: Prop
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
         role="group"
-        aria-label={`Population constellation: ${model.totalPeople} synthetic people in programme territories, grouped by documented evidence segment. Each mark is one person; position inside a cluster carries no clinical meaning.`}
+        aria-label={t("pop.constellation.aria", { people: tp("pop.people", model.totalPeople) })}
         className="h-full w-full select-none"
         preserveAspectRatio="xMidYMid meet"
         onClick={() => onSelect(null)}
@@ -202,17 +204,17 @@ export function ConstellationVisualization({ model, selectedId, onSelect }: Prop
         ))}
 
         {model.programmes.map((prog) => {
-          const t = TERRITORIES[prog.pathway];
+          const terr = TERRITORIES[prog.pathway];
           const color = PROGRAMME_COLOR[prog.pathway].ink;
           const selected = selectedId === prog.id;
           const dim = selectedId !== null && selectedPathway !== prog.pathway;
           return (
             <g key={prog.id} opacity={dim ? 0.45 : 1} className="transition-opacity duration-150">
               <ellipse
-                cx={t.cx}
-                cy={t.cy}
-                rx={t.rx}
-                ry={t.ry}
+                cx={terr.cx}
+                cy={terr.cy}
+                rx={terr.rx}
+                ry={terr.ry}
                 fill={color}
                 opacity={selected ? 0.1 : 0.04}
                 onClick={(e) => {
@@ -222,10 +224,10 @@ export function ConstellationVisualization({ model, selectedId, onSelect }: Prop
                 className="cursor-pointer"
               />
               <ellipse
-                cx={t.cx}
-                cy={t.cy}
-                rx={t.rx}
-                ry={t.ry}
+                cx={terr.cx}
+                cy={terr.cy}
+                rx={terr.rx}
+                ry={terr.ry}
                 fill="none"
                 stroke={color}
                 strokeWidth={selected ? 1.6 : 1}
@@ -236,13 +238,16 @@ export function ConstellationVisualization({ model, selectedId, onSelect }: Prop
               <g
                 {...interactive(
                   prog.id,
-                  `${pathwayLabel(prog.pathway)} programme: ${prog.people} people. ${selected ? "Selected." : "Select to view programme details."}`
+                  t(selected ? "pop.constellation.programme_selected" : "pop.constellation.programme", {
+                    programme: pathwayLabel(prog.pathway, t),
+                    people: tp("pop.people", prog.people),
+                  })
                 )}
               >
                 <rect
                   className="focus-ring opacity-0"
-                  x={t.anchor === "start" ? t.labelX - 8 : t.labelX - 236}
-                  y={t.labelY - 22}
+                  x={terr.anchor === "start" ? terr.labelX - 8 : terr.labelX - 236}
+                  y={terr.labelY - 22}
                   width={244}
                   height={50}
                   rx={6}
@@ -251,23 +256,23 @@ export function ConstellationVisualization({ model, selectedId, onSelect }: Prop
                   strokeWidth={2}
                 />
                 <text
-                  x={t.labelX}
-                  y={t.labelY}
-                  textAnchor={t.anchor}
+                  x={terr.labelX}
+                  y={terr.labelY}
+                  textAnchor={terr.anchor}
                   fill={color}
                   fontSize={15}
                   fontWeight={600}
                   className="font-display"
                 >
-                  {pathwayLabel(prog.pathway)}
+                  {pathwayLabel(prog.pathway, t)}
                 </text>
-                <text x={t.labelX} y={t.labelY + 18} textAnchor={t.anchor} fill="var(--ink-muted)" fontSize={12}>
-                  {prog.people} {prog.people === 1 ? "person" : "people"}
+                <text x={terr.labelX} y={terr.labelY + 18} textAnchor={terr.anchor} fill="var(--ink-muted)" fontSize={12}>
+                  {tp("pop.people", prog.people)}
                 </text>
               </g>
               {prog.people === 0 && (
-                <text x={t.cx} y={t.cy} textAnchor="middle" fill="var(--ink-faint)" fontSize={13}>
-                  No people match the current filters
+                <text x={terr.cx} y={terr.cy} textAnchor="middle" fill="var(--ink-faint)" fontSize={13}>
+                  {t("pop.constellation.empty")}
                 </text>
               )}
             </g>
@@ -285,7 +290,11 @@ export function ConstellationVisualization({ model, selectedId, onSelect }: Prop
               key={cohort.id}
               {...interactive(
                 cohort.id,
-                `${pathwayLabel(cohort.pathway)} — ${cohort.label}: ${cohort.people} ${cohort.people === 1 ? "person" : "people"}. ${selected ? "Selected." : "Select to view cohort details."}`
+                t(selected ? "pop.constellation.cohort_selected" : "pop.constellation.cohort", {
+                  programme: pathwayLabel(cohort.pathway, t),
+                  cohort: cohort.label,
+                  people: tp("pop.people", cohort.people),
+                })
               )}
               opacity={dim ? 0.3 : 1}
               style={{ transition: "opacity 160ms" }}
@@ -323,7 +332,7 @@ export function ConstellationVisualization({ model, selectedId, onSelect }: Prop
                 <tspan fontWeight={600} className="font-mono">
                   {cohort.people}
                 </tspan>
-                <tspan fill="var(--ink-muted)"> {SEGMENT_META[seg].short}</tspan>
+                <tspan fill="var(--ink-muted)"> {t(SEGMENT_META[seg].short)}</tspan>
               </text>
             </g>
           );
@@ -342,6 +351,7 @@ export function ConstellationVisualization({ model, selectedId, onSelect }: Prop
 }
 
 function Tooltip({ cohort, x, y }: { cohort: Cohort; x: number; y: number }) {
+  const { t, rich } = useLocale();
   return (
     <div
       role="tooltip"
@@ -351,12 +361,14 @@ function Tooltip({ cohort, x, y }: { cohort: Cohort; x: number; y: number }) {
       style={{ left: `${(Math.min(Math.max(x, 120), W - 120) / W) * 100}%`, top: `${(Math.max(y, 70) / H) * 100}%` }}
     >
       <p className="text-xs font-medium text-ink-faint">
-        {pathwayLabel(cohort.pathway)}
+        {pathwayLabel(cohort.pathway, t)}
       </p>
       <p className="text-sm font-semibold text-ink-text">{cohort.label}</p>
       <p className="mt-1 text-xs text-ink-muted">
-        <span className="font-mono text-ink-text">{cohort.people}</span> people ·{" "}
-        <span className="font-mono text-ink-text">{cohort.openGaps}</span> open documented gaps
+        {rich("pop.constellation.tooltip", {
+          people: <span className="font-mono text-ink-text">{cohort.people}</span>,
+          gaps: <span className="font-mono text-ink-text">{cohort.openGaps}</span>,
+        })}
       </p>
     </div>
   );

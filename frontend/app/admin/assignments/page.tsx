@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Care-team assignments" };
 export default function Page() {
   return (
     <PageTransition>
-      <RequirePermission anyOf={["assignments.manage"]} workspace="Care-team assignments">
+      <RequirePermission anyOf={["assignments.manage"]} workspace="nav.care_team_assignments">
         <AssignmentsAdmin />
       </RequirePermission>
     </PageTransition>

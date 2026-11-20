@@ -18,7 +18,6 @@ import {
   programmeHref,
   STANDING_META,
   summaryBand,
-  SUPPRESSED_TEXT,
   type ProgrammeModel,
 } from "@/lib/programmes/model";
 import { useProgrammesOverviewData, type ProgrammeFilters, type Resource } from "@/lib/programmes/use-programmes-data";
@@ -33,12 +32,15 @@ import { StandingGlyph } from "./rule-spectrum";
 import { InlineError, ResourceView } from "./resource-state";
 import { OrganizationTrend, ProgrammeTrend } from "./organization-trend";
 import { cn } from "@/lib/cn";
+import { useLocale, useT } from "@/lib/i18n/use-locale";
+import type { MessageKey } from "@/lib/i18n/translate";
 
 export function ProgrammesOverview() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const { scope, state: auth, role } = useAuth();
+  const tr = useT();
   const filters: ProgrammeFilters = useMemo(() => {
     const f = parsePeopleFilters(searchParams);
     return { region_id: f.region_id, sex: f.sex };
@@ -59,9 +61,9 @@ export function ProgrammesOverview() {
     if (rules.status !== "ready") return null;
     const oq = openQuestions.status === "ready" ? openQuestions.data : [];
     return Object.fromEntries(
-      PATHWAY_OPTIONS.map(({ value }) => [value, buildProgrammeModel(value, rules.data, [], oq)])
+      PATHWAY_OPTIONS.map(({ value }) => [value, buildProgrammeModel(value, rules.data, [], oq, tr)])
     ) as Record<Pathway, ProgrammeModel>;
-  }, [rules, openQuestions]);
+  }, [rules, openQuestions, tr]);
 
   const filtered = !!(filters.region_id || filters.sex);
   const qs = peopleFiltersToSearchParams(filters).toString();
@@ -71,18 +73,16 @@ export function ProgrammesOverview() {
     <div className="mx-auto w-full max-w-[1280px] px-4 pb-16 pt-6 sm:px-6 lg:px-8">
       <PageHeader
         index="02"
-        eyebrow="Explain"
-        title="Programmes"
-        subtitle="The preventive-care programmes PulseReach evaluates — who they reach, which rules define them, and where documented care gaps open and close."
-        breadcrumbs={[homeCrumb(role), { label: "Programmes" }]}
+        eyebrow={tr("prog.eyebrow")}
+        title={tr("nav.programmes")}
+        subtitle={tr("prog.subtitle")}
+        breadcrumbs={[homeCrumb(role, tr), { label: tr("nav.programmes") }]}
         meta={
           <span className="flex flex-wrap gap-x-4 gap-y-1">
             {sum && (
-              <span>
-                Evaluation run {sum.evaluation_run_id} · reference date {sum.reference_date}
-              </span>
+              <span>{tr("prog.run_meta", { run: sum.evaluation_run_id, date: sum.reference_date })}</span>
             )}
-            {auth.status === "signed_in" && <span>Scope: {scopeLabel(scope)}</span>}
+            {auth.status === "signed_in" && <span>{tr("prog.scope", { scope: scopeLabel(scope, tr) })}</span>}
           </span>
         }
         className="mb-6"
@@ -91,17 +91,17 @@ export function ProgrammesOverview() {
       <div className="reveal mb-10" style={{ "--i": 1 } as React.CSSProperties}>
         <PopulationFilterBar
           tone="paper"
-          label="Programme filters"
+          label={tr("prog.filters")}
           hideProgramme
           filters={filters}
           onChange={(f) => navigate({ region_id: f.region_id, sex: f.sex })}
-          emptyText="Membership, segments and gap records cover everyone in your scope."
+          emptyText={tr("prog.filters_empty")}
         />
       </div>
 
-      {rules.status === "error" && <InlineError message={`Programme rules are unavailable. ${rules.message}`} onRetry={retry} />}
+      {rules.status === "error" && <InlineError message={tr("prog.rules_unavailable", { message: rules.message })} onRetry={retry} />}
 
-      <section aria-label="Programmes" className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <section aria-label={tr("nav.programmes")} className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {PATHWAY_OPTIONS.map(({ value }, i) => (
           <ProgrammePlate
             key={value}
@@ -118,24 +118,24 @@ export function ProgrammesOverview() {
       <div className="mt-16 flex flex-col gap-16">
         <Plate
           index="01"
-          eyebrow="Programme ledger"
-          title="What the engine counts, per programme"
-          description="People-level counts from the dashboard summary for your scope. Each row says what it measures — and what it does not."
+          eyebrow={tr("prog.ledger.eyebrow")}
+          title={tr("prog.ledger.title")}
+          description={tr("prog.ledger.desc")}
           aside
         >
-          <ResourceView resource={summary} what="Programme breakdowns" onRetry={retry}>
+          <ResourceView resource={summary} what={tr("prog.ledger.what")} onRetry={retry}>
             {(d) => <ProgrammeLedger summary={d} models={models} />}
           </ResourceView>
         </Plate>
 
         <Plate
           index="02"
-          eyebrow="Coverage & completion"
-          title="How documented care gaps close"
+          eyebrow={tr("prog.closure.eyebrow")}
+          title={tr("prog.closure.title")}
           description={
             <>
-              Every care-gap record opened under each programme’s rules, by current status.
-              {filtered && " Limited to people matching the filters above."} Only “completed” is a documented completion.
+              {tr("prog.closure.desc")}
+              {filtered && ` ${tr("prog.closure.filtered")}`} {tr("prog.closure.only_completed")}
             </>
           }
           aside
@@ -145,19 +145,19 @@ export function ProgrammesOverview() {
 
         <Plate
           index="03"
-          eyebrow="Organization trend"
-          title="Preventive care across your organization"
-          description="Surveillance aggregates for every programme together. Per-programme comparisons are drawn only where evaluation history covers both periods."
+          eyebrow={tr("prog.trend.eyebrow")}
+          title={tr("prog.trend.title")}
+          description={tr("prog.trend.desc")}
           aside
         >
           <div className="flex flex-col gap-12">
-            <ResourceView resource={surveillance} what="Organization surveillance aggregates" onRetry={retry}>
+            <ResourceView resource={surveillance} what={tr("prog.trend.what")} onRetry={retry}>
               {(d) => <OrganizationTrend data={d} />}
             </ResourceView>
             <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
               {PATHWAY_OPTIONS.map(({ value }) => (
-                <ResourceView key={value} resource={summaries[value]} what={`${PROGRAMME_META[value].name} trend figures`} onRetry={retry}>
-                  {(d) => <ProgrammeTrend data={d} name={PROGRAMME_META[value].name} />}
+                <ResourceView key={value} resource={summaries[value]} what={tr("prog.trend.figures", { programme: tr(PROGRAMME_META[value].name) })} onRetry={retry}>
+                  {(d) => <ProgrammeTrend data={d} name={tr(PROGRAMME_META[value].name)} />}
                 </ResourceView>
               ))}
             </div>
@@ -183,11 +183,13 @@ function ProgrammePlate({
   i: number;
   onRetry: () => void;
 }) {
+  const { t } = useLocale();
   const meta = PROGRAMME_META[pathway];
+  const name = t(meta.name);
   const s = programme.status === "ready" ? programme.data : null;
   const value = (v: number | null | undefined) =>
     s ? (v ?? <Suppressed />) : programme.status === "loading" ? <Dash /> : "—";
-  const band = s ? summaryBand(s) : null;
+  const band = s ? summaryBand(s, t) : null;
   return (
     <article
       aria-labelledby={`programme-${pathway}`}
@@ -195,51 +197,51 @@ function ProgrammePlate({
       style={{ "--i": i + 2 } as React.CSSProperties}
     >
       <p className="relative text-xs font-medium text-ink-faint">
-        Programme · {meta.audience}
+        {t("prog.plate.eyebrow", { audience: t(meta.audience) })}
       </p>
       <ViewTransition name={`programme-title-${pathway}`} share="atlas-morph" default="none">
         <h2 id={`programme-${pathway}`} className="relative mt-1 font-display text-2xl font-medium tracking-[-0.01em] text-ink-text">
-          {meta.name}
+          {name}
         </h2>
       </ViewTransition>
-      <p className="relative mt-2 min-h-10 max-w-md text-sm leading-relaxed text-ink-muted">
+      <p className="relative mt-2 min-h-10 max-w-md text-sm leading-relaxed text-ink-muted" dir="auto">
         {model?.source ? `${model.source.name} (${model.source.version})` : "\u00a0"}
       </p>
 
       <dl className="relative mt-7 grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-4">
-        <Figure tone="plate" size="md" label="Members" value={value(s?.members)} note={`${meta.unit} with a history record`} i={i + 3} />
+        <Figure tone="plate" size="md" label={t("prog.plate.members")} value={value(s?.members)} note={t("prog.plate.members_note", { unit: t(meta.unit) })} i={i + 3} />
         <Figure
           tone="plate"
           size="md"
-          label="Due or upcoming"
+          label={t("prog.plate.due")}
           value={value(s?.eligibility.due_or_upcoming_patients)}
-          note="people · filters applied"
+          note={t("prog.plate.due_note")}
           i={i + 4}
         />
         <Figure
           tone="plate"
           size="md"
-          label="Open gaps"
+          label={t("prog.plate.open_gaps")}
           value={value(s?.care_gaps.open)}
-          note={s ? `records · ${countText(s.people_with_open_gap)} people` : "records"}
+          note={s ? t("prog.plate.open_gaps_note", { count: countText(s.people_with_open_gap, t) }) : t("prog.plate.records")}
           i={i + 5}
         />
-        <Figure tone="plate" size="md" label="Completed" value={value(s?.care_gaps.closed_completed)} note="gaps closed by documentation" i={i + 6} />
+        <Figure tone="plate" size="md" label={t("prog.plate.completed")} value={value(s?.care_gaps.closed_completed)} note={t("prog.plate.completed_note")} i={i + 6} />
       </dl>
 
       <div className="relative mt-7">
         {s ? (
           s.members === 0 ? (
-            <p className="text-sm text-ink-muted">No members match the current filters.</p>
+            <p className="text-sm text-ink-muted">{t("prog.plate.no_members")}</p>
           ) : band ? (
             <CompositionBand programme={band} tone="ink" />
           ) : (
             <p className="text-xs text-ink-faint">
-              Segment sizes are suppressed for privacy in this scope (cells under {s.min_cell_size} people).
+              {t("prog.plate.segments_suppressed", { min: s.min_cell_size })}
             </p>
           )
         ) : programme.status === "forbidden" ? (
-          <p className="text-xs text-ink-faint">Programme figures need insights.read and care_gaps.read, which your role does not have.</p>
+          <p className="text-xs text-ink-faint">{t("prog.plate.forbidden")}</p>
         ) : programme.status === "error" ? (
           <InlineError tone="plate" message={programme.message} onRetry={onRetry} />
         ) : (
@@ -250,14 +252,14 @@ function ProgrammePlate({
       <div className="relative mt-auto flex flex-wrap items-end justify-between gap-4 pt-8">
         {model ? (
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
-            <span className="text-ink-text">{model.rules.length} rules</span>
+            <span className="text-ink-text">{t("prog.plate.rules", { count: model.rules.length })}</span>
             {(["authoritative", "review", "unresolved"] as const).map((st) =>
               model.standing[st] > 0 ? (
                 <span key={st} className="inline-flex items-center gap-1.5">
                   <span className="[--accent:var(--ink-accent-2)] [--status-review:var(--ink-review)] [--status-insufficient:var(--ink-insufficient)]">
                     <StandingGlyph standing={st} size={10} />
                   </span>
-                  {model.standing[st]} {STANDING_META[st].label.toLowerCase()}
+                  {t("prog.plate.standing_count", { count: model.standing[st], label: t(STANDING_META[st].label).toLowerCase() })}
                 </span>
               ) : null
             )}
@@ -266,8 +268,8 @@ function ProgrammePlate({
           <span />
         )}
         <Link href={href} transitionTypes={FORWARD} className={buttonClass("plate-primary")}>
-          Explore {meta.name}
-          <ArrowRight size={15} aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-0.5" />
+          {t("prog.plate.explore", { programme: name })}
+          <ArrowRight size={15} aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-0.5 rtl:-scale-x-100 rtl:group-hover:-translate-x-0.5" />
         </Link>
       </div>
     </article>
@@ -276,72 +278,50 @@ function ProgrammePlate({
 
 /** A count the backend suppressed for privacy (small cell) — never shown as zero. */
 function Suppressed() {
+  const { t } = useLocale();
   return (
-    <span title={SUPPRESSED_TEXT} aria-label={SUPPRESSED_TEXT} className="text-base text-ink-faint">
-      suppressed
+    <span title={t("prog.suppressed_title")} aria-label={t("prog.suppressed_title")} className="text-base text-ink-faint">
+      {t("prog.suppressed")}
     </span>
   );
 }
 
 function Dash() {
-  return <span aria-label="Loading" className="skeleton inline-block h-7 w-14 rounded-md align-middle" />;
+  const { t } = useLocale();
+  return <span aria-label={t("state.loading")} className="skeleton inline-block h-7 w-14 rounded-md align-middle" />;
 }
 
 const LEDGER_ROWS: {
   key: keyof PathwayBreakdownOut;
-  label: string;
-  means: string;
+  label: MessageKey;
+  means: MessageKey;
   caution?: boolean;
 }[] = [
-  {
-    key: "programme_eligible_patients",
-    label: "In programme scope",
-    means: "People with an in-band programme “eligible” result. Not a care need.",
-  },
-  {
-    key: "due_or_upcoming_patients",
-    label: "Due or upcoming",
-    means: "People with at least one in-band due, upcoming or overdue result.",
-  },
-  { key: "open_care_gaps_count", label: "Open care-gap records", means: "Gap records, not people." },
-  {
-    key: "patients_with_history",
-    label: "History on record",
-    means: "People whose screening or visit history is available or partial.",
-  },
-  {
-    key: "unknown_history_patients",
-    label: "History unavailable",
-    means: "Evaluations resolve to “unknown” — never evidence that care did not happen.",
-  },
-  {
-    key: "review_flagged_patients",
-    label: "Records need clinical review",
-    means: "People whose own records route a result to a healthcare professional.",
-  },
-  {
-    key: "rule_review_patients",
-    label: "Touched by a rule under review",
-    means: "In scope of a rule that is itself unresolved or review-flagged. Not “people needing review”.",
-    caution: true,
-  },
+  { key: "programme_eligible_patients", label: "prog.ledger.in_scope", means: "prog.ledger.in_scope_means" },
+  { key: "due_or_upcoming_patients", label: "prog.ledger.due", means: "prog.ledger.due_means" },
+  { key: "open_care_gaps_count", label: "prog.ledger.open_gaps", means: "prog.ledger.open_gaps_means" },
+  { key: "patients_with_history", label: "prog.ledger.history", means: "prog.ledger.history_means" },
+  { key: "unknown_history_patients", label: "prog.ledger.no_history", means: "prog.ledger.no_history_means" },
+  { key: "review_flagged_patients", label: "prog.ledger.review", means: "prog.ledger.review_means" },
+  { key: "rule_review_patients", label: "prog.ledger.rule_review", means: "prog.ledger.rule_review_means", caution: true },
 ];
 
 function ProgrammeLedger({ summary, models }: { summary: DashboardSummaryOut; models: Record<Pathway, ProgrammeModel> | null }) {
+  const { t } = useLocale();
   const bd = summary.pathway_breakdown;
-  if (!bd) return <p className="text-sm text-muted">This API version does not return a per-programme breakdown.</p>;
+  if (!bd) return <p className="text-sm text-muted">{t("prog.ledger.no_breakdown")}</p>;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[560px] text-left text-sm">
-        <caption className="sr-only">People-level programme breakdown from the dashboard summary</caption>
+      <table className="w-full min-w-[560px] text-start text-sm">
+        <caption className="sr-only">{t("prog.ledger.caption")}</caption>
         <thead>
           <tr className="border-b border-border-strong text-[11px] uppercase tracking-[0.12em] text-faint">
-            <th scope="col" className="py-2 pr-4 font-medium">
-              Measure
+            <th scope="col" className="py-2 pe-4 text-start font-medium">
+              {t("pop.compare.measure")}
             </th>
             {PATHWAY_OPTIONS.map((o) => (
-              <th key={o.value} scope="col" className="w-28 py-2 pr-4 text-right font-medium">
-                {PROGRAMME_META[o.value].name}
+              <th key={o.value} scope="col" className="w-28 py-2 pe-4 text-end font-medium">
+                {t(PROGRAMME_META[o.value].name)}
               </th>
             ))}
           </tr>
@@ -349,12 +329,12 @@ function ProgrammeLedger({ summary, models }: { summary: DashboardSummaryOut; mo
         <tbody className="divide-y divide-border">
           {LEDGER_ROWS.map((row, i) => (
             <tr key={row.key} className="reveal-fade align-top" style={{ "--i": i } as React.CSSProperties}>
-              <th scope="row" className="py-3 pr-4 font-normal">
-                <span className="block font-medium text-foreground">{row.label}</span>
-                <span className={cn("mt-0.5 block text-xs", row.caution ? "font-display text-[13px] italic text-foreground" : "text-muted")}>{row.means}</span>
+              <th scope="row" className="py-3 pe-4 text-start font-normal">
+                <span className="block font-medium text-foreground">{t(row.label)}</span>
+                <span className={cn("mt-0.5 block text-xs", row.caution ? "font-display text-[13px] italic text-foreground" : "text-muted")}>{t(row.means)}</span>
               </th>
               {PATHWAY_OPTIONS.map((o) => (
-                <td key={o.value} className="figure py-3 pr-4 text-right text-xl text-foreground">
+                <td key={o.value} className="figure py-3 pe-4 text-end text-xl text-foreground">
                   {bd[o.value]?.[row.key] ?? "—"}
                 </td>
               ))}
@@ -362,12 +342,12 @@ function ProgrammeLedger({ summary, models }: { summary: DashboardSummaryOut; mo
           ))}
           {models && (
             <tr className="align-top">
-              <th scope="row" className="py-3 pr-4 font-normal">
-                <span className="block font-medium text-foreground">Rules defining the programme</span>
-                <span className="mt-0.5 block text-xs text-muted">From the versioned rule bundle (`GET /rules`).</span>
+              <th scope="row" className="py-3 pe-4 text-start font-normal">
+                <span className="block font-medium text-foreground">{t("prog.ledger.rules")}</span>
+                <span className="mt-0.5 block text-xs text-muted">{t("prog.ledger.rules_means")}</span>
               </th>
               {PATHWAY_OPTIONS.map((o) => (
-                <td key={o.value} className="figure py-3 pr-4 text-right text-xl text-foreground">
+                <td key={o.value} className="figure py-3 pe-4 text-end text-xl text-foreground">
                   {models[o.value].rules.length}
                 </td>
               ))}
@@ -376,8 +356,7 @@ function ProgrammeLedger({ summary, models }: { summary: DashboardSummaryOut; mo
         </tbody>
       </table>
       <Footnote>
-        {summary.governance_disclaimer} Counts follow the backend’s dashboard semantics (in-band results only; people, not
-        evaluations, unless stated).
+        {summary.governance_disclaimer} {t("prog.ledger.footnote")}
       </Footnote>
     </div>
   );
@@ -392,30 +371,34 @@ const CLOSURE_COLOR: Record<string, string> = {
 };
 
 export function GapClosure({ summaries, onRetry }: { summaries: Record<Pathway, Resource<ProgrammeSummaryOut>>; onRetry: () => void }) {
+  const { t, rich } = useLocale();
   return (
     <div className="flex flex-col gap-8">
       {PATHWAY_OPTIONS.map(({ value }, pi) => (
-        <ResourceView key={value} resource={summaries[value]} what={`${PROGRAMME_META[value].name} care-gap records`} onRetry={onRetry}>
+        <ResourceView key={value} resource={summaries[value]} what={t("prog.closure.what", { programme: t(PROGRAMME_META[value].name) })} onRetry={onRetry}>
           {(s) => {
             const g = s.care_gaps;
             const complete = g.total !== null && GAP_STATUS_ORDER.every((st) => g[st] !== null);
             return (
               <div className="reveal" style={{ "--i": pi } as React.CSSProperties}>
                 <div className="mb-2 flex items-baseline justify-between gap-3">
-                  <p className="font-display text-lg text-foreground">{PROGRAMME_META[value].name}</p>
+                  <p className="font-display text-lg text-foreground">{t(PROGRAMME_META[value].name)}</p>
                   <p className="text-xs text-muted">
-                    <span className="font-mono text-foreground">{countText(g.total)}</span> gap records
+                    {rich("prog.closure.records", { count: <span className="font-mono text-foreground">{countText(g.total, t)}</span> })}
                   </p>
                 </div>
                 {g.total === 0 ? (
-                  <p className="text-sm text-muted">No care-gap records for these rules in your scope.</p>
+                  <p className="text-sm text-muted">{t("prog.closure.none")}</p>
                 ) : (
                   <>
                     {complete ? (
                       <div
                         className="flex h-6 w-full gap-[2px] overflow-hidden rounded-md"
                         role="img"
-                        aria-label={`${PROGRAMME_META[value].name} gap records: ${GAP_STATUS_ORDER.map((st) => `${GAP_STATUS_META[st].short} ${g[st]}`).join(", ")}`}
+                        aria-label={t("prog.closure.aria", {
+                          programme: t(PROGRAMME_META[value].name),
+                          values: GAP_STATUS_ORDER.map((st) => `${t(GAP_STATUS_META[st].short)} ${g[st]}`).join(t("list.sep")),
+                        })}
                       >
                         {GAP_STATUS_ORDER.filter((st) => (g[st] ?? 0) > 0).map((st, i) => (
                           <span
@@ -427,15 +410,15 @@ export function GapClosure({ summaries, onRetry }: { summaries: Record<Pathway, 
                       </div>
                     ) : (
                       <p className="text-xs text-faint">
-                        Some statuses are suppressed for privacy (cells under {s.min_cell_size} records), so no proportions are drawn.
+                        {t("prog.closure.suppressed", { min: s.min_cell_size })}
                       </p>
                     )}
                     <ul className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs sm:grid-cols-5">
                       {GAP_STATUS_ORDER.map((st) => (
                         <li key={st} className="flex items-center gap-2 text-muted">
                           <span aria-hidden="true" className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: CLOSURE_COLOR[st] }} />
-                          {GAP_STATUS_META[st].short}
-                          <span className="ml-auto font-mono tabular-nums text-foreground sm:ml-0">{countText(g[st])}</span>
+                          {t(GAP_STATUS_META[st].short)}
+                          <span className="ms-auto font-mono tabular-nums text-foreground sm:ms-0">{countText(g[st], t)}</span>
                         </li>
                       ))}
                     </ul>
@@ -447,8 +430,7 @@ export function GapClosure({ summaries, onRetry }: { summaries: Record<Pathway, 
         </ResourceView>
       ))}
       <Footnote>
-        Completion here means a gap closed by a documented screening, visit or referral. People with no gap record are not
-        counted as complete or incomplete. Counts are computed by the backend for your scope; small cells are suppressed.
+        {t("prog.closure.footnote")}
       </Footnote>
     </div>
   );

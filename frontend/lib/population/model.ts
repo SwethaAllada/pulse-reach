@@ -6,7 +6,8 @@ import type {
   PatientSummaryOut,
   RuleSummaryOut,
 } from "@/lib/api/types";
-import { PATHWAY_OPTIONS, REGION_OPTIONS, pathwayLabel, regionLabel } from "./filters";
+import type { MessageKey, Translate } from "@/lib/i18n/translate";
+import { PATHWAY_OPTIONS, REGION_OPTIONS, pathwayLabel, regionLabel, sexLabel } from "./filters";
 
 /**
  * Person-level roll-up of the population, built from complete (all-page) API
@@ -20,30 +21,15 @@ export type CohortId = Pathway | `${Pathway}:${SegmentId}`;
 
 export const SEGMENT_ORDER: SegmentId[] = ["open_gap", "available", "partial", "not_available"];
 
-export const SEGMENT_META: Record<SegmentId, { label: string; short: string; description: string }> = {
-  open_gap: {
-    label: "Open documented care gap",
-    short: "Open gap",
-    description:
-      "At least one open care gap is recorded by the deterministic evaluation engine for a rule in this programme.",
-  },
-  available: {
-    label: "History available · no open gap",
-    short: "No open gap",
-    description:
-      "Screening or visit history is available and no open care gap is recorded. This does not mean every recommended service was completed.",
-  },
-  partial: {
-    label: "History partially available",
-    short: "Partial history",
-    description:
-      "Only part of the screening or visit history is available. The engine routes these evaluations to clinical review instead of opening gaps.",
-  },
+/** Message keys per segment (render with the bound translator). */
+export const SEGMENT_META: Record<SegmentId, { label: MessageKey; short: MessageKey; description: MessageKey }> = {
+  open_gap: { label: "pop.segment.open_gap", short: "pop.segment.open_gap_short", description: "pop.segment.open_gap_desc" },
+  available: { label: "pop.segment.available", short: "pop.segment.available_short", description: "pop.segment.available_desc" },
+  partial: { label: "pop.segment.partial", short: "pop.segment.partial_short", description: "pop.segment.partial_desc" },
   not_available: {
-    label: "History unavailable",
-    short: "No history",
-    description:
-      "No screening or visit history is available. Rule evaluations resolve to “unknown”, never to due or overdue.",
+    label: "pop.segment.not_available",
+    short: "pop.segment.not_available_short",
+    description: "pop.segment.not_available_desc",
   },
 };
 
@@ -93,15 +79,24 @@ export interface PopulationModel {
   gapsByType: CountRow[];
 }
 
-export const GAP_TYPE_LABELS: Record<CareGapType, string> = {
-  no_documented_screening: "No documented screening",
-  interval_elapsed: "Interval elapsed",
-  partial_completion: "Partial completion",
-  referral_not_initiated: "Referral not initiated",
-  visit_not_attended: "Visit not attended",
+export const GAP_TYPE_LABELS: Record<CareGapType, MessageKey> = {
+  no_documented_screening: "pop.gap_type.no_documented_screening",
+  interval_elapsed: "pop.gap_type.interval_elapsed",
+  partial_completion: "pop.gap_type.partial_completion",
+  referral_not_initiated: "pop.gap_type.referral_not_initiated",
+  visit_not_attended: "pop.gap_type.visit_not_attended",
 };
 
-/** Short display name from the rule description (text before the first colon). */
+/** Localized gap type; an unknown type is shown as its identifier. */
+export function gapTypeLabel(type: string, t: Translate): string {
+  const key = GAP_TYPE_LABELS[type as CareGapType];
+  return key ? t(key) : type;
+}
+
+/**
+ * Short display name from the rule description (text before the first colon). Rule descriptions
+ * are source content of the official standards (English); they are shown as published.
+ */
 export function ruleShortLabel(rule: RuleSummaryOut | undefined, ruleId: string): string {
   if (!rule) return ruleId;
   const head = rule.description.split(":")[0].trim();
@@ -122,7 +117,8 @@ function buildCohort(
   segment: SegmentId | null,
   people: PatientSummaryOut[],
   gapsOf: (patientId: string) => CareGapOut[],
-  ruleLabel: (ruleId: string) => string
+  ruleLabel: (ruleId: string) => string,
+  t: Translate
 ): Cohort {
   const gaps = people.flatMap((p) => gapsOf(p.patient_id));
   const meta = segment ? SEGMENT_META[segment] : null;
@@ -130,23 +126,22 @@ function buildCohort(
     id,
     pathway,
     segment,
-    label: meta ? meta.label : pathwayLabel(pathway),
-    description: meta
-      ? meta.description
-      : `Everyone with a ${pathwayLabel(pathway)} history record in the current filter set.`,
+    label: meta ? t(meta.label) : pathwayLabel(pathway, t),
+    description: meta ? t(meta.description) : t("pop.cohort.programme_desc", { programme: pathwayLabel(pathway, t) }),
     people: people.length,
     patientIds: people.map((p) => p.patient_id),
     peopleWithOpenGap: people.filter((p) => gapsOf(p.patient_id).length > 0).length,
     openGaps: gaps.length,
     gapsByRule: tally(gaps, (g) => g.rule_id, ruleLabel),
-    gapsByType: tally(gaps, (g) => g.gap_type, (k) => GAP_TYPE_LABELS[k as CareGapType] ?? k),
+    gapsByType: tally(gaps, (g) => g.gap_type, (k) => gapTypeLabel(k, t)),
   };
 }
 
 export function buildPopulationModel(
   patients: PatientSummaryOut[],
   careGaps: CareGapOut[],
-  rules: RuleSummaryOut[]
+  rules: RuleSummaryOut[],
+  t: Translate
 ): PopulationModel {
   const ruleById = new Map(rules.map((r) => [r.rule_id, r]));
   const ruleLabel = (id: string) => ruleShortLabel(ruleById.get(id), id);
@@ -170,7 +165,7 @@ export function buildPopulationModel(
     const history: Record<HistoryStatus, number> = { available: 0, partial: 0, not_available: 0 };
     for (const p of members) history[p.history_by_pathway[pathway]!] += 1;
     return {
-      ...buildCohort(pathway, pathway, null, members, gapsOf, ruleLabel),
+      ...buildCohort(pathway, pathway, null, members, gapsOf, ruleLabel, t),
       segment: null,
       history,
       openGapsByPatient: new Map(members.map((p) => [p.patient_id, gapsOf(p.patient_id).length])),
@@ -181,7 +176,8 @@ export function buildPopulationModel(
           seg,
           members.filter((p) => segmentOf(p) === seg),
           gapsOf,
-          ruleLabel
+          ruleLabel,
+          t
         )
       ),
     };
@@ -191,7 +187,7 @@ export function buildPopulationModel(
     const inRegion = patients.filter((p) => p.region_id === value);
     return {
       regionId: value as number,
-      label: regionLabel(value),
+      label: regionLabel(value, t),
       total: inRegion.length,
       byPathway: {
         ifhas: inRegion.filter((p) => p.history_by_pathway.ifhas !== undefined).length,
@@ -216,13 +212,13 @@ export function buildPopulationModel(
     bySex: tally(
       patients,
       (p) => p.sex ?? "not_recorded",
-      (k) => (k === "female" ? "Female" : k === "male" ? "Male" : "Not recorded")
+      (k) => sexLabel(k, t)
     ),
     gapsByRule: tally(openGaps, (g) => g.rule_id, ruleLabel).map((row) => ({
       ...row,
       pathway: ruleById.get(row.key)!.pathway,
     })),
-    gapsByType: tally(openGaps, (g) => g.gap_type, (k) => GAP_TYPE_LABELS[k as CareGapType] ?? k),
+    gapsByType: tally(openGaps, (g) => g.gap_type, (k) => gapTypeLabel(k, t)),
   };
 }
 

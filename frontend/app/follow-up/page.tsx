@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Follow-up" };
 export default function FollowUpPage() {
   return (
     <PageTransition>
-      <RequirePermission anyOf={["followups.read"]} workspace="Follow-up">
+      <RequirePermission anyOf={["followups.read"]} workspace="nav.follow_up">
         <FollowUpWorkspace />
       </RequirePermission>
     </PageTransition>

@@ -1,4 +1,7 @@
+"use client";
+
 import type { HistoryStatus, Pathway } from "@/lib/api/types";
+import { useT } from "@/lib/i18n/use-locale";
 import { pathwayLabel } from "@/lib/population/filters";
 import { historyMeta } from "@/lib/people/person";
 import { PROGRAMME_COLOR, SegmentGlyph } from "@/components/population/segment-glyph";
@@ -18,6 +21,7 @@ export function ProgrammeHistory({
   compact?: boolean;
   className?: string;
 }) {
+  const t = useT();
   const known = HISTORY_STATUSES.find((h) => h === history);
   return (
     <span className={cn("inline-flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm", className)}>
@@ -27,11 +31,11 @@ export function ProgrammeHistory({
           className="size-2 shrink-0 rounded-full"
           style={{ backgroundColor: PROGRAMME_COLOR[pathway].paper }}
         />
-        {pathwayLabel(pathway, compact)}
+        {pathwayLabel(pathway, t, compact)}
       </span>
       <span className="inline-flex items-center gap-1 text-xs text-muted">
         {known && <SegmentGlyph segment={known} size={10} />}
-        {historyMeta(history).label}
+        {historyMeta(history, t).label}
       </span>
     </span>
   );

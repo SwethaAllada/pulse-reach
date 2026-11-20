@@ -1,10 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api/client";
 import type { CareGapOut, DashboardSummaryOut, RuleSummaryOut } from "@/lib/api/types";
 import { filterKey, type PopulationFilters } from "./filters";
 import { buildPopulationModel, type PopulationModel } from "./model";
+import type { PatientSummaryOut } from "@/lib/api/types";
+import { t as activeT } from "@/lib/i18n/translate";
+import { useLocale } from "@/lib/i18n/use-locale";
 
 export type LoadState<T> =
   | { status: "loading" }
@@ -22,7 +25,7 @@ interface Reference {
 }
 
 function errorMessage(err: unknown): string {
-  return err instanceof ApiError ? err.message : "Unexpected error while loading population data.";
+  return err instanceof ApiError ? err.message : activeT("pop.error_unexpected");
 }
 
 /**
@@ -36,7 +39,9 @@ export function usePopulationData(filters: PopulationFilters) {
   const requestId = `${attempt}|${key}`;
   const reference = useRef<Promise<Reference> | null>(null);
 
-  const [population, setPopulation] = useState<Settled<PopulationModel> | null>(null);
+  const { t } = useLocale();
+  /* Raw API records; the model (with its localized labels) is rebuilt when the language changes. */
+  const [population, setPopulation] = useState<Settled<{ patients: PatientSummaryOut[]; ref: Reference }> | null>(null);
   const [summary, setSummary] = useState<Settled<DashboardSummaryOut> | null>(null);
 
   useEffect(() => {
@@ -55,7 +60,7 @@ export function usePopulationData(filters: PopulationFilters) {
       .then(([ref, patients]) => {
         setPopulation({
           requestId,
-          state: { status: "ready", data: buildPopulationModel(patients.items, ref.careGaps, ref.rules) },
+          state: { status: "ready", data: { patients: patients.items, ref } },
         });
       })
       .catch((err) => {
@@ -80,8 +85,16 @@ export function usePopulationData(filters: PopulationFilters) {
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
-  const populationState: LoadState<PopulationModel> =
-    population?.requestId === requestId ? population.state : { status: "loading" };
+  const raw = population?.requestId === requestId ? population.state : null;
+  const model = useMemo(
+    () => (raw?.status === "ready" ? buildPopulationModel(raw.data.patients, raw.data.ref.careGaps, raw.data.ref.rules, t) : null),
+    [raw, t]
+  );
+  const populationState: LoadState<PopulationModel> = model
+    ? { status: "ready", data: model }
+    : raw?.status === "error"
+      ? raw
+      : { status: "loading" };
   const summaryState: LoadState<DashboardSummaryOut> =
     summary?.requestId === String(attempt) ? summary.state : { status: "loading" };
 

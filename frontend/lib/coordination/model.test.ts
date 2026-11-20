@@ -25,6 +25,7 @@ import {
   taskEventText,
   type TimelineInput,
 } from "./model";
+import { englishT } from "@/lib/i18n/translate";
 
 const gap: CareGapOut = {
   care_gap_id: "G1",
@@ -189,36 +190,36 @@ const input = (patch: Partial<TimelineInput> = {}): TimelineInput => ({
 
 describe("dueText", () => {
   it("describes due dates relative to today", () => {
-    expect(dueText(null, "2026-11-16", false)).toBe("No due date");
-    expect(dueText("2026-11-16", "2026-11-16", false)).toBe("Due today");
-    expect(dueText("2026-11-17", "2026-11-16", false)).toBe("Due in 1 day");
-    expect(dueText("2026-11-20", "2026-11-16", false)).toBe("Due in 4 days");
-    expect(dueText("2026-11-15", "2026-11-16", false)).toBe("1 day overdue");
-    expect(dueText("2026-11-01", "2026-11-16", false)).toBe("15 days overdue");
+    expect(dueText(null, "2026-11-16", false, englishT)).toBe("No due date");
+    expect(dueText("2026-11-16", "2026-11-16", false, englishT)).toBe("Due today");
+    expect(dueText("2026-11-17", "2026-11-16", false, englishT)).toBe("Due in 1 day");
+    expect(dueText("2026-11-20", "2026-11-16", false, englishT)).toBe("Due in 4 days");
+    expect(dueText("2026-11-15", "2026-11-16", false, englishT)).toBe("1 day overdue");
+    expect(dueText("2026-11-01", "2026-11-16", false, englishT)).toBe("15 days overdue");
   });
 
   it("never calls a closed follow-up overdue", () => {
-    expect(dueText("2026-11-01", "2026-11-16", true)).toBe("Due 1 Nov 2026");
-    expect(dueText("2026-11-01", "2026-11-16", true)).not.toMatch(/overdue/);
+    expect(dueText("2026-11-01", "2026-11-16", true, englishT)).toBe("Due 1 Nov 2026");
+    expect(dueText("2026-11-01", "2026-11-16", true, englishT)).not.toMatch(/overdue/);
   });
 
   it("crosses month and year boundaries", () => {
     expect(addDays("2026-12-28", 7)).toBe("2027-01-04");
-    expect(dueText("2027-01-04", "2026-12-28", false)).toBe("Due in 7 days");
+    expect(dueText("2027-01-04", "2026-12-28", false, englishT)).toBe("Due in 7 days");
   });
 });
 
 describe("buildTimeline", () => {
   it("orders every entry newest first, with ties broken by id", () => {
-    const t = buildTimeline(input());
+    const t = buildTimeline(input(), englishT);
     const at = t.map((e) => e.at);
     expect([...at].sort().reverse()).toEqual(at);
-    const tie = buildTimeline(input({ tasks: [], followUps: [], workflow: [], requests: [], appointments: [], referrals: [], careGaps: [gap, { ...gap, care_gap_id: "G0" }] }));
+    const tie = buildTimeline(input({ tasks: [], followUps: [], workflow: [], requests: [], appointments: [], referrals: [], careGaps: [gap, { ...gap, care_gap_id: "G0" }] }), englishT);
     expect(tie.map((e) => e.id)).toEqual(["gap-G0", "gap-G1"]);
   });
 
   it("labels only a completion_documented follow-up as completion", () => {
-    const t = buildTimeline(input());
+    const t = buildTimeline(input(), englishT);
     const completions = t.filter((e) => e.kind === "completion");
     expect(completions.map((e) => e.id)).toEqual(["fu-FU-3"]);
     expect(completions[0].title).toBe("Completion documented with evidence · care gap closed");
@@ -232,7 +233,7 @@ describe("buildTimeline", () => {
   });
 
   it("keeps visibility: internal notes and follow-ups internal, requests patient-visible, workflow as record", () => {
-    const t = buildTimeline(input());
+    const t = buildTimeline(input(), englishT);
     const byId = Object.fromEntries(t.map((e) => [e.id, e]));
     expect(byId["task-E2"]).toMatchObject({ kind: "note", visibility: "internal", title: "Internal note", detail: "Call after 5pm" });
     expect(byId["task-E1"]).toMatchObject({ kind: "task", visibility: "patient", title: "Follow-up created · Open · Screening invitation", detail: "Assigned to Amal (you)" });
@@ -246,7 +247,7 @@ describe("buildTimeline", () => {
   });
 
   it("skips gap events that duplicate workflow history and lists seed records once", () => {
-    const t = buildTimeline(input());
+    const t = buildTimeline(input(), englishT);
     const ids = t.map((e) => e.id);
     expect(ids).not.toContain("fu-FU-2");
     expect(ids).not.toContain("fu-FU-4");
@@ -267,33 +268,33 @@ describe("vocabulary", () => {
     expect(TASK_TRANSITIONS.cancelled).toEqual([]);
     expect(APPOINTMENT_TRANSITIONS.attended).toEqual([]);
     expect(REFERRAL_TRANSITIONS.pending).not.toContain("completed");
-    expect(TASK_STATUS_META.completed.description).toMatch(/evidence/);
-    expect(REQUEST_STATUS_META.scheduled.label).toBe("Appointment recorded");
+    expect(englishT(TASK_STATUS_META.completed.description)).toMatch(/evidence/);
+    expect(englishT(REQUEST_STATUS_META.scheduled.label)).toBe("Appointment recorded");
   });
 
   it("describes simulated outreach without ever calling it sent", () => {
-    expect(outreachOutcomeText("simulated_not_sent")).toBe("Simulated — not sent");
-    expect(outreachOutcomeText("outreach_suppressed")).toBe("Suppressed — not permitted");
-    expect(outreachOutcomeText(null)).toBe("Recorded");
-    expect(blockedReasonText("contact_consent_absent")).toBe("No current contact consent is recorded for this programme.");
-    expect(blockedReasonText("contact_details_unverified")).toBe("The recorded contact details are not verified.");
-    expect(blockedReasonText(null)).toBe("Outreach is not permitted for this person.");
-    expect(blockedReasonText("some_new_reason")).toBe("Some new reason");
+    expect(outreachOutcomeText("simulated_not_sent", englishT)).toBe("Simulated — not sent");
+    expect(outreachOutcomeText("outreach_suppressed", englishT)).toBe("Suppressed — not permitted");
+    expect(outreachOutcomeText(null, englishT)).toBe("Recorded");
+    expect(blockedReasonText("contact_consent_absent", englishT)).toBe("No current contact consent is recorded for this programme.");
+    expect(blockedReasonText("contact_details_unverified", englishT)).toBe("The recorded contact details are not verified.");
+    expect(blockedReasonText(null, englishT)).toBe("Outreach is not permitted for this person.");
+    expect(blockedReasonText("some_new_reason", englishT)).toBe("Some new reason");
   });
 
   it("names people and events from the care team", () => {
-    expect(memberName(team, "U-1")).toBe("Amal (you)");
-    expect(memberName(team, "U-2")).toBe("Omar");
-    expect(memberName(team, null)).toBe("Unassigned");
-    expect(memberName(team, "U-404")).toBe("Care-team member");
-    expect(actorLabel(team, "U-P", "PATIENT")).toBe("Patient");
-    expect(actorLabel(team, "U-1", "CARE_COORDINATOR")).toBe("You");
-    expect(actorLabel(null, "U-3", "CLINICIAN")).toBe("Clinician");
+    expect(memberName(team, "U-1", englishT)).toBe("Amal (you)");
+    expect(memberName(team, "U-2", englishT)).toBe("Omar");
+    expect(memberName(team, null, englishT)).toBe("Unassigned");
+    expect(memberName(team, "U-404", englishT)).toBe("Care-team member");
+    expect(actorLabel(team, "U-P", "PATIENT", englishT)).toBe("Patient");
+    expect(actorLabel(team, "U-1", "CARE_COORDINATOR", englishT)).toBe("You");
+    expect(actorLabel(null, "U-3", "CLINICIAN", englishT)).toBe("Clinician");
     expect(
-      taskEventText({ event_type: "contact_attempt", contact_channel: "phone", response_code: "no_answer", to_status: null, from_status: null, priority: null })
+      taskEventText({ event_type: "contact_attempt", contact_channel: "phone", response_code: "no_answer", to_status: null, from_status: null, priority: null }, englishT)
     ).toBe("Contact attempt · Phone call · No answer");
     expect(
-      taskEventText({ event_type: "status_changed", from_status: "open", to_status: "in_progress", contact_channel: null, response_code: null, priority: null })
+      taskEventText({ event_type: "status_changed", from_status: "open", to_status: "in_progress", contact_channel: null, response_code: null, priority: null }, englishT)
     ).toBe("Status: Open → In progress");
   });
 });

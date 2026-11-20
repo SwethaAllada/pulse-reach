@@ -96,3 +96,14 @@ then `docker compose -p prdeploy --env-file <env> -f infrastructure/docker-compo
   refetches), `components/coordination/`, profile section `coordination-section.tsx`. Tests:
   `components/coordination/coordination.test.tsx`, `lib/coordination/*.test.ts*`; fixtures in `test/fixtures.ts`
   (`resetCoordinationFixtures()`). Lint forbids sync setState in effects and `Date.now()` in render.
+
+## Frontend localization (`frontend/lib/i18n/`, `docs/localization-and-language-support.md` §6)
+
+- New UI strings go in `lib/i18n/messages/en.ts` *and* `ar.ts` (typed; `lib/i18n/catalog.test.ts` checks parity,
+  placeholders and untranslated entries). Terms: `docs/localization-glossary.md`.
+- In render use `useLocale()`/`useT()` and pass the translator to label helpers; module `t()` only in handlers/async
+  (hydration of streamed boundaries happens after the locale switch).
+- Logical CSS only (`ms-/pe-/start-/end-/border-e/text-start`); add converted files to `CONVERTED` in `catalog.test.ts`.
+- Tests: `lib/i18n/catalog.test.ts`, `components/i18n/language.test.tsx`; `test/setup.ts` resets the locale.
+- Visual QA in Arabic: set `localStorage["pulsereach-locale"]="ar"` (plus `pulsereach-locale-unsynced=1` to keep it over
+  the account preference at sign-in). Ports 3100/8001/8011 may already be in use by other local stacks.

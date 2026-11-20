@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { api, ApiError } from "@/lib/api/client";
 import { useResource, type Resource } from "@/lib/api/resource";
 import { cached } from "@/lib/api/cache";
@@ -16,6 +16,8 @@ import type {
   RuleSummaryOut,
 } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/auth-context";
+import { useLocale } from "@/lib/i18n/use-locale";
+import type { MessageKey } from "@/lib/i18n/translate";
 import { buildPopulationModel, type PopulationModel } from "@/lib/population/model";
 import { AGE_BAND_OPTIONS, peopleFiltersToSearchParams, type PeopleFilters } from "@/lib/people/params";
 
@@ -103,14 +105,18 @@ export function useProgrammesData(filters: ProgrammeFilters, pathway: Pathway) {
   const careGaps = useResource<CareGapOut[]>(can("care_gaps.read") ? "gaps" : null, "care_gaps.read", loadCareGaps, attempt);
 
   /** Members: backend-filtered patients joined with rules + gap records into programme segments. */
-  const population = useResource<PopulationModel>(
+  const raw = useResource(
     can("patients.read", "patients.read_assigned") && can("care_gaps.read") && can("rules.read") ? `patients|${filterKey}` : null,
     "patients.read_assigned",
-    (signal) =>
-      Promise.all([api.allPatients({ ...filters, pathway }, signal), loadCareGaps(), loadRules()]).then(([p, g, r]) =>
-        buildPopulationModel(p.items, g, r)
-      ),
-    attempt
+    (signal) => Promise.all([api.allPatients({ ...filters, pathway }, signal), loadCareGaps(), loadRules()]),
+    attempt,
+    false
+  );
+  // Labels are rebuilt for a language switch without refetching every patient page.
+  const { t } = useLocale();
+  const population = useMemo<Resource<PopulationModel>>(
+    () => (raw.status === "ready" ? { status: "ready", data: buildPopulationModel(raw.data[0].items, raw.data[1], raw.data[2], t) } : raw),
+    [raw, t]
   );
 
   return { summary, rules, openQuestions, careGaps, population, surveillance, programmeSummary, retry };
@@ -120,7 +126,7 @@ export function useProgrammesData(filters: ProgrammeFilters, pathway: Pathway) {
 export function useAgeBands(pathway: Pathway, filters: Omit<ProgrammeFilters, "age_band">, attempt = 0) {
   const { can } = useAuth();
   const key = peopleFiltersToSearchParams({ ...filters, pathway }).toString();
-  return useResource<{ total: number; bands: { band: AgeBand; label: string; count: number }[] }>(
+  return useResource<{ total: number; bands: { band: AgeBand; label: MessageKey; count: number }[] }>(
     can("patients.read", "patients.read_assigned") ? `age|${key}` : null,
     "patients.read_assigned",
     (signal) =>

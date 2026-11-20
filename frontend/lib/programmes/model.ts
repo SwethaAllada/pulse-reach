@@ -7,7 +7,8 @@ import type {
   RuleSummaryOut,
 } from "@/lib/api/types";
 import { ruleGroup, type RuleGroup } from "@/lib/people/person";
-import { GAP_TYPE_LABELS, ruleShortLabel, type CohortId, type CountRow, type SegmentId } from "@/lib/population/model";
+import { gapTypeLabel, ruleShortLabel, type CohortId, type CountRow, type SegmentId } from "@/lib/population/model";
+import type { MessageKey, Translate } from "@/lib/i18n/translate";
 import type { PeopleFilters } from "@/lib/people/params";
 
 /**
@@ -36,24 +37,16 @@ export function ruleHref(pathway: Pathway, ruleId: string): string {
   return `/programmes/${PROGRAMME_SLUGS[pathway]}/rules/${encodeURIComponent(ruleId)}`;
 }
 
-export const PROGRAMME_META: Record<Pathway, { name: string; full: string; audience: string; unit: string }> = {
-  ifhas: { name: "IFHAS", full: "IFHAS adult screening", audience: "Adults", unit: "adults" },
-  well_child: { name: "Well-Child", full: "Well-Child visits", audience: "Children", unit: "children" },
+/** Message keys (render with the bound translator). */
+export const PROGRAMME_META: Record<Pathway, { name: MessageKey; full: MessageKey; audience: MessageKey; unit: MessageKey }> = {
+  ifhas: { name: "pop.pathway.ifhas_short", full: "pop.pathway.ifhas", audience: "prog.audience.adults", unit: "prog.unit.adults" },
+  well_child: { name: "pop.pathway.well_child_short", full: "pop.pathway.well_child", audience: "prog.audience.children", unit: "prog.unit.children" },
 };
 
-export const RULE_GROUP_META: Record<RuleGroup, { title: string; description: string }> = {
-  programme: {
-    title: "Programme gates",
-    description: "Who the programme applies to and whether it is in force — eligibility, scope and status rules.",
-  },
-  service: {
-    title: "Preventive services",
-    description: "The screening packages, scheduled visits and developmental screening tiers the programme defines.",
-  },
-  workflow: {
-    title: "Timing & follow-up",
-    description: "Windows and policies for when services and follow-up should happen.",
-  },
+export const RULE_GROUP_META: Record<RuleGroup, { title: MessageKey; description: MessageKey }> = {
+  programme: { title: "prog.group.programme", description: "prog.group.programme_desc" },
+  service: { title: "prog.group.service", description: "prog.group.service_desc" },
+  workflow: { title: "prog.group.workflow", description: "prog.group.workflow_desc" },
 };
 
 export const RULE_GROUP_ORDER: RuleGroup[] = ["programme", "service", "workflow"];
@@ -62,19 +55,10 @@ export const RULE_GROUP_ORDER: RuleGroup[] = ["programme", "service", "workflow"
 
 export type RuleStanding = "authoritative" | "review" | "unresolved";
 
-export const STANDING_META: Record<RuleStanding, { label: string; description: string }> = {
-  authoritative: {
-    label: "Verified & authoritative",
-    description: "Transcription verified against the published standard; results under this rule can be acted on.",
-  },
-  review: {
-    label: "Needs clinical review",
-    description: "Verified transcription, but non-authoritative or flagged for review: results route to a healthcare professional.",
-  },
-  unresolved: {
-    label: "Unresolved",
-    description: "The standard leaves this rule open (e.g. no window defined). The engine never automates a result from it.",
-  },
+export const STANDING_META: Record<RuleStanding, { label: MessageKey; description: MessageKey }> = {
+  authoritative: { label: "prog.standing.authoritative", description: "prog.standing.authoritative_desc" },
+  review: { label: "prog.standing.review", description: "prog.standing.review_desc" },
+  unresolved: { label: "prog.standing.unresolved", description: "prog.standing.unresolved_desc" },
 };
 
 export function ruleStanding(rule: Pick<RuleSummaryOut, "verification_status" | "is_authoritative" | "requires_clinical_review">): RuleStanding {
@@ -87,20 +71,12 @@ export function ruleStanding(rule: Pick<RuleSummaryOut, "verification_status" | 
 
 export const GAP_STATUS_ORDER: CareGapStatus[] = ["open", "closed_completed", "closed_refused", "suppressed", "superseded"];
 
-export const GAP_STATUS_META: Record<CareGapStatus, { label: string; short: string; description: string }> = {
-  open: { label: "Open care gap", short: "Open", description: "Recorded by the engine and not yet closed." },
-  closed_completed: {
-    label: "Closed by documented completion",
-    short: "Completed",
-    description: "Closed because a qualifying screening, visit or referral was documented.",
-  },
-  closed_refused: {
-    label: "Closed by documented refusal",
-    short: "Refused",
-    description: "Closed by a recorded refusal. The service was not completed.",
-  },
-  suppressed: { label: "Suppressed", short: "Suppressed", description: "Not actioned. Not a completion." },
-  superseded: { label: "Superseded", short: "Superseded", description: "Replaced by a later evaluation. Not a completion." },
+export const GAP_STATUS_META: Record<CareGapStatus, { label: MessageKey; short: MessageKey; description: MessageKey }> = {
+  open: { label: "prog.gap.open", short: "prog.gap.open_short", description: "prog.gap.open_desc" },
+  closed_completed: { label: "prog.gap.completed", short: "prog.gap.completed_short", description: "prog.gap.completed_desc" },
+  closed_refused: { label: "prog.gap.refused", short: "prog.gap.refused_short", description: "prog.gap.refused_desc" },
+  suppressed: { label: "prog.gap.suppressed", short: "prog.gap.suppressed", description: "prog.gap.suppressed_desc" },
+  superseded: { label: "prog.gap.superseded", short: "prog.gap.superseded", description: "prog.gap.superseded_desc" },
 };
 
 export type GapStatusCounts = Record<CareGapStatus, number> & { total: number };
@@ -158,6 +134,7 @@ export function buildProgrammeModel(
   rules: RuleSummaryOut[],
   careGaps: CareGapOut[],
   openQuestions: OpenQuestionOut[],
+  t: Translate,
   patientIds: Set<string> | null = null
 ): ProgrammeModel {
   const own = rules.filter((r) => r.pathway === pathway);
@@ -207,7 +184,7 @@ export function buildProgrammeModel(
     standing,
     gaps: total,
     gapTypes: [...types.entries()]
-      .map(([key, count]) => ({ key, label: GAP_TYPE_LABELS[key as keyof typeof GAP_TYPE_LABELS] ?? key, count }))
+      .map(([key, count]) => ({ key, label: gapTypeLabel(key, t), count }))
       .sort((a, b) => b.count - a.count),
     peopleWithOpenGap: openPeople.size,
     openQuestions: openQuestions.filter((q) => q.rule_ids.some((id) => ids.has(id))),
@@ -218,26 +195,14 @@ export function buildProgrammeModel(
 
 export type EvidenceClass = "calculated" | "recorded_gap" | "completed" | "missing_history";
 
-export const EVIDENCE_META: Record<EvidenceClass, { title: string; source: string; caution: string }> = {
-  calculated: {
-    title: "Backend-calculated eligibility",
-    source: "Deterministic rule evaluations, counted per person inside each rule's printed age/sex band.",
-    caution: "“In scope” is not a care need; due or upcoming results are.",
-  },
-  recorded_gap: {
-    title: "Recorded care gaps",
-    source: "Care-gap records the engine opened for an in-scope person with no qualifying documented service.",
-    caution: "Counts are gap records unless stated as people — one person can hold several.",
-  },
-  completed: {
-    title: "Completed care",
-    source: "Gap records closed because a qualifying screening, visit or referral was documented.",
-    caution: "Only documented completions count. Refusals, suppression and supersession are not completions.",
-  },
+export const EVIDENCE_META: Record<EvidenceClass, { title: MessageKey; source: MessageKey; caution: MessageKey }> = {
+  calculated: { title: "prog.evidence.calculated", source: "prog.evidence.calculated_source", caution: "prog.evidence.calculated_caution" },
+  recorded_gap: { title: "prog.evidence.recorded_gap", source: "prog.evidence.recorded_gap_source", caution: "prog.evidence.recorded_gap_caution" },
+  completed: { title: "prog.evidence.completed", source: "prog.evidence.completed_source", caution: "prog.evidence.completed_caution" },
   missing_history: {
-    title: "Missing or unavailable history",
-    source: "People whose screening or visit history is not available to the engine — their evaluations resolve to “unknown”.",
-    caution: "Missing history is never evidence that care did not happen.",
+    title: "prog.evidence.missing_history",
+    source: "prog.evidence.missing_history_source",
+    caution: "prog.evidence.missing_history_caution",
   },
 };
 
@@ -248,57 +213,50 @@ export interface EvidenceFigure {
   detail: string;
 }
 
-export const SUPPRESSED_TEXT = "Suppressed for privacy";
-
 /** A server-side count: `null` means suppressed (small cell), never zero. */
-export function countText(n: number | null): string {
-  return n === null ? "suppressed" : String(n);
+export function countText(n: number | null, t: Translate): string {
+  return n === null ? t("prog.suppressed") : String(n);
 }
 
 /**
  * Evidence ledger for one programme, from the server-side programme summary (scope and filters
  * applied by the backend). `null` summary = not available; `null` values = suppressed for privacy.
  */
-export function evidenceFigures(s: ProgrammeSummaryOut | null): EvidenceFigure[] {
-  const none = "Programme summary not available";
-  const fig = (cls: EvidenceClass, value: number | null | undefined, unit: string, detail: string): EvidenceFigure => ({
+export function evidenceFigures(s: ProgrammeSummaryOut | null, t: Translate): EvidenceFigure[] {
+  const c = (n: number | null | undefined) => countText(n ?? null, t);
+  const fig = (cls: EvidenceClass, value: number | null | undefined, unit: MessageKey, detail: string): EvidenceFigure => ({
     cls,
     value: value ?? null,
-    unit,
-    detail: !s ? none : value === null ? `${SUPPRESSED_TEXT} (fewer than ${s.min_cell_size}, or would reveal such a cell)` : detail,
+    unit: t(unit),
+    detail: !s ? t("prog.summary_unavailable") : value === null ? t("prog.suppressed_detail", { min: s.min_cell_size }) : detail,
   });
   return [
     fig(
       "calculated",
       s?.eligibility.due_or_upcoming_patients,
-      "people due or upcoming",
-      `${countText(s?.eligibility.programme_eligible_patients ?? null)} people with an in-scope programme result · filters applied`
+      "prog.fig.calculated_unit",
+      t("prog.fig.calculated_detail", { count: c(s?.eligibility.programme_eligible_patients) })
     ),
-    fig("recorded_gap", s?.care_gaps.open, "open gap records", `${countText(s?.people_with_open_gap ?? null)} people hold at least one`),
-    fig(
-      "completed",
-      s?.care_gaps.closed_completed,
-      "gaps closed by documented completion",
-      `of ${countText(s?.care_gaps.total ?? null)} gap records ever opened under these rules`
-    ),
+    fig("recorded_gap", s?.care_gaps.open, "prog.fig.recorded_unit", t("prog.fig.recorded_detail", { count: c(s?.people_with_open_gap) })),
+    fig("completed", s?.care_gaps.closed_completed, "prog.fig.completed_unit", t("prog.fig.completed_detail", { count: c(s?.care_gaps.total) })),
     fig(
       "missing_history",
       s?.history.not_available,
-      "people without available history",
-      `${countText(s?.history.partial ?? null)} more with partial history · of ${countText(s?.members ?? null)} members`
+      "prog.fig.missing_unit",
+      t("prog.fig.missing_detail", { partial: c(s?.history.partial), members: c(s?.members) })
     ),
   ];
 }
 
 /** Composition-band input from a programme summary; null when the member count or any segment is suppressed. */
-export function summaryBand(s: ProgrammeSummaryOut): {
+export function summaryBand(s: ProgrammeSummaryOut, t: Translate): {
   label: string;
   people: number;
   segments: { id: CohortId; segment: SegmentId; people: number }[];
 } | null {
   if (s.members === null || s.segments.some((x) => x.people === null)) return null;
   return {
-    label: PROGRAMME_META[s.pathway].name,
+    label: t(PROGRAMME_META[s.pathway].name),
     people: s.members,
     segments: s.segments.map((x) => ({ id: `${s.pathway}:${x.segment}` as CohortId, segment: x.segment, people: x.people ?? 0 })),
   };

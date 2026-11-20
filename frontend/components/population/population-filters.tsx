@@ -10,6 +10,7 @@ import {
   type FilterKey,
   type PopulationFilters,
 } from "@/lib/population/filters";
+import { useLocale } from "@/lib/i18n/use-locale";
 
 type Tone = "ink" | "paper";
 
@@ -59,10 +60,11 @@ export function PopulationFilterBar({
   onChange,
   tone = "paper",
   emptyText,
-  label = "Population filters",
+  label,
   hideProgramme,
   children,
 }: Props) {
+  const { t: tr } = useLocale();
   const t = TONES[tone];
   const selectCls = selectClass(tone);
   const labelCls = filterLabelClass(tone);
@@ -72,30 +74,30 @@ export function PopulationFilterBar({
     else next[key] = value;
     onChange(next);
   };
-  const chips = filterChips(filters).filter((c) => !(hideProgramme && c.key === "pathway"));
+  const chips = filterChips(filters, tr).filter((c) => !(hideProgramme && c.key === "pathway"));
 
   return (
-    <div role="search" aria-label={label}>
+    <div role="search" aria-label={label ?? tr("pop.filters_label")}>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:flex lg:flex-wrap lg:items-end">
         {!hideProgramme && (
           <label className={`${labelCls} lg:w-56`}>
-            Programme
+            {tr("pop.filter.programme")}
             <select
               className={selectCls}
               value={filters.pathway ?? ""}
               onChange={(e) => set("pathway", (e.target.value || undefined) as PopulationFilters["pathway"])}
             >
-              <option value="">All programmes</option>
+              <option value="">{tr("pop.filter.all_programmes")}</option>
               {PATHWAY_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
-                  {o.label}
+                  {tr(o.label)}
                 </option>
               ))}
             </select>
           </label>
         )}
         <label className={`${labelCls} lg:w-44`}>
-          Region
+          {tr("pop.filter.region")}
           <select
             className={selectCls}
             value={filters.region_id ?? ""}
@@ -103,25 +105,25 @@ export function PopulationFilterBar({
               set("region_id", e.target.value ? (Number(e.target.value) as PopulationFilters["region_id"]) : undefined)
             }
           >
-            <option value="">All regions</option>
+            <option value="">{tr("pop.filter.all_regions")}</option>
             {REGION_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
-                {o.label}
+                {tr(o.label)}
               </option>
             ))}
           </select>
         </label>
         <label className={`${labelCls} lg:w-36`}>
-          Sex
+          {tr("pop.filter.sex")}
           <select
             className={selectCls}
             value={filters.sex ?? ""}
             onChange={(e) => set("sex", (e.target.value || undefined) as PopulationFilters["sex"])}
           >
-            <option value="">All</option>
+            <option value="">{tr("pop.filter.all")}</option>
             {SEX_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
-                {o.label}
+                {tr(o.label)}
               </option>
             ))}
           </select>
@@ -131,16 +133,16 @@ export function PopulationFilterBar({
 
       <div className="mt-3 flex min-h-7 flex-wrap items-center gap-2" aria-live="polite">
         {chips.length === 0 ? (
-          <p className={`text-xs ${t.empty}`}>{emptyText ?? "Showing the whole synthetic population."}</p>
+          <p className={`text-xs ${t.empty}`}>{emptyText ?? tr("pop.filter.showing_all")}</p>
         ) : (
           <>
-            <span className="sr-only">Active filters:</span>
+            <span className="sr-only">{tr("pop.filter.active")}</span>
             {chips.map((c) => (
               <button
                 key={c.key}
                 type="button"
                 onClick={() => set(c.key, undefined)}
-                aria-label={`Remove filter ${c.label}`}
+                aria-label={tr("pop.filter.remove", { filter: c.label })}
                 className={`reveal inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors ${t.chip}`}
               >
                 {c.label}
@@ -153,7 +155,7 @@ export function PopulationFilterBar({
                 onClick={() => onChange(hideProgramme && filters.pathway ? { pathway: filters.pathway } : {})}
                 className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${t.clear}`}
               >
-                Clear all
+                {tr("pop.filter.clear_all")}
               </button>
             )}
           </>

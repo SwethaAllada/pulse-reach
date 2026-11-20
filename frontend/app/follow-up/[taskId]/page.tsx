@@ -17,7 +17,7 @@ export default function FollowUpTaskPage() {
           </div>
         }
       >
-        <RequirePermission anyOf={["followups.read"]} workspace="Follow-up">
+        <RequirePermission anyOf={["followups.read"]} workspace="nav.follow_up">
           <TaskDetailPage />
         </RequirePermission>
       </Suspense>

@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Appointments & Referrals" };
 export default function AppointmentsPage() {
   return (
     <PageTransition>
-      <RequirePermission anyOf={["appointments.read", "referrals.read"]} workspace="Appointments & Referrals">
+      <RequirePermission anyOf={["appointments.read", "referrals.read"]} workspace="nav.appointments_referrals">
         <AppointmentsWorkspace />
       </RequirePermission>
     </PageTransition>

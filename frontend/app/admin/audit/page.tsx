@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Audit log" };
 export default function Page() {
   return (
     <PageTransition>
-      <RequirePermission anyOf={["audit_logs.read"]} workspace="Audit log">
+      <RequirePermission anyOf={["audit_logs.read"]} workspace="nav.audit_log">
         <AuditAdmin />
       </RequirePermission>
     </PageTransition>

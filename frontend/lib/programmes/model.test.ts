@@ -1,3 +1,4 @@
+import { englishT } from "@/lib/i18n/translate";
 import { describe, expect, it } from "vitest";
 import { CARE_GAPS, fakeBackend, fakeSummaryConfig, OPEN_QUESTIONS, RULES } from "@/test/fixtures";
 import type { ProgrammeSummaryOut } from "@/lib/api/types";
@@ -21,7 +22,7 @@ describe("programme model", () => {
   });
 
   it("counts gap records by status per rule and programme, and people with open gaps", () => {
-    const m = buildProgrammeModel("ifhas", RULES, CARE_GAPS, OPEN_QUESTIONS);
+    const m = buildProgrammeModel("ifhas", RULES, CARE_GAPS, OPEN_QUESTIONS, englishT);
     expect(m.rules.map((r) => r.rule.rule_id).sort()).toEqual(
       ["IFHAS-PKG-FIT", "IFHAS-PKG-LUNG", "IFHAS-PKG-ORAL", "IFHAS-PROG-ELIG-MIN-AGE"]
     );
@@ -38,30 +39,30 @@ describe("programme model", () => {
   });
 
   it("limits gap counts to the filtered member set and keeps programmes apart", () => {
-    const m = buildProgrammeModel("ifhas", RULES, CARE_GAPS, [], new Set(["SYNTH-PAT-4"]));
+    const m = buildProgrammeModel("ifhas", RULES, CARE_GAPS, [], englishT, new Set(["SYNTH-PAT-4"]));
     expect(m.gaps).toMatchObject({ open: 0, closed_refused: 1, total: 1 });
-    const wcv = buildProgrammeModel("well_child", RULES, CARE_GAPS, OPEN_QUESTIONS);
+    const wcv = buildProgrammeModel("well_child", RULES, CARE_GAPS, OPEN_QUESTIONS, englishT);
     expect(wcv.gaps.open).toBe(1);
     expect(wcv.openQuestions).toEqual([]);
   });
 
   it("takes evidence figures from the server-side summary, keeping evidence classes apart", () => {
     const s = fakeBackend("http://api/api/v1/programmes/ifhas/summary") as ProgrammeSummaryOut;
-    const byCls = Object.fromEntries(evidenceFigures(s).map((f) => [f.cls, f.value]));
+    const byCls = Object.fromEntries(evidenceFigures(s, englishT).map((f) => [f.cls, f.value]));
     expect(byCls).toEqual({ calculated: 3, recorded_gap: 2, completed: 0, missing_history: 1 });
-    expect(evidenceFigures(s)[0].detail).toContain("filters applied");
+    expect(evidenceFigures(s, englishT)[0].detail).toContain("filters applied");
   });
 
   it("reports an unavailable summary and suppressed cells as null, never as zero", () => {
-    expect(evidenceFigures(null).every((f) => f.value === null && f.detail === "Programme summary not available")).toBe(true);
+    expect(evidenceFigures(null, englishT).every((f) => f.value === null && f.detail === "Programme summary not available")).toBe(true);
     fakeSummaryConfig.minCellSize = 5;
     try {
       const s = fakeBackend("http://api/api/v1/programmes/ifhas/summary") as ProgrammeSummaryOut;
       expect(s.members).toBeNull();
-      const f = evidenceFigures(s);
+      const f = evidenceFigures(s, englishT);
       expect(f.map((x) => x.value)).toEqual([null, null, 0, null]);
       expect(f[0].detail).toMatch(/Suppressed for privacy/);
-      expect(summaryBand(s)).toBeNull();
+      expect(summaryBand(s, englishT)).toBeNull();
     } finally {
       fakeSummaryConfig.minCellSize = 1;
     }
@@ -69,7 +70,7 @@ describe("programme model", () => {
 
   it("builds a composition band from summary segments", () => {
     const s = fakeBackend("http://api/api/v1/programmes/ifhas/summary") as ProgrammeSummaryOut;
-    const band = summaryBand(s)!;
+    const band = summaryBand(s, englishT)!;
     expect(band.people).toBe(4);
     expect(band.segments.map((x) => [x.segment, x.people])).toEqual([
       ["open_gap", 1],

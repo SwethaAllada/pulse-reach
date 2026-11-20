@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useLocale } from "@/lib/i18n/use-locale";
 
 /**
  * A count that eases from its previous value to the new one when it changes (filters, refetch).
@@ -9,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
  */
 export function AnimatedNumber({ value }: { value: number }) {
   const [shown, setShown] = useState(value);
+  const { number } = useLocale();
   const from = useRef(value);
 
   useEffect(() => {
@@ -32,5 +34,5 @@ export function AnimatedNumber({ value }: { value: number }) {
     return () => cancelAnimationFrame(raf);
   }, [value]);
 
-  return <>{shown.toLocaleString("en")}</>;
+  return <>{number(shown)}</>;
 }

@@ -37,7 +37,7 @@ export function Plate({ eyebrow, title, description, label, actions, children, c
       <header
         className={cn(
           "flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-4",
-          aside && "lg:block lg:border-b-0 lg:border-r"
+          aside && "lg:block lg:border-b-0 lg:border-e"
         )}
       >
         <div className="min-w-0">

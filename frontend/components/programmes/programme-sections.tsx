@@ -35,6 +35,7 @@ import { ResourceView } from "./resource-state";
 import { OrganizationTrend, ProgrammeTrend } from "./organization-trend";
 import type { DetailState } from "./programme-detail";
 import { cn } from "@/lib/cn";
+import { useLocale } from "@/lib/i18n/use-locale";
 
 type Data = ReturnType<typeof useProgrammesData>;
 
@@ -53,42 +54,44 @@ export function ProgrammeSections({
   programme: Programme | null;
   data: Data;
 }) {
+  const { t } = useLocale();
   const referenceDate = data.summary.status === "ready" ? data.summary.data.reference_date : null;
+  const name = t(PROGRAMME_META[pathway].name);
   return (
     <div className="flex flex-col gap-16">
       <Plate
         index="01"
-        eyebrow="Evidence & transparency"
-        title="Why people appear in this programme"
-        description="Four different kinds of evidence sit behind the numbers. They are kept apart so that missing history is never read as missed care."
+        eyebrow={t("prog.sec.evidence_eyebrow")}
+        title={t("prog.sec.evidence_title")}
+        description={t("prog.sec.evidence_desc")}
       >
-        <ResourceView resource={data.programmeSummary} what="Programme evidence" onRetry={data.retry} loading={<LoadingState rows={2} label="Loading evidence" />}>
-          {(s) => <EvidenceLedger figures={evidenceFigures(s)} />}
+        <ResourceView resource={data.programmeSummary} what={t("prog.sec.evidence_what")} onRetry={data.retry} loading={<LoadingState rows={2} label={t("prog.sec.evidence_loading")} />}>
+          {(s) => <EvidenceLedger figures={evidenceFigures(s, t)} />}
         </ResourceView>
       </Plate>
 
       <Plate
         index="02"
-        eyebrow="Rules & pathways"
-        title="The rules that define the programme"
-        description="Each column is one rule from the versioned bundle. Its height counts care-gap records in the chosen state; the foot glyph shows how far the rule can be trusted."
+        eyebrow={t("prog.sec.rules_eyebrow")}
+        title={t("prog.sec.rules_title")}
+        description={t("prog.sec.rules_desc")}
         actions={
           <Segmented
-            label="Care-gap state"
+            label={t("prog.sec.gap_state")}
             value={state.metric}
             onChange={(metric) => navigate({ metric })}
-            options={SPECTRUM_METRICS.map((m) => ({ value: m, label: GAP_STATUS_META[m].short }))}
+            options={SPECTRUM_METRICS.map((m) => ({ value: m, label: t(GAP_STATUS_META[m].short) }))}
           />
         }
       >
-        <ResourceView resource={data.rules} what="Programme rules" onRetry={data.retry}>
+        <ResourceView resource={data.rules} what={t("prog.sec.rules_what")} onRetry={data.retry}>
           {() =>
             model ? (
               <>
                 <StandingFilter model={model} value={state.standing} onChange={(standing) => navigate({ standing })} />
                 <RuleSpectrum pathway={pathway} rows={model.rules} metric={state.metric} standing={state.standing} />
                 {data.careGaps.status === "forbidden" && (
-                  <p className="mt-2 text-xs text-faint">Care-gap counts need care_gaps.read; columns show rules only.</p>
+                  <p className="mt-2 text-xs text-faint">{t("prog.sec.rules_forbidden")}</p>
                 )}
                 <RuleIndex pathway={pathway} model={model} standing={state.standing} />
               </>
@@ -100,15 +103,11 @@ export function ProgrammeSections({
       <Plate
         id="people"
         index="03"
-        eyebrow="People"
-        title={state.segment ? SEGMENT_META[state.segment].label : "Members who need attention first"}
-        description={
-          state.segment
-            ? "Members in the selected segment, most open gaps in this programme first. Open a profile to see the evidence trace."
-            : "All members, ordered by open care-gap records in this programme. Select a lattice segment above to narrow the list."
-        }
+        eyebrow={t("nav.people")}
+        title={state.segment ? t(SEGMENT_META[state.segment].label) : t("prog.sec.people_title")}
+        description={t(state.segment ? "prog.sec.people_desc_segment" : "prog.sec.people_desc")}
       >
-        <ResourceView resource={data.population} what="Programme members" onRetry={data.retry}>
+        <ResourceView resource={data.population} what={t("prog.sec.members_what")} onRetry={data.retry}>
           {(d) =>
             programme ? (
               <MemberList pathway={pathway} programme={programme} people={d.patientsById} state={state} referenceDate={referenceDate} />
@@ -119,35 +118,35 @@ export function ProgrammeSections({
 
       <Plate
         index="04"
-        eyebrow="Population distribution"
-        title="Who the programme reaches"
-        description="Members by backend age group, sex and region for the current filters."
+        eyebrow={t("prog.sec.dist_eyebrow")}
+        title={t("prog.sec.dist_title")}
+        description={t("prog.sec.dist_desc")}
       >
         <Distribution pathway={pathway} state={state} programme={programme} data={data} />
       </Plate>
 
       <Plate
         index="05"
-        eyebrow="Open questions"
-        title="What the standard leaves unresolved"
-        description="Questions recorded against this programme’s rules. PulseReach reports them and never answers them on the standard’s behalf."
+        eyebrow={t("prog.sec.oq_eyebrow")}
+        title={t("prog.sec.oq_title")}
+        description={t("prog.sec.oq_desc")}
       >
-        <ResourceView resource={data.openQuestions} what="Open questions" onRetry={data.retry}>
+        <ResourceView resource={data.openQuestions} what={t("prog.sec.oq_eyebrow")} onRetry={data.retry}>
           {() => (model ? <OpenQuestions model={model} pathway={pathway} /> : null)}
         </ResourceView>
       </Plate>
 
       <Plate
         index="06"
-        eyebrow="Programme & organization trend"
-        title="Preventive care over time"
-        description="This programme’s period comparison, drawn only where persisted evaluation history covers both periods, then organization-wide surveillance for all programmes together."
+        eyebrow={t("prog.sec.trend_eyebrow")}
+        title={t("prog.sec.trend_title")}
+        description={t("prog.sec.trend_desc")}
       >
         <div className="flex flex-col gap-12">
-          <ResourceView resource={data.programmeSummary} what={`${PROGRAMME_META[pathway].name} trend figures`} onRetry={data.retry}>
-            {(d) => <ProgrammeTrend data={d} name={PROGRAMME_META[pathway].name} />}
+          <ResourceView resource={data.programmeSummary} what={t("prog.trend.figures", { programme: name })} onRetry={data.retry}>
+            {(d) => <ProgrammeTrend data={d} name={name} />}
           </ResourceView>
-          <ResourceView resource={data.surveillance} what="Organization surveillance aggregates" onRetry={data.retry}>
+          <ResourceView resource={data.surveillance} what={t("prog.trend.what")} onRetry={data.retry}>
             {(d) => <OrganizationTrend data={d} />}
           </ResourceView>
         </div>
@@ -166,6 +165,7 @@ const EVIDENCE_GLYPH = {
 };
 
 function EvidenceLedger({ figures }: { figures: ReturnType<typeof evidenceFigures> }) {
+  const { t } = useLocale();
   return (
     <ol className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
       {figures.map((f, i) => {
@@ -174,13 +174,13 @@ function EvidenceLedger({ figures }: { figures: ReturnType<typeof evidenceFigure
           <li key={f.cls} className="reveal flex flex-col bg-surface p-5" style={{ "--i": i } as React.CSSProperties}>
             <p className="flex items-center gap-2 text-xs font-semibold text-foreground">
               {EVIDENCE_GLYPH[f.cls]}
-              {meta.title}
+              {t(meta.title)}
             </p>
             <p className="figure mt-3 text-[32px] text-foreground">{f.value ?? "—"}</p>
             <p className="mt-1 text-xs text-muted">{f.unit}</p>
             <p className="mt-1 text-xs text-faint">{f.detail}</p>
-            <p className="mt-4 border-t border-border pt-3 text-xs leading-relaxed text-muted">{meta.source}</p>
-            <p className="mt-2 font-display text-[13px] italic leading-snug text-foreground">{meta.caution}</p>
+            <p className="mt-4 border-t border-border pt-3 text-xs leading-relaxed text-muted">{t(meta.source)}</p>
+            <p className="mt-2 font-display text-[13px] italic leading-snug text-foreground">{t(meta.caution)}</p>
           </li>
         );
       })}
@@ -199,9 +199,10 @@ function StandingFilter({
   value: RuleStanding | null;
   onChange: (v: RuleStanding | null) => void;
 }) {
+  const { t } = useLocale();
   return (
-    <div role="group" aria-label="Highlight rules by standing" className="mb-6 flex flex-wrap items-center gap-2 text-xs">
-      <span className="mr-1 text-faint">Highlight</span>
+    <div role="group" aria-label={t("prog.sec.highlight_label")} className="mb-6 flex flex-wrap items-center gap-2 text-xs">
+      <span className="me-1 text-faint">{t("prog.sec.highlight")}</span>
       {(["authoritative", "review", "unresolved"] as const).map((s) => (
         <button
           key={s}
@@ -215,7 +216,7 @@ function StandingFilter({
           )}
         >
           <StandingGlyph standing={s} size={10} />
-          {STANDING_META[s].label}
+          {t(STANDING_META[s].label)}
           <span className="font-mono text-faint">{model.standing[s]}</span>
         </button>
       ))}
@@ -225,6 +226,7 @@ function StandingFilter({
 
 function RuleIndex({ pathway, model, standing }: { pathway: Pathway; model: ProgrammeModel; standing: RuleStanding | null }) {
   const [open, setOpen] = useState(false);
+  const { t, rich } = useLocale();
   return (
     <div className="mt-8">
       <button
@@ -234,7 +236,7 @@ function RuleIndex({ pathway, model, standing }: { pathway: Pathway; model: Prog
         className="inline-flex items-center gap-2 text-sm font-medium text-foreground underline-offset-4 hover:underline"
       >
         <ChevronDown size={16} aria-hidden="true" className={cn("transition-transform duration-300", open && "rotate-180")} />
-        {open ? "Hide" : "Show"} the rule index ({model.rules.length} rules)
+        {t(open ? "prog.sec.index_hide" : "prog.sec.index_show", { count: model.rules.length })}
       </button>
       <div className={cn("grid transition-[grid-template-rows] duration-500 ease-[var(--ease-out)]", open ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
         <div className="min-h-0 overflow-hidden">
@@ -244,8 +246,8 @@ function RuleIndex({ pathway, model, standing }: { pathway: Pathway; model: Prog
               if (rows.length === 0) return null;
               return (
                 <div key={g}>
-                  <p className="font-display text-lg text-foreground">{RULE_GROUP_META[g].title}</p>
-                  <p className="text-xs text-muted">{RULE_GROUP_META[g].description}</p>
+                  <p className="font-display text-lg text-foreground">{t(RULE_GROUP_META[g].title)}</p>
+                  <p className="text-xs text-muted">{t(RULE_GROUP_META[g].description)}</p>
                   <ul className="mt-3 divide-y divide-border border-y border-border">
                     {rows.map((r) => (
                       <li key={r.rule.rule_id}>
@@ -256,18 +258,20 @@ function RuleIndex({ pathway, model, standing }: { pathway: Pathway; model: Prog
                           className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 py-3 transition-colors hover:bg-highlight/50 sm:grid-cols-[minmax(0,1fr)_170px_150px_20px] sm:px-2"
                         >
                           <span className="min-w-0">
-                            <span className="block truncate text-sm font-medium text-foreground">{r.label}</span>
-                            <span className="block font-mono text-[11px] text-faint">{r.rule.rule_id}</span>
+                            <span className="block truncate text-sm font-medium text-foreground" dir="auto">{r.label}</span>
+                            <span className="block font-mono text-[11px] text-faint"><span className="ltr-value">{r.rule.rule_id}</span></span>
                           </span>
                           <span className="hidden items-center gap-1.5 text-xs text-muted sm:flex">
                             <StandingGlyph standing={r.standing} size={10} />
-                            {STANDING_META[r.standing].label}
+                            {t(STANDING_META[r.standing].label)}
                           </span>
-                          <span className="text-right text-xs text-muted sm:text-left">
-                            <span className="font-mono text-foreground">{r.gaps.open}</span> open ·{" "}
-                            <span className="font-mono text-foreground">{r.gaps.closed_completed}</span> completed
+                          <span className="text-end text-xs text-muted sm:text-start">
+                            {rich("prog.sec.index_counts", {
+                              open: <span className="font-mono text-foreground">{r.gaps.open}</span>,
+                              completed: <span className="font-mono text-foreground">{r.gaps.closed_completed}</span>,
+                            })}
                           </span>
-                          <ArrowUpRight size={15} aria-hidden="true" className="hidden text-faint transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 sm:block" />
+                          <ArrowUpRight size={15} aria-hidden="true" className="hidden text-faint transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 rtl:-scale-x-100 sm:block" />
                         </Link>
                       </li>
                     ))}
@@ -300,12 +304,13 @@ function MemberList({
   referenceDate: string | null;
 }) {
   const [shown, setShown] = useState(PAGE);
+  const { t } = useLocale();
   const cohort = state.segment ? programme.segments.find((s) => s.segment === state.segment)! : programme;
   const ids = [...cohort.patientIds].sort(
     (a, b) => (programme.openGapsByPatient.get(b) ?? 0) - (programme.openGapsByPatient.get(a) ?? 0) || a.localeCompare(b)
   );
   if (ids.length === 0)
-    return <EmptyState icon={SearchX} title="Nobody in this segment" description="No members of this programme match the segment and filters." />;
+    return <EmptyState icon={SearchX} title={t("prog.sec.nobody_title")} description={t("prog.sec.nobody_desc")} />;
 
   const from = peopleFiltersToSearchParams(segmentPeopleFilters(pathway, state.segment, state.filters)).toString();
   const via = typeof window === "undefined" ? "" : window.location.pathname + window.location.search;
@@ -328,20 +333,20 @@ function MemberList({
               >
                 <SegmentGlyph segment={segOf(id)} size={12} />
                 <span className="min-w-0 flex-1">
-                  <span className="block font-mono text-[13px] font-semibold text-foreground group-hover:text-accent">{id}</span>
+                  <span className="block font-mono text-[13px] font-semibold text-foreground group-hover:text-accent"><span className="ltr-value">{id}</span></span>
                   <span className="block truncate text-xs text-muted">
-                    {p ? `${ageLabel(p.date_of_birth, referenceDate)} · ${sexLabel(p.sex)} · ${regionLabel(p.region_id)}` : ""}
+                    {p ? `${ageLabel(p.date_of_birth, referenceDate, t)} · ${sexLabel(p.sex, t)} · ${regionLabel(p.region_id, t)}` : ""}
                   </span>
                 </span>
-                <span className="text-right">
+                <span className="text-end">
                   {open > 0 ? (
                     <span className="inline-flex items-center gap-1 text-sm font-medium text-foreground">
                       <StatusGlyph status="due" size={12} />
                       <span className="tabular-nums">{open}</span>
-                      <span className="sr-only">open gaps in this programme</span>
+                      <span className="sr-only">{t("prog.sec.open_in_programme")}</span>
                     </span>
                   ) : (
-                    <span className="text-xs text-faint">{historyMeta(p?.history_by_pathway[pathway]).label}</span>
+                    <span className="text-xs text-faint">{historyMeta(p?.history_by_pathway[pathway], t).label}</span>
                   )}
                 </span>
               </Link>
@@ -352,11 +357,11 @@ function MemberList({
       <div className="mt-5 flex flex-wrap items-center gap-3">
         {shown < ids.length && (
           <button type="button" onClick={() => setShown((n) => n + PAGE * 2)} className={buttonClass("secondary")}>
-            Show more ({ids.length - shown} remaining)
+            {t("prog.sec.show_more", { count: ids.length - shown })}
           </button>
         )}
         <p className="text-xs text-faint">
-          {Math.min(shown, ids.length)} of {ids.length} shown · open-gap counts are gap records under this programme’s rules
+          {t("prog.sec.shown", { shown: Math.min(shown, ids.length), total: ids.length })}
         </p>
       </div>
     </div>
@@ -380,9 +385,9 @@ function Bars({ rows, total, label, color }: { rows: { key: string; label: strin
                 style={{ width: `${(r.count / max) * 100}%`, backgroundColor: color, "--i": i } as React.CSSProperties}
               />
             </span>
-            <span className="text-right font-mono text-xs tabular-nums text-foreground">
+            <span className="text-end font-mono text-xs tabular-nums text-foreground">
               {r.count}
-              {total > 0 && <span className="ml-1 text-faint">{Math.round((r.count / total) * 100)}%</span>}
+              {total > 0 && <span className="ms-1 text-faint">{Math.round((r.count / total) * 100)}%</span>}
             </span>
           </li>
         ))}
@@ -394,17 +399,18 @@ function Bars({ rows, total, label, color }: { rows: { key: string; label: strin
 function Distribution({ pathway, state, programme, data }: { pathway: Pathway; state: DetailState; programme: Programme | null; data: Data }) {
   const ages = useAgeBands(pathway, { region_id: state.filters.region_id, sex: state.filters.sex }, 0);
   const model = data.population.status === "ready" ? data.population.data : null;
+  const { t } = useLocale();
   return (
     <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
-      <ResourceView resource={ages} what="Age groups" loading={<LoadingState rows={4} />}>
+      <ResourceView resource={ages} what={t("prog.sec.age_groups")} loading={<LoadingState rows={4} />}>
         {(a) => {
           const noDob = a.total - a.bands.reduce((n, b) => n + b.count, 0);
           return (
             <div>
-              <Bars color={PROGRAMME_COLOR[pathway].paper} label="Age group (backend)" total={a.total} rows={a.bands.map((b) => ({ key: b.band, label: b.label, count: b.count }))} />
+              <Bars color={PROGRAMME_COLOR[pathway].paper} label={t("prog.sec.age_backend")} total={a.total} rows={a.bands.map((b) => ({ key: b.band, label: t(b.label), count: b.count }))} />
               <Footnote>
-                {noDob > 0 ? `${noDob} members have no recorded date of birth and are in no age group. ` : ""}
-                Region and sex filters apply; the age-group filter does not.
+                {noDob > 0 ? `${t("prog.sec.no_dob", { count: noDob })} ` : ""}
+                {t("prog.sec.age_filters")}
               </Footnote>
             </div>
           );
@@ -412,17 +418,17 @@ function Distribution({ pathway, state, programme, data }: { pathway: Pathway; s
       </ResourceView>
       {model && programme ? (
         <>
-          <Bars color={PROGRAMME_COLOR[pathway].paper} label="Sex" total={programme.people} rows={model.bySex.map((s) => ({ key: s.key, label: s.label, count: s.count }))} />
+          <Bars color={PROGRAMME_COLOR[pathway].paper} label={t("pop.filter.sex")} total={programme.people} rows={model.bySex.map((s) => ({ key: s.key, label: s.label, count: s.count }))} />
           <Bars
             color={PROGRAMME_COLOR[pathway].paper}
-            label="Region"
+            label={t("pop.filter.region")}
             total={programme.people}
             rows={model.byRegion.filter((r) => r.total > 0).map((r) => ({ key: String(r.regionId), label: r.label, count: r.total }))}
           />
         </>
       ) : (
         <div className="md:col-span-2">
-          <ResourceView resource={data.population} what="Programme members" onRetry={data.retry} loading={<LoadingState rows={4} />}>
+          <ResourceView resource={data.population} what={t("prog.sec.members_what")} onRetry={data.retry} loading={<LoadingState rows={4} />}>
             {() => null}
           </ResourceView>
         </div>
@@ -434,8 +440,9 @@ function Distribution({ pathway, state, programme, data }: { pathway: Pathway; s
 /* ── 05 Open questions ─────────────────────────────────────────────────── */
 
 function OpenQuestions({ model, pathway }: { model: ProgrammeModel; pathway: Pathway }) {
+  const { t } = useLocale();
   if (model.openQuestions.length === 0)
-    return <p className="text-sm text-muted">No open questions are linked to this programme’s rules.</p>;
+    return <p className="text-sm text-muted">{t("prog.sec.oq_none")}</p>;
   const ruleIds = new Set(model.rules.map((r) => r.rule.rule_id));
   return (
     <ul className="divide-y divide-border border-y border-border">
@@ -452,9 +459,9 @@ function OpenQuestions({ model, pathway }: { model: ProgrammeModel; pathway: Pat
               </span>
               <ChevronDown size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-faint transition-transform duration-300 group-open:rotate-180" />
             </summary>
-            <div className="mt-3 pl-0 text-sm leading-relaxed text-muted sm:pl-32">
+            <div className="mt-3 ps-0 text-sm leading-relaxed text-muted sm:ps-32" dir="auto">
               <p>{q.detail}</p>
-              {q.resolve_via && <p className="mt-2 text-xs text-faint">Resolve via: {q.resolve_via}</p>}
+              {q.resolve_via && <p className="mt-2 text-xs text-faint">{t("prog.sec.resolve_via", { via: q.resolve_via })}</p>}
               <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
                 {q.rule_ids
                   .filter((id) => ruleIds.has(id))

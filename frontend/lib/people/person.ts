@@ -9,7 +9,14 @@ import type {
   RuleSummaryOut,
 } from "@/lib/api/types";
 import type { EvaluationStatus } from "@/components/ui/status-glyph";
-import { PATHWAY_OPTIONS } from "@/lib/population/filters";
+import { PATHWAY_OPTIONS, sexLabel as populationSexLabel } from "@/lib/population/filters";
+import type { MessageKey, Translate } from "@/lib/i18n/translate";
+
+/*
+ * Clinical vocabulary of the person views. Every label is a message key rendered with the bound
+ * translator; the Arabic renderings must keep the engine's meaning exactly (glossary:
+ * docs/localization-glossary.md) and require clinical-language review before real-world use.
+ */
 
 /* ── Demographics ───────────────────────────────────────────────────────── */
 
@@ -29,18 +36,16 @@ export function ageInMonths(dob: string | null, referenceDate: string | null): n
 }
 
 /** "14 months" under two years, otherwise whole years. Missing input is reported, never guessed. */
-export function ageLabel(dob: string | null, referenceDate: string | null): string {
-  if (!dob) return "Date of birth not recorded";
+export function ageLabel(dob: string | null, referenceDate: string | null, t: Translate): string {
+  if (!dob) return t("person.age.no_dob");
   const months = ageInMonths(dob, referenceDate);
-  if (months === null) return "Not available";
-  if (months < 24) return `${months} ${months === 1 ? "month" : "months"}`;
-  return `${Math.floor(months / 12)} years`;
+  if (months === null) return t("person.age.not_available");
+  if (months < 24) return t(months === 1 ? "person.age.month" : "person.age.months", { count: String(months) });
+  return t("person.age.years", { count: String(Math.floor(months / 12)) });
 }
 
-export function sexLabel(sex: string | null): string {
-  if (sex === "female") return "Female";
-  if (sex === "male") return "Male";
-  return "Not recorded";
+export function sexLabel(sex: string | null, t: Translate): string {
+  return populationSexLabel(sex, t);
 }
 
 /** Programme membership = pathways with a history-availability record. */
@@ -48,156 +53,90 @@ export function programmesOf(patient: Pick<PatientSummaryOut, "history_by_pathwa
   return PATHWAY_OPTIONS.map((o) => o.value).filter((p) => patient.history_by_pathway[p] !== undefined);
 }
 
-export const HISTORY_META: Record<HistoryStatus, { label: string; description: string }> = {
-  available: {
-    label: "History available",
-    description:
-      "A screening or visit history is available to the engine. This does not mean every recommended service was completed.",
-  },
-  partial: {
-    label: "History partially available",
-    description:
-      "Only part of the history is available. Affected evaluations are routed to clinical review instead of producing a result.",
-  },
-  not_available: {
-    label: "History unavailable",
-    description:
-      "No screening or visit history is available. Completion cannot be determined — this is not evidence that screening did not happen.",
-  },
+export const HISTORY_META: Record<HistoryStatus, { label: MessageKey; description: MessageKey }> = {
+  available: { label: "person.history.available", description: "person.history.available_desc" },
+  partial: { label: "person.history.partial", description: "person.history.partial_desc" },
+  not_available: { label: "person.history.not_available", description: "person.history.not_available_desc" },
 };
 
-export function historyMeta(status: string | undefined): { label: string; description: string } {
-  if (status && status in HISTORY_META) return HISTORY_META[status as HistoryStatus];
-  return { label: "Not recorded", description: "No history-availability record for this programme." };
+export function historyMeta(status: string | undefined, t: Translate): { label: string; description: string } {
+  const meta = status && status in HISTORY_META ? HISTORY_META[status as HistoryStatus] : null;
+  return meta
+    ? { label: t(meta.label), description: t(meta.description) }
+    : { label: t("person.history.not_recorded"), description: t("person.history.not_recorded_desc") };
 }
 
 /* ── Care gaps ──────────────────────────────────────────────────────────── */
 
 export function openGapCountByPatient(gaps: CareGapOut[]): Map<string, number> {
   const counts = new Map<string, number>();
-  for (const g of gaps) if (gapStatusMeta(g.status).isOpen) counts.set(g.patient_id, (counts.get(g.patient_id) ?? 0) + 1);
+  for (const g of gaps) if (gapStatusFlags(g.status).isOpen) counts.set(g.patient_id, (counts.get(g.patient_id) ?? 0) + 1);
   return counts;
 }
 
-export interface GapStatusMeta {
-  label: string;
-  description: string;
+export interface GapStatusFlags {
   /** Glyph shape reused from the evaluation status set. */
   glyph: EvaluationStatus;
   isOpen: boolean;
   isCompleted: boolean;
 }
 
+export interface GapStatusMeta extends GapStatusFlags {
+  label: string;
+  description: string;
+}
+
+const GAP_STATUS: Record<string, GapStatusFlags & { key: string }> = {
+  open: { key: "open", glyph: "due", isOpen: true, isCompleted: false },
+  closed_completed: { key: "closed_completed", glyph: "completed", isOpen: false, isCompleted: true },
+  closed_refused: { key: "closed_refused", glyph: "not_eligible", isOpen: false, isCompleted: false },
+  suppressed: { key: "suppressed", glyph: "not_eligible", isOpen: false, isCompleted: false },
+  superseded: { key: "superseded", glyph: "not_eligible", isOpen: false, isCompleted: false },
+  scheduled: { key: "scheduled", glyph: "upcoming", isOpen: true, isCompleted: false },
+  cancelled: { key: "cancelled", glyph: "unknown", isOpen: true, isCompleted: false },
+};
+
 /**
  * Care-gap status vocabulary. Only `closed_completed` is a completion —
  * refusals, scheduling, cancellation and supersession never count as done,
  * and anything unrecognised stays "unknown".
  */
-export function gapStatusMeta(status: string): GapStatusMeta {
-  switch (status) {
-    case "open":
-      return { label: "Open", description: "Documented care gap, not yet closed.", glyph: "due", isOpen: true, isCompleted: false };
-    case "closed_completed":
-      return {
-        label: "Closed — completed",
-        description: "Closed because a qualifying screening or visit was documented.",
-        glyph: "completed",
-        isOpen: false,
-        isCompleted: true,
-      };
-    case "closed_refused":
-      return {
-        label: "Closed — documented refusal",
-        description: "Closed by a documented refusal. The service was not completed.",
-        glyph: "not_eligible",
-        isOpen: false,
-        isCompleted: false,
-      };
-    case "suppressed":
-      return {
-        label: "Suppressed",
-        description: "Not actioned (suppressed). The service is not documented as completed.",
-        glyph: "not_eligible",
-        isOpen: false,
-        isCompleted: false,
-      };
-    case "superseded":
-      return {
-        label: "Superseded",
-        description: "Replaced by a later evaluation. The service is not documented as completed.",
-        glyph: "not_eligible",
-        isOpen: false,
-        isCompleted: false,
-      };
-    case "scheduled":
-      return {
-        label: "Scheduled — not completed",
-        description: "An appointment or referral is scheduled. Nothing is documented as completed yet.",
-        glyph: "upcoming",
-        isOpen: true,
-        isCompleted: false,
-      };
-    case "cancelled":
-      return {
-        label: "Cancelled — not completed",
-        description: "The scheduled appointment or referral was cancelled. The service was not completed.",
-        glyph: "unknown",
-        isOpen: true,
-        isCompleted: false,
-      };
-    default:
-      return {
-        label: `Unknown status (${status})`,
-        description: "The API returned a status PulseReach does not recognise; it is not interpreted.",
-        glyph: "unknown",
-        isOpen: false,
-        isCompleted: false,
-      };
-  }
+export function gapStatusFlags(status: string): GapStatusFlags {
+  return GAP_STATUS[status] ?? { glyph: "unknown", isOpen: false, isCompleted: false };
+}
+
+export function gapStatusMeta(status: string, t: Translate): GapStatusMeta {
+  const known = GAP_STATUS[status];
+  if (!known) return { ...gapStatusFlags(status), label: t("person.gap_status.unknown", { status }), description: t("person.gap_status.unknown_desc") };
+  return {
+    ...known,
+    label: t(`person.gap_status.${known.key}` as MessageKey),
+    description: t(`person.gap_status.${known.key}_desc` as MessageKey),
+  };
 }
 
 /** Gap-type meanings, as produced by `app/services/evaluation/engine.py`. */
-export const GAP_TYPE_META: Record<CareGapType, { label: string; description: string }> = {
-  no_documented_screening: {
-    label: "No documented screening",
-    description: "The person is in scope for this rule and no qualifying screening or visit record is documented.",
-  },
-  interval_elapsed: {
-    label: "Interval elapsed",
-    description: "The last documented completion is older than the interval configured for this rule.",
-  },
-  partial_completion: {
-    label: "Partial completion",
-    description:
-      "A screening or visit is documented as only partially completed, or a workflow milestone was not documented within its configured window.",
-  },
-  referral_not_initiated: {
-    label: "Referral not initiated",
-    description: "A referral triggered under this rule is recorded as pending beyond its configured window.",
-  },
-  visit_not_attended: {
-    label: "Visit not attended",
-    description: "A visit for this schedule point is recorded as not attended.",
-  },
-};
+const GAP_TYPES: CareGapType[] = [
+  "no_documented_screening",
+  "interval_elapsed",
+  "partial_completion",
+  "referral_not_initiated",
+  "visit_not_attended",
+];
 
-export function gapTypeMeta(type: string): { label: string; description: string } {
-  return (
-    GAP_TYPE_META[type as CareGapType] ?? {
-      label: type,
-      description: "Gap type not recognised by PulseReach; shown as returned by the API.",
-    }
-  );
+export function gapTypeMeta(type: string, t: Translate): { label: string; description: string } {
+  if (!(GAP_TYPES as string[]).includes(type)) return { label: type, description: t("person.gap_type.unknown_desc") };
+  return { label: t(`pop.gap_type.${type}` as MessageKey), description: t(`person.gap_type.${type}_desc` as MessageKey) };
 }
 
 /** Historical records a gap points at — documented evidence, distinct from the evaluation result. */
-export function gapEvidenceRefs(gap: CareGapOut): { label: string; id: string }[] {
+export function gapEvidenceRefs(gap: CareGapOut, t: Translate): { label: string; id: string }[] {
   const refs: { label: string; id: string }[] = [];
-  if (gap.subject_ifhas_screening_id) refs.push({ label: "IFHAS screening record", id: gap.subject_ifhas_screening_id });
-  if (gap.subject_well_child_visit_id) refs.push({ label: "Well-Child visit record", id: gap.subject_well_child_visit_id });
-  if (gap.subject_referral_id) refs.push({ label: "Referral record", id: gap.subject_referral_id });
-  if (gap.closed_by_consent_id) refs.push({ label: "Closing consent / refusal record", id: gap.closed_by_consent_id });
-  if (gap.closed_by_component_result_id) refs.push({ label: "Closing component result", id: gap.closed_by_component_result_id });
+  if (gap.subject_ifhas_screening_id) refs.push({ label: t("person.ref.ifhas"), id: gap.subject_ifhas_screening_id });
+  if (gap.subject_well_child_visit_id) refs.push({ label: t("person.ref.well_child"), id: gap.subject_well_child_visit_id });
+  if (gap.subject_referral_id) refs.push({ label: t("person.ref.referral"), id: gap.subject_referral_id });
+  if (gap.closed_by_consent_id) refs.push({ label: t("person.ref.consent"), id: gap.closed_by_consent_id });
+  if (gap.closed_by_component_result_id) refs.push({ label: t("person.ref.component"), id: gap.closed_by_component_result_id });
   return refs;
 }
 
@@ -218,45 +157,36 @@ export function asEvaluationStatus(status: string): EvaluationStatus | null {
   return (EVALUATION_STATUSES as string[]).includes(status) ? (status as EvaluationStatus) : null;
 }
 
-export const EVALUATION_STATUS_DEFINITIONS: Record<EvaluationStatus, string> = {
-  eligible: "All attributes required by the rule are present and satisfy its eligibility criteria.",
-  not_eligible: "All attributes required by the rule are present and positively fail its eligibility criteria.",
-  due: "Eligible, and the rule's interval or schedule point has been reached with no qualifying completed screening documented.",
-  upcoming: "Eligible (or becoming eligible) and not yet due, within the product look-ahead period (not a clinical threshold).",
-  completed: "A qualifying screening or visit is documented as completed within the rule's interval.",
-  unknown: "The person may be eligible but their history is not available, so completion cannot be determined.",
-  insufficient_information: "A required attribute (for example date of birth or sex) is missing, so no eligibility result can be produced.",
-  requires_clinical_review:
-    "The evaluation touches an unresolved or review-flagged rule, or conflicting records. No automated recommendation is produced.",
+/** Definitions from `status_definitions.yaml` (message keys `person.eval_def.<status>`). */
+export function evaluationDefinition(status: EvaluationStatus, t: Translate): string {
+  return t(`person.eval_def.${status}` as MessageKey);
+}
+
+export const GUARD_META: Record<string, { when: MessageKey; scope: "person" | "rule" }> = {
+  "GUARD-MISSING-DOB": { when: "person.guard.missing_dob", scope: "person" },
+  "GUARD-MISSING-ATTRIBUTE": { when: "person.guard.missing_attribute", scope: "person" },
+  "GUARD-MISSING-HISTORY": { when: "person.guard.missing_history", scope: "person" },
+  "GUARD-CONFLICTING-RECORDS": { when: "person.guard.conflicting_records", scope: "person" },
+  "GUARD-RULE-NOT-VERIFIED": { when: "person.guard.rule_not_verified", scope: "rule" },
+  "GUARD-RULE-REVIEW-FLAG": { when: "person.guard.rule_review_flag", scope: "rule" },
+  "GUARD-ITEM-UNRESOLVED": { when: "person.guard.item_unresolved", scope: "rule" },
 };
 
-export const GUARD_META: Record<string, { when: string; scope: "person" | "rule" }> = {
-  "GUARD-MISSING-DOB": { when: "Date of birth is missing.", scope: "person" },
-  "GUARD-MISSING-ATTRIBUTE": { when: "A required eligibility attribute (for example sex) is missing.", scope: "person" },
-  "GUARD-MISSING-HISTORY": { when: "Eligibility is established but screening history is missing.", scope: "person" },
-  "GUARD-CONFLICTING-RECORDS": { when: "Two or more records disagree on a fact the rule depends on.", scope: "person" },
-  "GUARD-RULE-NOT-VERIFIED": { when: "The governing rule has verification_status other than `verified`.", scope: "rule" },
-  "GUARD-RULE-REVIEW-FLAG": { when: "The governing rule has requires_clinical_review = true.", scope: "rule" },
-  "GUARD-ITEM-UNRESOLVED": {
-    when: "The governing assessment item has verification_status other than `verified`.",
-    scope: "rule",
-  },
-};
+const REASON_CODES = [
+  "missing_date_of_birth",
+  "missing_sex",
+  "missing_required_attribute",
+  "missing_screening_history",
+  "conflicting_records",
+  "rule_unresolved",
+  "rule_reported_not_verified",
+  "rule_requires_clinical_review",
+  "rule_item_unresolved",
+];
 
-export const REASON_CODE_LABELS: Record<string, string> = {
-  missing_date_of_birth: "Date of birth missing",
-  missing_sex: "Sex missing",
-  missing_required_attribute: "Required attribute missing",
-  missing_screening_history: "Screening history missing",
-  conflicting_records: "Conflicting or partial records",
-  rule_unresolved: "Rule not verified / unresolved",
-  rule_reported_not_verified: "Rule reported, not verified",
-  rule_requires_clinical_review: "Rule flagged for clinical review",
-  rule_item_unresolved: "Rule item unresolved",
-};
-
-export function reasonCodeLabel(code: string): string {
-  return REASON_CODE_LABELS[code] ?? code;
+/** Localized reason; an unrecognised code is shown as returned. */
+export function reasonCodeLabel(code: string, t: Translate): string {
+  return REASON_CODES.includes(code) ? t(`person.reason.${code}` as MessageKey) : code;
 }
 
 /* ── Assessment grouping ────────────────────────────────────────────────── */
@@ -317,8 +247,8 @@ export function buildAssessment(
       gates: evs.filter((e) => ruleGroup(e.rule_type) === "programme"),
       serviceCounts,
       servicesInScope: services.filter((e) => e.evaluation_status !== "not_eligible").length,
-      openGaps: pathwayGaps.filter((g) => gapStatusMeta(g.status).isOpen).length,
-      closedGaps: pathwayGaps.filter((g) => !gapStatusMeta(g.status).isOpen).length,
+      openGaps: pathwayGaps.filter((g) => gapStatusFlags(g.status).isOpen).length,
+      closedGaps: pathwayGaps.filter((g) => !gapStatusFlags(g.status).isOpen).length,
     };
   });
 }
@@ -327,23 +257,11 @@ export function buildAssessment(
 
 export type TraceOrigin = "care_gap" | "person_evidence" | "rule_review" | "documented";
 
-export const TRACE_ORIGIN_META: Record<TraceOrigin, { title: string; description: string }> = {
-  care_gap: {
-    title: "Documented care gaps",
-    description: "Evaluations that produced a care-gap record for this person.",
-  },
-  person_evidence: {
-    title: "Evidence missing or conflicting for this person",
-    description: "No result could be produced because this person's information is missing, partial or conflicting.",
-  },
-  rule_review: {
-    title: "Rule-level clinical review",
-    description: "The governing rule is unresolved or review-flagged — this applies to everyone in scope, not to this person specifically.",
-  },
-  documented: {
-    title: "Documented complete or upcoming",
-    description: "Evaluations where a completion is documented or the next date falls within the look-ahead period.",
-  },
+export const TRACE_ORIGIN_META: Record<TraceOrigin, { title: MessageKey; description: MessageKey }> = {
+  care_gap: { title: "person.trace.care_gap", description: "person.trace.care_gap_desc" },
+  person_evidence: { title: "person.trace.person_evidence", description: "person.trace.person_evidence_desc" },
+  rule_review: { title: "person.trace.rule_review", description: "person.trace.rule_review_desc" },
+  documented: { title: "person.trace.documented", description: "person.trace.documented_desc" },
 };
 
 export interface TraceItem {
@@ -391,29 +309,32 @@ export function buildTrace(
 }
 
 /** Plain statements of why the engine reached its result — built only from returned codes and configured definitions. */
-export function traceReasons(item: TraceItem): string[] {
+export function traceReasons(item: TraceItem, t: Translate): string[] {
   const out: string[] = [];
-  for (const g of item.gaps) out.push(`${gapTypeMeta(g.gap_type).label}: ${gapTypeMeta(g.gap_type).description}`);
+  for (const g of item.gaps) {
+    const m = gapTypeMeta(g.gap_type, t);
+    out.push(t("person.trace.gap_reason", { label: m.label, description: m.description }));
+  }
   for (const r of item.evaluation.reasons) {
     const guard = r.guard_id ? GUARD_META[r.guard_id] : undefined;
-    const suffix = r.item_code ? ` (item ${r.item_category ?? ""}/${r.item_code})` : "";
-    if (r.guard_id && guard) out.push(`${r.guard_id} fired — ${guard.when}${suffix}`);
-    else if (r.guard_id) out.push(`${r.guard_id} fired (no definition available in PulseReach)${suffix}`);
-    else out.push(`Reason: ${reasonCodeLabel(r.reason_code)}${suffix}`);
+    const suffix = r.item_code ? ` ${t("person.trace.item", { item: `${r.item_category ?? ""}/${r.item_code}` })}` : "";
+    if (r.guard_id && guard) out.push(t("person.trace.guard", { guard: r.guard_id, when: t(guard.when) }) + suffix);
+    else if (r.guard_id) out.push(t("person.trace.guard_unknown", { guard: r.guard_id }) + suffix);
+    else out.push(t("person.trace.reason", { reason: reasonCodeLabel(r.reason_code, t) }) + suffix);
   }
   const status = asEvaluationStatus(item.evaluation.evaluation_status);
-  if (status) out.push(`Result “${item.evaluation.evaluation_status}”: ${EVALUATION_STATUS_DEFINITIONS[status]}`);
+  if (status) out.push(t("person.trace.result", { status: item.evaluation.evaluation_status, definition: evaluationDefinition(status, t) }));
   return out;
 }
 
 /* ── Rule specification (configured criteria, read — never hardcoded) ──── */
 
-const SPEC_LABELS: Record<string, string> = {
-  "": "Rule text",
-  "eligibility.age": "Target age",
-  frequency: "Frequency",
-  "timing.recommended_age": "Recommended age",
-  score: "Score",
+const SPEC_LABELS: Record<string, MessageKey> = {
+  "": "person.spec.rule_text",
+  "eligibility.age": "person.spec.target_age",
+  frequency: "person.spec.frequency",
+  "timing.recommended_age": "person.spec.recommended_age",
+  score: "person.spec.score",
 };
 
 function humanize(key: string): string {
@@ -421,8 +342,11 @@ function humanize(key: string): string {
   return s.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 }
 
-/** Every `as_printed` criterion in a rule spec, labelled by where it sits, plus sex scope and evaluability flags. */
-export function ruleCriteria(spec: Record<string, unknown>): { label: string; value: string; note?: string }[] {
+/**
+ * Every `as_printed` criterion in a rule spec, labelled by where it sits, plus sex scope and evaluability
+ * flags. `as_printed` values are the published standard's wording and are shown as printed.
+ */
+export function ruleCriteria(spec: Record<string, unknown>, t: Translate): { label: string; value: string; note?: string }[] {
   const rows: { label: string; value: string; note?: string }[] = [];
   const walk = (node: unknown, path: string) => {
     if (Array.isArray(node)) return node.forEach((n, i) => walk(n, `${path}[${i}]`));
@@ -432,20 +356,21 @@ export function ruleCriteria(spec: Record<string, unknown>): { label: string; va
       const bare = path.replace(/\[\d+\]$/, "");
       const kind = typeof obj.kind === "string" ? ` (${obj.kind})` : "";
       rows.push({
-        label: (SPEC_LABELS[bare] ?? humanize(bare || "rule")) + kind,
+        label: (SPEC_LABELS[bare] ? t(SPEC_LABELS[bare]) : humanize(bare || "rule")) + kind,
         value: obj.as_printed,
-        note: obj.machine_evaluable === false ? "Not machine-evaluable — not checked by the engine" : undefined,
+        note: obj.machine_evaluable === false ? t("person.spec.not_evaluable") : undefined,
       });
     }
     for (const [k, v] of Object.entries(obj)) if (k !== "as_printed") walk(v, path ? `${path}.${k}` : k);
   };
   walk(spec, "");
   const eligibility = spec.eligibility as { sex?: unknown } | undefined;
-  if (Array.isArray(eligibility?.sex)) rows.push({ label: "Sex in scope", value: eligibility.sex.map((s) => sexLabel(String(s))).join(", ") });
-  if (typeof spec.effective_date_as_printed === "string") rows.push({ label: "Effective date", value: spec.effective_date_as_printed });
+  if (Array.isArray(eligibility?.sex))
+    rows.push({ label: t("person.spec.sex_scope"), value: eligibility.sex.map((s) => sexLabel(String(s), t)).join(t("list.sep")) });
+  if (typeof spec.effective_date_as_printed === "string") rows.push({ label: t("person.spec.effective_date"), value: spec.effective_date_as_printed });
   const timing = spec.timing as { due_window_status?: unknown } | undefined;
-  if (typeof timing?.due_window_status === "string") rows.push({ label: "Due window", value: humanize(timing.due_window_status) });
-  if (spec.is_diagnosis === false) rows.push({ label: "Result type", value: "Screening result only — not a diagnosis" });
+  if (typeof timing?.due_window_status === "string") rows.push({ label: t("person.spec.due_window"), value: humanize(timing.due_window_status) });
+  if (spec.is_diagnosis === false) rows.push({ label: t("person.spec.result_type"), value: t("person.spec.not_diagnosis") });
   return rows;
 }
 
@@ -467,19 +392,19 @@ export interface PathwayEntry {
 export function buildPathways(
   gaps: CareGapOut[],
   evaluations: EvaluationItemOut[],
-  rules: Map<string, RuleSummaryOut>
+  rules: Map<string, RuleSummaryOut>,
+  t: Translate
 ): PathwayEntry[] {
   return gaps.map((gap) => {
     const evaluation = evaluations.find((e) => e.evaluation_id === gap.evaluation_id);
     const rule = rules.get(gap.rule_id);
     let blocked: string | null = null;
-    if (gap.status !== "open") blocked = `Gap is ${gapStatusMeta(gap.status).label.toLowerCase()} — no pathway is offered.`;
-    else if (!rule) blocked = "Rule definition was not returned by the rules API.";
-    else if (!evaluation) blocked = "The evaluation behind this gap was not returned.";
-    else if (evaluation.evaluation_status !== "due") blocked = `Evaluation result is “${evaluation.evaluation_status}”, not due.`;
-    else if (rule.verification_status !== "verified") blocked = `Rule is ${rule.verification_status}, not verified.`;
-    else if (!rule.is_authoritative || rule.requires_clinical_review)
-      blocked = "Rule is non-authoritative or flagged for clinical review — routed to a healthcare professional.";
+    if (gap.status !== "open") blocked = t("person.pathway.gap_closed", { status: gapStatusMeta(gap.status, t).label.toLowerCase() });
+    else if (!rule) blocked = t("person.pathway.no_rule");
+    else if (!evaluation) blocked = t("person.pathway.no_evaluation");
+    else if (evaluation.evaluation_status !== "due") blocked = t("person.pathway.not_due", { status: evaluation.evaluation_status });
+    else if (rule.verification_status !== "verified") blocked = t("person.pathway.not_verified", { status: rule.verification_status });
+    else if (!rule.is_authoritative || rule.requires_clinical_review) blocked = t("person.pathway.review");
     return { gap, evaluation, rule, offered: blocked === null, blocked };
   });
 }

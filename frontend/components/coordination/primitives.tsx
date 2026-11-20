@@ -5,6 +5,7 @@ import type { TaskPriority } from "@/lib/api/types";
 import { PRIORITY_META, TONE_COLOR, type Tone } from "@/lib/coordination/model";
 import { buttonClass } from "@/components/ui/button-styles";
 import { cn } from "@/lib/cn";
+import { useLocale } from "@/lib/i18n/use-locale";
 
 type Surface = "paper" | "ink";
 
@@ -57,10 +58,12 @@ export function StatusPill({ tone, label, surface = "paper", className }: { tone
 
 /** Priority as rising bars plus its word, so urgency is never colour alone. */
 export function PriorityMark({ priority, surface = "paper", showLabel = true }: { priority: TaskPriority; surface?: Surface; showLabel?: boolean }) {
+  const { t } = useLocale();
   const meta = PRIORITY_META[priority];
+  const label = t(meta.label);
   const c = TONE_COLOR[meta.tone][surface];
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs" title={`${meta.label} priority`}>
+    <span className="inline-flex items-center gap-1.5 text-xs" title={t("coord.priority.title", { priority: label })}>
       <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true" className="shrink-0">
         {[0, 1, 2].map((i) => (
           <rect
@@ -78,9 +81,9 @@ export function PriorityMark({ priority, surface = "paper", showLabel = true }: 
         ))}
       </svg>
       {showLabel ? (
-        <span className={surface === "ink" ? "text-ink-muted" : "text-muted"}>{meta.label}</span>
+        <span className={surface === "ink" ? "text-ink-muted" : "text-muted"}>{label}</span>
       ) : (
-        <span className="sr-only">{meta.label} priority</span>
+        <span className="sr-only">{t("coord.priority.title", { priority: label })}</span>
       )}
     </span>
   );
@@ -88,14 +91,15 @@ export function PriorityMark({ priority, surface = "paper", showLabel = true }: 
 
 /** Who can see an entry: internal (staff only) or the patient portal. */
 export function VisibilityBadge({ visibility }: { visibility: "internal" | "patient" | "record" }) {
+  const { t } = useLocale();
   if (visibility === "record") return null;
   return visibility === "internal" ? (
     <span className="inline-flex items-center gap-1 rounded-full bg-surface-sunken px-2 py-0.5 text-[11px] font-medium text-muted">
-      <EyeOff size={11} aria-hidden="true" /> Internal
+      <EyeOff size={11} aria-hidden="true" /> {t("coord.visibility.internal")}
     </span>
   ) : (
     <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
-      <MonitorSmartphone size={11} aria-hidden="true" /> Visible to patient
+      <MonitorSmartphone size={11} aria-hidden="true" /> {t("coord.visibility.patient")}
     </span>
   );
 }
@@ -114,13 +118,14 @@ export function DistributionBand({
   onSelect?: (key: string) => void;
   selected?: string | null;
 }) {
+  const { t } = useLocale();
   const total = parts.reduce((n, p) => n + p.count, 0);
   const ink = surface === "ink";
   return (
     <div>
       <div
         role="img"
-        aria-label={`${label}: ${parts.map((p) => `${p.label} ${p.count}`).join(", ")}`}
+        aria-label={`${label}: ${parts.map((p) => t("coord.band.part", { label: p.label, count: String(p.count) })).join(t("list.sep"))}`}
         className={cn("flex h-2.5 w-full gap-[3px] overflow-hidden rounded-full", ink ? "bg-ink-raised" : "bg-surface-sunken")}
       >
         {total > 0 &&
@@ -196,20 +201,20 @@ export function Confirmation({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** `label` names what is paged (already translated by the caller), e.g. "Follow-up". */
 export function Pager({ page, total, size, onPage, label }: { page: number; total: number; size: number; onPage: (p: number) => void; label: string }) {
+  const { t } = useLocale();
   const pages = Math.max(1, Math.ceil(total / size));
   if (total <= size) return null;
   return (
-    <nav aria-label={`${label} pages`} className="mt-4 flex items-center justify-between gap-3 text-sm text-muted">
-      <span>
-        {(page - 1) * size + 1}–{Math.min(page * size, total)} of {total}
-      </span>
+    <nav aria-label={t("coord.pager.aria", { label })} className="mt-4 flex items-center justify-between gap-3 text-sm text-muted">
+      <span>{t("coord.pager.range", { from: String((page - 1) * size + 1), to: String(Math.min(page * size, total)), total: String(total) })}</span>
       <span className="flex gap-2">
         <button type="button" className={buttonClass("secondary")} disabled={page <= 1} onClick={() => onPage(page - 1)}>
-          <ChevronLeft size={14} aria-hidden="true" /> Previous
+          <ChevronLeft size={14} aria-hidden="true" className="rtl:-scale-x-100" /> {t("coord.pager.previous")}
         </button>
         <button type="button" className={buttonClass("secondary")} disabled={page >= pages} onClick={() => onPage(page + 1)}>
-          Next <ChevronRight size={14} aria-hidden="true" />
+          {t("coord.pager.next")} <ChevronRight size={14} aria-hidden="true" className="rtl:-scale-x-100" />
         </button>
       </span>
     </nav>

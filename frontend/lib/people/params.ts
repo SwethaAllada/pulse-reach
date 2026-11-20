@@ -1,4 +1,5 @@
 import type { AgeBand, HistoryStatus, PatientQuery } from "@/lib/api/types";
+import type { MessageKey, Translate } from "@/lib/i18n/translate";
 import {
   FILTER_KEYS,
   filtersToSearchParams,
@@ -35,23 +36,23 @@ export const CARE_FILTER_KEYS = ["has_open_care_gaps", "history_status", "age_ba
 export const PEOPLE_FILTER_KEYS = [...FILTER_KEYS, ...CARE_FILTER_KEYS] as const;
 export type PeopleFilterKey = (typeof PEOPLE_FILTER_KEYS)[number];
 
-export const OPEN_GAP_OPTIONS: { value: "true" | "false"; label: string }[] = [
-  { value: "true", label: "With open care gaps" },
-  { value: "false", label: "Without open care gaps" },
+export const OPEN_GAP_OPTIONS: { value: "true" | "false"; label: MessageKey }[] = [
+  { value: "true", label: "people.filter.with_gaps" },
+  { value: "false", label: "people.filter.without_gaps" },
 ];
 
-export const HISTORY_OPTIONS: { value: HistoryStatus; label: string }[] = [
-  { value: "available", label: "History available" },
-  { value: "partial", label: "History partial" },
-  { value: "not_available", label: "History unavailable" },
+export const HISTORY_OPTIONS: { value: HistoryStatus; label: MessageKey }[] = [
+  { value: "available", label: "people.filter.history_available" },
+  { value: "partial", label: "people.filter.history_partial" },
+  { value: "not_available", label: "people.filter.history_unavailable" },
 ];
 
 /** Bands and boundaries are computed by the backend from date of birth at the reference date. */
-export const AGE_BAND_OPTIONS: { value: AgeBand; label: string }[] = [
-  { value: "child", label: "Under 18" },
-  { value: "adult_18_39", label: "18–39" },
-  { value: "adult_40_59", label: "40–59" },
-  { value: "adult_60_plus", label: "60 and over" },
+export const AGE_BAND_OPTIONS: { value: AgeBand; label: MessageKey }[] = [
+  { value: "child", label: "people.age.child" },
+  { value: "adult_18_39", label: "people.age.18_39" },
+  { value: "adult_40_59", label: "people.age.40_59" },
+  { value: "adult_60_plus", label: "people.age.60_plus" },
 ];
 
 interface ReadableParams {
@@ -136,17 +137,17 @@ export function hasAnyCriteria(state: PeopleState): boolean {
   return hasActiveFilters(state.filters) || hasCareFilters(state.filters) || state.id !== null || !!state.sort;
 }
 
-export function careFilterChips(filters: PeopleFilters): { key: PeopleFilterKey; label: string }[] {
+export function careFilterChips(filters: PeopleFilters, t: Translate): { key: PeopleFilterKey; label: string }[] {
   const chips: { key: PeopleFilterKey; label: string }[] = [];
   if (filters.has_open_care_gaps !== undefined)
     chips.push({
       key: "has_open_care_gaps",
-      label: filters.has_open_care_gaps ? "With open care gaps" : "Without open care gaps",
+      label: t(filters.has_open_care_gaps ? "people.filter.with_gaps" : "people.filter.without_gaps"),
     });
   if (filters.history_status)
-    chips.push({ key: "history_status", label: HISTORY_OPTIONS.find((o) => o.value === filters.history_status)!.label });
+    chips.push({ key: "history_status", label: t(HISTORY_OPTIONS.find((o) => o.value === filters.history_status)!.label) });
   if (filters.age_band)
-    chips.push({ key: "age_band", label: `Age: ${AGE_BAND_OPTIONS.find((o) => o.value === filters.age_band)!.label}` });
+    chips.push({ key: "age_band", label: t("people.chip.age", { value: t(AGE_BAND_OPTIONS.find((o) => o.value === filters.age_band)!.label) }) });
   return chips;
 }
 

@@ -13,6 +13,7 @@ import {
 } from "@/lib/programmes/model";
 import { FORWARD } from "@/components/ui/page-transition";
 import { cn } from "@/lib/cn";
+import { useLocale } from "@/lib/i18n/use-locale";
 
 const STANDING_COLOR: Record<RuleStanding, string> = {
   authoritative: "var(--accent)",
@@ -56,6 +57,7 @@ export function RuleSpectrum({
   metric: CareGapStatus;
   standing: RuleStanding | null;
 }) {
+  const { t, rich } = useLocale();
   const max = Math.max(1, ...rows.map((r) => r.gaps[metric]));
   return (
     <div className="-mx-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
@@ -66,7 +68,7 @@ export function RuleSpectrum({
           return (
             <div key={group} className="flex min-w-0 flex-col" style={{ flexGrow: groupRows.length, flexBasis: 0 }}>
               <p className="mb-3 flex items-baseline justify-between gap-2 border-b border-border pb-2 text-xs font-medium text-faint">
-                <span className="truncate">{RULE_GROUP_META[group].title}</span>
+                <span className="truncate">{t(RULE_GROUP_META[group].title)}</span>
                 <span className="font-mono tracking-normal">{groupRows.length}</span>
               </p>
               <ol className="flex h-44 items-end gap-[3px]">
@@ -78,7 +80,13 @@ export function RuleSpectrum({
                       <Link
                         href={ruleHref(pathway, r.rule.rule_id)}
                         transitionTypes={FORWARD}
-                        aria-label={`${r.label} (${r.rule.rule_id}): ${value} ${GAP_STATUS_META[metric].short.toLowerCase()} gap records · ${STANDING_META[r.standing].label}. Open rule.`}
+                        aria-label={t("prog.spectrum.aria", {
+                          rule: r.label,
+                          id: r.rule.rule_id,
+                          value,
+                          status: t(GAP_STATUS_META[metric].short).toLowerCase(),
+                          standing: t(STANDING_META[r.standing].label),
+                        })}
                         className={cn(
                           "flex h-full flex-col justify-end rounded-sm outline-offset-1 transition-opacity duration-300",
                           dim && "opacity-25"
@@ -98,17 +106,19 @@ export function RuleSpectrum({
                       </Link>
                       <span
                         role="tooltip"
-                        className="pointer-events-none absolute left-1/2 top-0 z-20 w-56 -translate-x-1/2 translate-y-1 rounded-lg border border-border bg-surface-raised px-3 py-2 text-left opacity-0 shadow-[var(--shadow-popover)] transition-[opacity,transform] duration-200 group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:translate-y-0 group-hover:opacity-100"
+                        className="pointer-events-none absolute left-1/2 top-0 z-20 w-56 -translate-x-1/2 translate-y-1 rounded-lg border border-border bg-surface-raised px-3 py-2 text-start opacity-0 shadow-[var(--shadow-popover)] transition-[opacity,transform] duration-200 group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:translate-y-0 group-hover:opacity-100"
                       >
-                        <span className="block text-xs font-semibold text-foreground">{r.label}</span>
+                        <span className="block text-xs font-semibold text-foreground" dir="auto">{r.label}</span>
                         <span className="mt-0.5 block font-mono text-[10px] text-faint">{r.rule.rule_id}</span>
                         <span className="mt-1.5 block text-xs text-muted">
-                          <span className="font-mono text-foreground">{r.gaps.open}</span> open ·{" "}
-                          <span className="font-mono text-foreground">{r.gaps.closed_completed}</span> completed ·{" "}
-                          <span className="font-mono text-foreground">{r.gaps.closed_refused}</span> refused
+                          {rich("prog.spectrum.counts", {
+                            open: <span className="font-mono text-foreground">{r.gaps.open}</span>,
+                            completed: <span className="font-mono text-foreground">{r.gaps.closed_completed}</span>,
+                            refused: <span className="font-mono text-foreground">{r.gaps.closed_refused}</span>,
+                          })}
                         </span>
                         <span className="mt-1 flex items-center gap-1.5 text-xs text-muted">
-                          <StandingGlyph standing={r.standing} size={10} /> {STANDING_META[r.standing].label}
+                          <StandingGlyph standing={r.standing} size={10} /> {t(STANDING_META[r.standing].label)}
                         </span>
                       </span>
                     </li>

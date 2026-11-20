@@ -7,10 +7,8 @@ import { AlertOctagon, ArrowUpRight, EyeOff, Flag, Plus, X } from "lucide-react"
 import type { CareTeamMemberOut, Pathway, RegionId, RuleSummaryOut, TaskOut, TaskPriority, TaskQuery, TaskStatus, TaskSummaryOut } from "@/lib/api/types";
 import { scopeLabel, useAuth } from "@/lib/auth/auth-context";
 import {
-  MESSAGE_KEY_LABELS,
   PRIORITY_META,
   PRIORITY_ORDER,
-  ROLE_LABELS,
   TASK_STATUS_META,
   TASK_STATUS_ORDER,
   TERMINAL_TASK_STATUSES,
@@ -22,6 +20,8 @@ import {
   taskEventText,
   eventTone,
   isoDate,
+  roleText,
+  templateText,
 } from "@/lib/coordination/model";
 import {
   TASK_PAGE_SIZE,
@@ -42,6 +42,8 @@ import { LoadingState } from "@/components/ui/loading-state";
 import { CreateTaskForm } from "./create-task-form";
 import { DistributionBand, Pager, PriorityMark, QuietEmpty, StatusPill, ToneGlyph, inputClass, labelClass } from "./primitives";
 import { cn } from "@/lib/cn";
+import { useLocale } from "@/lib/i18n/use-locale";
+import type { Translate } from "@/lib/i18n/translate";
 
 type DueFilter = "" | "overdue" | "soon" | "month";
 type StatusFilter = "" | "active" | "closed" | TaskStatus;
@@ -82,6 +84,7 @@ export function queueQuery(f: QueueFilters, today: string): TaskQuery {
 
 export function FollowUpWorkspace() {
   const { can, scope, state: auth } = useAuth();
+  const { t } = useLocale();
   const router = useRouter();
   const [filters, setFilters] = useState<QueueFilters>(EMPTY);
   const [page, setPage] = useState(1);
@@ -106,20 +109,20 @@ export function FollowUpWorkspace() {
   return (
     <div className="mx-auto w-full max-w-[1280px] px-4 pb-16 pt-6 sm:px-6 lg:px-8">
       <PageHeader
-        eyebrow="Connect"
-        title="Follow-up"
-        subtitle="Coordinate care-gap follow-ups from identification through outreach to documented, evidence-backed completion."
-        breadcrumbs={[{ label: "Follow-up" }]}
+        eyebrow={t("coord.fu.eyebrow")}
+        title={t("nav.follow_up")}
+        subtitle={t("coord.fu.subtitle")}
+        breadcrumbs={[{ label: t("nav.follow_up") }]}
         meta={
           <span className="flex flex-wrap gap-x-4 gap-y-1">
-            <span>Counts as of {asOf}</span>
-            {auth.status === "signed_in" && <span>Scope: {scopeLabel(scope)}</span>}
+            <span>{t("coord.fu.counts_as_of", { date: asOf })}</span>
+            {auth.status === "signed_in" && <span>{t("coord.scope", { scope: scopeLabel(scope, t) })}</span>}
           </span>
         }
         actions={
           can("followups.create") && !creating ? (
             <button type="button" className={buttonClass("primary")} onClick={() => setCreating(true)}>
-              <Plus size={15} aria-hidden="true" /> New follow-up
+              <Plus size={15} aria-hidden="true" /> {t("coord.new_follow_up")}
             </button>
           ) : undefined
         }
@@ -131,16 +134,16 @@ export function FollowUpWorkspace() {
           <CreateTaskForm
             today={today}
             onCancel={() => setCreating(false)}
-            onCreated={(t) => router.push(`/follow-up/${encodeURIComponent(t.task_id)}`)}
+            onCreated={(task) => router.push(`/follow-up/${encodeURIComponent(task.task_id)}`)}
           />
         </div>
       )}
 
       <ResourceView
         resource={summary}
-        what="Follow-up counts"
+        what={t("coord.fu.what_counts")}
         onRetry={retry}
-        loading={<div aria-busy="true" aria-label="Loading follow-up counts" className="skeleton h-64 rounded-xl" />}
+        loading={<div aria-busy="true" aria-label={t("coord.fu.loading_counts")} className="skeleton h-64 rounded-xl" />}
       >
         {(s) => <WorkloadPlate summary={s} filters={filters} onFilter={update} />}
       </ResourceView>
@@ -148,22 +151,22 @@ export function FollowUpWorkspace() {
       <div className="mt-12 grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Plate
           index="01"
-          eyebrow="Work queue"
-          title="Follow-ups to coordinate"
-          description="Ordered by due date. Open a follow-up to record contact, message the patient, review outreach or document completion."
+          eyebrow={t("coord.fu.queue_eyebrow")}
+          title={t("coord.fu.queue_title")}
+          description={t("coord.fu.queue_desc")}
         >
           <QueueFilterBar filters={filters} team={teamMap} onChange={update} onReset={() => update(EMPTY)} />
           <div className="mt-5">
-            <ResourceView resource={tasks} what="Follow-up tasks" onRetry={retry} loading={<LoadingState rows={6} label="Loading follow-up tasks" />}>
+            <ResourceView resource={tasks} what={t("coord.fu.what_tasks")} onRetry={retry} loading={<LoadingState rows={6} label={t("coord.fu.loading_tasks")} />}>
               {(p) =>
                 p.items.length === 0 ? (
-                  <QuietEmpty title="No follow-ups match">
-                    {JSON.stringify(filters) === JSON.stringify(EMPTY) ? "Nothing is waiting in your scope." : "Try widening the filters."}
+                  <QuietEmpty title={t("coord.fu.empty_title")}>
+                    {JSON.stringify(filters) === JSON.stringify(EMPTY) ? t("coord.fu.empty_scope") : t("coord.fu.empty_filters")}
                   </QuietEmpty>
                 ) : (
                   <>
                     <TaskList tasks={p.items} team={teamMap} rules={ruleMap} today={asOf} />
-                    <Pager page={page} total={p.total} size={TASK_PAGE_SIZE} onPage={setPage} label="Follow-up" />
+                    <Pager page={page} total={p.total} size={TASK_PAGE_SIZE} onPage={setPage} label={t("coord.fu.pager")} />
                   </>
                 )
               }
@@ -172,13 +175,13 @@ export function FollowUpWorkspace() {
         </Plate>
 
         <aside className="flex flex-col gap-12">
-          <Plate index="02" eyebrow="Workload" title="By coordinator" description="Active follow-ups per assignee.">
-            <ResourceView resource={summary} what="Workload figures" onRetry={retry}>
+          <Plate index="02" eyebrow={t("coord.fu.workload_eyebrow")} title={t("coord.fu.workload_title")} description={t("coord.fu.workload_desc")}>
+            <ResourceView resource={summary} what={t("coord.fu.what_workload")} onRetry={retry}>
               {(s) => <Workload summary={s} team={teamMap} selected={filters.assigned} onSelect={(id) => update({ assigned: filters.assigned === id ? "" : id })} />}
             </ResourceView>
           </Plate>
-          <Plate index="03" eyebrow="Recent activity" title="Latest changes">
-            <ResourceView resource={summary} what="Recent activity" onRetry={retry}>
+          <Plate index="03" eyebrow={t("coord.fu.recent_eyebrow")} title={t("coord.fu.recent_title")}>
+            <ResourceView resource={summary} what={t("coord.fu.recent_eyebrow")} onRetry={retry}>
               {(s) => <RecentActivity summary={s} team={teamMap} />}
             </ResourceView>
           </Plate>
@@ -189,35 +192,36 @@ export function FollowUpWorkspace() {
 }
 
 function WorkloadPlate({ summary: s, filters, onFilter }: { summary: TaskSummaryOut; filters: QueueFilters; onFilter: (p: Partial<QueueFilters>) => void }) {
+  const { t } = useLocale();
   const toggleDue = (due: DueFilter) => onFilter({ due: filters.due === due ? "" : due, status: "active" });
   return (
-    <section aria-label="Follow-up overview" className="reveal relative overflow-hidden rounded-xl border border-border bg-surface-raised p-6 text-ink-text sm:p-8">
+    <section aria-label={t("coord.fu.overview")} className="reveal relative overflow-hidden rounded-xl border border-border bg-surface-raised p-6 text-ink-text sm:p-8">
       <div className="relative grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <dl className="grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3">
-          <Figure tone="plate" size="xl" className="col-span-2 sm:col-span-3" label="Active follow-ups" value={s.active} note={`of ${s.total} in scope · ${s.completed} completed · ${s.cancelled} cancelled`} />
-          <FigureButton label="Overdue" value={s.overdue} note="past due, still open" active={filters.due === "overdue"} onClick={() => toggleDue("overdue")} accent />
-          <FigureButton label={`Due in ${s.due_soon_days} days`} value={s.due_soon} note="today included" active={filters.due === "soon"} onClick={() => toggleDue("soon")} />
+          <Figure tone="plate" size="xl" className="col-span-2 sm:col-span-3" label={t("coord.fu.active")} value={s.active} note={t("coord.fu.active_note", { total: String(s.total), completed: String(s.completed), cancelled: String(s.cancelled) })} />
+          <FigureButton label={t("coord.fu.overdue")} value={s.overdue} note={t("coord.fu.overdue_note")} active={filters.due === "overdue"} onClick={() => toggleDue("overdue")} accent />
+          <FigureButton label={t("coord.fu.due_soon", { count: String(s.due_soon_days) })} value={s.due_soon} note={t("coord.fu.due_soon_note")} active={filters.due === "soon"} onClick={() => toggleDue("soon")} />
           <FigureButton
-            label="Unassigned"
+            label={t("coord.member.unassigned")}
             value={s.unassigned_active}
-            note="active, no coordinator"
+            note={t("coord.fu.unassigned_note")}
             active={filters.assigned === "unassigned"}
             onClick={() => onFilter({ assigned: filters.assigned === "unassigned" ? "" : "unassigned", status: "active" })}
           />
         </dl>
         <div className="flex flex-col gap-6">
           <div>
-            <p className="mb-3 text-xs font-medium text-ink-faint">All follow-ups by status</p>
+            <p className="mb-3 text-xs font-medium text-ink-faint">{t("coord.fu.by_status_heading")}</p>
             <DistributionBand
               surface="ink"
-              label="Follow-ups by status"
+              label={t("coord.fu.by_status")}
               selected={TASK_STATUS_ORDER.includes(filters.status as TaskStatus) ? filters.status : null}
               onSelect={(k) => onFilter({ status: filters.status === k ? "active" : (k as TaskStatus), due: "" })}
-              parts={TASK_STATUS_ORDER.map((st) => ({ key: st, label: TASK_STATUS_META[st].label, count: s.by_status[st] ?? 0, tone: TASK_STATUS_META[st].tone }))}
+              parts={TASK_STATUS_ORDER.map((st) => ({ key: st, label: t(TASK_STATUS_META[st].label), count: s.by_status[st] ?? 0, tone: TASK_STATUS_META[st].tone }))}
             />
           </div>
           <div>
-            <p className="mb-3 text-xs font-medium text-ink-faint">Active by coordination priority</p>
+            <p className="mb-3 text-xs font-medium text-ink-faint">{t("coord.fu.by_priority")}</p>
             <ul className="flex flex-col gap-2">
               {PRIORITY_ORDER.map((p) => {
                 const n = s.active_by_priority[p] ?? 0;
@@ -227,7 +231,7 @@ function WorkloadPlate({ summary: s, filters, onFilter }: { summary: TaskSummary
                       type="button"
                       aria-pressed={filters.priority === p}
                       onClick={() => onFilter({ priority: filters.priority === p ? "" : p })}
-                      className={cn("group grid w-full grid-cols-[88px_minmax(0,1fr)_40px] items-center gap-3 rounded-lg py-0.5 text-left text-xs", filters.priority === p && "text-ink-accent")}
+                      className={cn("group grid w-full grid-cols-[88px_minmax(0,1fr)_40px] items-center gap-3 rounded-lg py-0.5 text-start text-xs", filters.priority === p && "text-ink-accent")}
                     >
                       <PriorityMark priority={p} surface="ink" />
                       <span className="h-1.5 overflow-hidden rounded-full bg-ink-raised">
@@ -236,7 +240,7 @@ function WorkloadPlate({ summary: s, filters, onFilter }: { summary: TaskSummary
                           style={{ width: s.active ? `${(n / s.active) * 100}%` : "0%", backgroundColor: `var(--ink-${p === "urgent" ? "due" : p === "high" ? "insufficient" : "muted"})` }}
                         />
                       </span>
-                      <span className="text-right font-mono tabular-nums text-ink-text">{n}</span>
+                      <span className="text-end font-mono tabular-nums text-ink-text">{n}</span>
                     </button>
                   </li>
                 );
@@ -246,15 +250,13 @@ function WorkloadPlate({ summary: s, filters, onFilter }: { summary: TaskSummary
           {s.patient_reported_completion > 0 && (
             <p className="flex items-start gap-2 rounded-xl border border-ink-line px-3 py-2 text-xs text-ink-muted">
               <Flag size={14} aria-hidden="true" className="mt-px shrink-0 text-ink-insufficient" />
-              {s.patient_reported_completion} active {s.patient_reported_completion === 1 ? "follow-up has" : "follow-ups have"} a patient report of
-              completion awaiting verification. A report is not evidence; only documented completion closes a care gap.
+              {t(s.patient_reported_completion === 1 ? "coord.fu.reported_one" : "coord.fu.reported_n", { count: String(s.patient_reported_completion) })}
             </p>
           )}
         </div>
       </div>
       <Footnote className="relative text-ink-faint">
-        Exact server-side counts for your scope{filters.pathway || filters.region || filters.priority || filters.assigned ? " and the programme, region, priority and assignee filters" : ""}. Due windows use the
-        server date ({s.as_of}).
+        {t(filters.pathway || filters.region || filters.priority || filters.assigned ? "coord.fu.footnote_filtered" : "coord.fu.footnote", { date: s.as_of })}
       </Footnote>
     </section>
   );
@@ -268,7 +270,7 @@ function FigureButton({ label, value, note, active, onClick, accent }: { label: 
         aria-pressed={active}
         onClick={onClick}
         className={cn(
-          "w-full rounded-xl border px-3 py-2 text-left transition-colors duration-200",
+          "w-full rounded-xl border px-3 py-2 text-start transition-colors duration-200",
           active ? "border-ink-accent bg-ink-raised" : "border-transparent hover:border-ink-line"
         )}
       >
@@ -281,39 +283,40 @@ function FigureButton({ label, value, note, active, onClick, accent }: { label: 
 }
 
 function QueueFilterBar({ filters, team, onChange, onReset }: { filters: QueueFilters; team: Map<string, CareTeamMemberOut> | null; onChange: (p: Partial<QueueFilters>) => void; onReset: () => void }) {
+  const { t } = useLocale();
   const changed = JSON.stringify(filters) !== JSON.stringify(EMPTY);
   return (
-    <div role="search" aria-label="Follow-up filters" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+    <div role="search" aria-label={t("coord.fu.filters")} className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       <label className={labelClass}>
-        Status
+        {t("coord.status")}
         <select className={inputClass} value={filters.status} onChange={(e) => onChange({ status: e.target.value as StatusFilter })}>
-          <option value="active">Active (not closed)</option>
-          <option value="">All statuses</option>
+          <option value="active">{t("coord.fu.status_active")}</option>
+          <option value="">{t("coord.all_statuses")}</option>
           {TASK_STATUS_ORDER.map((s) => (
             <option key={s} value={s}>
-              {TASK_STATUS_META[s].label}
+              {t(TASK_STATUS_META[s].label)}
             </option>
           ))}
-          <option value="closed">Closed (completed or cancelled)</option>
+          <option value="closed">{t("coord.fu.status_closed")}</option>
         </select>
       </label>
       <label className={labelClass}>
-        Priority
+        {t("coord.priority")}
         <select className={inputClass} value={filters.priority} onChange={(e) => onChange({ priority: e.target.value as TaskPriority | "" })}>
-          <option value="">Any priority</option>
+          <option value="">{t("coord.fu.any_priority")}</option>
           {PRIORITY_ORDER.map((p) => (
             <option key={p} value={p}>
-              {PRIORITY_META[p].label}
+              {t(PRIORITY_META[p].label)}
             </option>
           ))}
         </select>
       </label>
       <label className={labelClass}>
-        Assigned to
+        {t("coord.fu.assigned_to")}
         <select className={inputClass} value={filters.assigned} onChange={(e) => onChange({ assigned: e.target.value })}>
-          <option value="">Anyone</option>
-          <option value="me">Me</option>
-          <option value="unassigned">Unassigned</option>
+          <option value="">{t("coord.fu.anyone")}</option>
+          <option value="me">{t("coord.fu.me")}</option>
+          <option value="unassigned">{t("coord.member.unassigned")}</option>
           {[...(team?.values() ?? [])]
             .filter((m) => !m.is_self)
             .map((m) => (
@@ -324,49 +327,49 @@ function QueueFilterBar({ filters, team, onChange, onReset }: { filters: QueueFi
         </select>
       </label>
       <label className={labelClass}>
-        Programme
+        {t("coord.fu.programme")}
         <select className={inputClass} value={filters.pathway} onChange={(e) => onChange({ pathway: e.target.value as Pathway | "" })}>
-          <option value="">All programmes</option>
+          <option value="">{t("coord.fu.all_programmes")}</option>
           {PATHWAY_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
-              {o.short}
+              {t(o.short)}
             </option>
           ))}
         </select>
       </label>
       <label className={labelClass}>
-        Region
+        {t("coord.fu.region")}
         <select className={inputClass} value={filters.region} onChange={(e) => onChange({ region: Number(e.target.value) as RegionId | 0 })}>
-          <option value={0}>All regions</option>
+          <option value={0}>{t("coord.fu.all_regions")}</option>
           {REGION_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
-              {o.label}
+              {t(o.label)}
             </option>
           ))}
         </select>
       </label>
       <label className={labelClass}>
-        Due
+        {t("coord.fu.due")}
         <select className={inputClass} value={filters.due} onChange={(e) => onChange({ due: e.target.value as DueFilter })}>
-          <option value="">Any due date</option>
-          <option value="overdue">Overdue</option>
-          <option value="soon">Within 7 days</option>
-          <option value="month">Within 30 days</option>
+          <option value="">{t("coord.fu.any_due")}</option>
+          <option value="overdue">{t("coord.fu.overdue")}</option>
+          <option value="soon">{t("coord.fu.within_7")}</option>
+          <option value="month">{t("coord.fu.within_30")}</option>
         </select>
       </label>
       {changed && (
         <button type="button" onClick={onReset} className={cn(buttonClass("quiet"), "col-span-2 justify-self-start sm:col-span-3 lg:col-span-6")}>
-          <X size={14} aria-hidden="true" /> Reset filters
+          <X size={14} aria-hidden="true" /> {t("coord.fu.reset")}
         </button>
       )}
     </div>
   );
 }
 
-function programmeOf(rules: Map<string, RuleSummaryOut> | null, ruleId: string | null): string | null {
+function programmeOf(rules: Map<string, RuleSummaryOut> | null, ruleId: string | null, t: Translate): string | null {
   if (!ruleId) return null;
   const p = rules?.get(ruleId)?.pathway;
-  return p ? PATHWAY_OPTIONS.find((o) => o.value === p)!.short : null;
+  return p ? t(PATHWAY_OPTIONS.find((o) => o.value === p)!.short) : null;
 }
 
 export function TaskList({
@@ -382,50 +385,51 @@ export function TaskList({
   today: string;
   hidePatient?: boolean;
 }) {
+  const { t, locale } = useLocale();
   return (
-    <ul aria-label="Follow-up tasks" className="flex flex-col divide-y divide-border border-y border-border">
-      {tasks.map((t, i) => {
-        const meta = TASK_STATUS_META[t.status];
-        const terminal = TERMINAL_TASK_STATUSES.includes(t.status);
-        const programme = programmeOf(rules, t.rule_id);
+    <ul aria-label={t("coord.fu.what_tasks")} className="flex flex-col divide-y divide-border border-y border-border">
+      {tasks.map((task, i) => {
+        const meta = TASK_STATUS_META[task.status];
+        const terminal = TERMINAL_TASK_STATUSES.includes(task.status);
+        const programme = programmeOf(rules, task.rule_id, t);
         return (
-          <li key={t.task_id} className="reveal" style={{ "--i": Math.min(i, 8) } as React.CSSProperties}>
+          <li key={task.task_id} className="reveal" style={{ "--i": Math.min(i, 8) } as React.CSSProperties}>
             <Link
-              href={`/follow-up/${encodeURIComponent(t.task_id)}`}
+              href={`/follow-up/${encodeURIComponent(task.task_id)}`}
               transitionTypes={FORWARD}
               className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-1 py-3.5 transition-colors hover:bg-surface-raised sm:grid-cols-[96px_minmax(0,1fr)_auto_auto]"
             >
               <span className="order-3 sm:order-none">
-                <PriorityMark priority={t.priority} />
+                <PriorityMark priority={task.priority} />
               </span>
               <span className="min-w-0">
                 <span className="flex flex-wrap items-baseline gap-x-2">
-                  {!hidePatient && <span className="font-mono text-sm text-foreground">{t.patient_id}</span>}
-                  <span className="text-sm text-foreground">{MESSAGE_KEY_LABELS[t.message_key as keyof typeof MESSAGE_KEY_LABELS] ?? t.message_key}</span>
+                  {!hidePatient && <span className="ltr-value font-mono text-sm text-foreground">{task.patient_id}</span>}
+                  <span className="text-sm text-foreground">{templateText(task.message_key, t)}</span>
                   {programme && <span className="text-xs text-faint">{programme}</span>}
                 </span>
                 <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-                  <span>{memberName(team, t.assigned_to_user_id)}</span>
-                  <span className={cn(t.is_overdue && "font-medium text-status-due")}>{dueText(t.due_date, today, terminal)}</span>
-                  {t.escalated_at && !terminal && (
+                  <span>{memberName(team, task.assigned_to_user_id, t)}</span>
+                  <span className={cn(task.is_overdue && "font-medium text-status-due")}>{dueText(task.due_date, today, terminal, t, locale)}</span>
+                  {task.escalated_at && !terminal && (
                     <span className="inline-flex items-center gap-1 text-status-due">
-                      <AlertOctagon size={12} aria-hidden="true" /> Escalated
+                      <AlertOctagon size={12} aria-hidden="true" /> {t("coord.event.escalated")}
                     </span>
                   )}
-                  {t.patient_reported_completion && !terminal && (
+                  {task.patient_reported_completion && !terminal && (
                     <span className="inline-flex items-center gap-1 text-status-insufficient">
-                      <Flag size={12} aria-hidden="true" /> Patient reports done · unverified
+                      <Flag size={12} aria-hidden="true" /> {t("coord.fu.reported_done")}
                     </span>
                   )}
-                  {!t.patient_visible && (
+                  {!task.patient_visible && (
                     <span className="inline-flex items-center gap-1">
-                      <EyeOff size={12} aria-hidden="true" /> Internal only
+                      <EyeOff size={12} aria-hidden="true" /> {t("coord.internal_only")}
                     </span>
                   )}
                 </span>
               </span>
-              <StatusPill tone={meta.tone} label={meta.label} />
-              <ArrowUpRight size={15} aria-hidden="true" className="hidden text-faint transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-foreground sm:block" />
+              <StatusPill tone={meta.tone} label={t(meta.label)} />
+              <ArrowUpRight size={15} aria-hidden="true" className="hidden text-faint transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-foreground rtl:-scale-x-100 sm:block" />
             </Link>
           </li>
         );
@@ -435,7 +439,8 @@ export function TaskList({
 }
 
 function Workload({ summary, team, selected, onSelect }: { summary: TaskSummaryOut; team: Map<string, CareTeamMemberOut> | null; selected: string; onSelect: (id: string) => void }) {
-  if (summary.workload.length === 0) return <p className="text-sm text-muted">No active follow-ups.</p>;
+  const { t } = useLocale();
+  if (summary.workload.length === 0) return <p className="text-sm text-muted">{t("coord.fu.no_active")}</p>;
   const max = Math.max(...summary.workload.map((w) => w.active));
   return (
     <ul className="flex flex-col gap-4">
@@ -445,21 +450,23 @@ function Workload({ summary, team, selected, onSelect }: { summary: TaskSummaryO
         const rest = Math.max(0, w.active - w.overdue - w.due_soon);
         return (
           <li key={id}>
-            <button type="button" aria-pressed={selected === id} onClick={() => onSelect(id)} className="w-full text-left">
+            <button type="button" aria-pressed={selected === id} onClick={() => onSelect(id)} className="w-full text-start">
               <span className="flex items-baseline justify-between gap-2">
                 <span className={cn("truncate text-sm", selected === id ? "font-semibold text-accent" : "text-foreground")}>
-                  {memberName(team, w.assigned_to_user_id)}
+                  {memberName(team, w.assigned_to_user_id, t)}
                 </span>
                 <span className="font-mono text-sm tabular-nums text-foreground">{w.active}</span>
               </span>
-              {member && <span className="block text-[11px] text-faint">{ROLE_LABELS[member.role] ?? member.role}</span>}
+              {member && <span className="block text-[11px] text-faint">{roleText(member.role, t)}</span>}
               <span className="mt-1.5 flex h-1.5 gap-px overflow-hidden rounded-full bg-surface-sunken" style={{ width: `${(w.active / max) * 100}%` }}>
                 <span className="grow-x h-full bg-status-due" style={{ width: `${(w.overdue / w.active) * 100}%` }} />
                 <span className="grow-x h-full bg-status-upcoming" style={{ width: `${(w.due_soon / w.active) * 100}%` }} />
                 <span className="grow-x h-full bg-status-eligible" style={{ width: `${(rest / w.active) * 100}%` }} />
               </span>
               <span className="mt-1 block text-[11px] text-muted">
-                {w.overdue} overdue · {w.due_soon} due soon{w.urgent ? ` · ${w.urgent} urgent` : ""}
+                {w.urgent
+                  ? t("coord.fu.workload_line_urgent", { overdue: String(w.overdue), soon: String(w.due_soon), urgent: String(w.urgent) })
+                  : t("coord.fu.workload_line", { overdue: String(w.overdue), soon: String(w.due_soon) })}
               </span>
             </button>
           </li>
@@ -470,19 +477,20 @@ function Workload({ summary, team, selected, onSelect }: { summary: TaskSummaryO
 }
 
 function RecentActivity({ summary, team }: { summary: TaskSummaryOut; team: Map<string, CareTeamMemberOut> | null }) {
-  if (summary.recent_events.length === 0) return <p className="text-sm text-muted">No follow-up activity recorded yet.</p>;
+  const { t, locale } = useLocale();
+  if (summary.recent_events.length === 0) return <p className="text-sm text-muted">{t("coord.fu.no_activity")}</p>;
   return (
-    <ol className="relative flex flex-col gap-4 border-l border-border pl-4">
+    <ol className="relative flex flex-col gap-4 border-s border-border ps-4">
       {summary.recent_events.map((e) => (
         <li key={e.event_id} className="relative">
-          <span className="absolute -left-[22.5px] top-1 bg-background">
+          <span className="absolute -start-[22.5px] top-1 bg-background">
             <ToneGlyph tone={eventTone(e)} />
           </span>
           <Link href={`/follow-up/${encodeURIComponent(e.task_id)}`} className="text-sm text-foreground hover:underline">
-            {taskEventText({ ...e, from_status: null })}
+            {taskEventText({ ...e, from_status: null }, t)}
           </Link>
           <p className="text-[11px] text-faint">
-            <span className="font-mono">{e.patient_id}</span> · {actorLabel(team, e.actor_user_id, e.actor_role)} · {formatDateTime(e.created_at)}
+            <span className="ltr-value font-mono">{e.patient_id}</span> · {actorLabel(team, e.actor_user_id, e.actor_role, t)} · {formatDateTime(e.created_at, locale)}
           </p>
         </li>
       ))}

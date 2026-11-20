@@ -17,7 +17,7 @@ export default function PeoplePage() {
           </div>
         }
       >
-        <RequirePermission anyOf={["patients.read", "patients.read_assigned"]} workspace="People">
+        <RequirePermission anyOf={["patients.read", "patients.read_assigned"]} workspace="nav.people">
           <PeopleWorkspace />
         </RequirePermission>
       </Suspense>

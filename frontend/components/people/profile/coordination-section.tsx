@@ -16,6 +16,7 @@ import { CreateTaskForm } from "@/components/coordination/create-task-form";
 import { TaskList } from "@/components/coordination/follow-up-workspace";
 import { Confirmation, QuietEmpty, ToneGlyph, VisibilityBadge } from "@/components/coordination/primitives";
 import { ProfileSection } from "./profile-section";
+import { useLocale } from "@/lib/i18n/use-locale";
 
 type Lane = "all" | "follow_up" | "outreach" | "appointments" | "referrals" | "requests";
 
@@ -39,6 +40,7 @@ function ready<T>(r: Resource<T>): T | null {
  */
 export function CoordinationSection({ data }: { data: PersonProfileData }) {
   const { can } = useAuth();
+  const { t, locale } = useLocale();
   const pid = data.patient.patient_id;
   const [attempt, setAttempt] = useState(0);
   const [creating, setCreating] = useState(false);
@@ -56,10 +58,10 @@ export function CoordinationSection({ data }: { data: PersonProfileData }) {
   const loading = parts.some((p) => p.status === "loading");
   const errors = parts.filter((p): p is { status: "error"; message: string } => p.status === "error");
   const refused = [
-    c.requests.status === "forbidden" && "patient requests",
-    c.appointments.status === "forbidden" && "appointments",
-    c.referrals.status === "forbidden" && "referrals",
-    c.tasks.status === "forbidden" && "follow-ups",
+    c.requests.status === "forbidden" && t("coord.profile.refused_requests"),
+    c.appointments.status === "forbidden" && t("coord.profile.refused_appointments"),
+    c.referrals.status === "forbidden" && t("coord.profile.refused_referrals"),
+    c.tasks.status === "forbidden" && t("coord.profile.refused_follow_ups"),
   ].filter(Boolean) as string[];
 
   const timeline = useMemo(
@@ -73,8 +75,8 @@ export function CoordinationSection({ data }: { data: PersonProfileData }) {
         appointments: ready(c.appointments) ?? [],
         referrals: ready(c.referrals) ?? [],
         team: ready(team),
-      }),
-    [data, tasks, activity, c.requests, c.appointments, c.referrals, team]
+      }, t, locale),
+    [data, tasks, activity, c.requests, c.appointments, c.referrals, team, t, locale]
   );
   const shown = LANES[lane] ? timeline.filter((e) => LANES[lane]!.includes(e.kind)) : timeline;
   const activeTasks = tasks?.filter((t) => !TERMINAL_TASK_STATUSES.includes(t.status)) ?? null;
@@ -85,20 +87,20 @@ export function CoordinationSection({ data }: { data: PersonProfileData }) {
   return (
     <ProfileSection
       id="coordination"
-      title="Care Coordination"
-      description="Follow-ups, outreach reviews, patient requests, appointments and referrals for this person. Only a documented completion with evidence closes a care gap."
+      title={t("coord.profile.title")}
+      description={t("coord.profile.desc")}
     >
       <div className="flex flex-col gap-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <dl className="grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-4">
-            <Count label="Active follow-ups" value={activeTasks?.length} />
-            <Count label="Open requests" value={openRequests?.length} />
-            <Count label="Upcoming appointments" value={upcoming?.length} />
-            <Count label="Active referrals" value={activeReferrals?.length} />
+            <Count label={t("coord.fu.active")} value={activeTasks?.length} />
+            <Count label={t("coord.profile.open_requests")} value={openRequests?.length} />
+            <Count label={t("coord.appt.upcoming")} value={upcoming?.length} />
+            <Count label={t("coord.profile.active_referrals")} value={activeReferrals?.length} />
           </dl>
           {can("followups.create") && !creating && (
             <button type="button" className={buttonClass("primary")} onClick={() => { setCreating(true); setCreated(null); }}>
-              <Plus size={15} aria-hidden="true" /> New follow-up
+              <Plus size={15} aria-hidden="true" /> {t("coord.new_follow_up")}
             </button>
           )}
         </div>
@@ -117,54 +119,54 @@ export function CoordinationSection({ data }: { data: PersonProfileData }) {
         )}
         {created && (
           <Confirmation>
-            Follow-up created.{" "}
+            {t("coord.profile.created")}{" "}
             <Link className="font-medium text-accent underline-offset-4 hover:underline" href={`/follow-up/${encodeURIComponent(created)}`}>
-              Open it
+              {t("coord.profile.open_it")}
             </Link>
           </Confirmation>
         )}
 
-        {errors.length > 0 && <InlineError message={`Some coordination records are unavailable. ${errors[0].message}`} onRetry={() => setAttempt((n) => n + 1)} />}
+        {errors.length > 0 && <InlineError message={t("coord.profile.unavailable", { message: errors[0].message })} onRetry={() => setAttempt((n) => n + 1)} />}
         {refused.length > 0 && (
-          <p className="text-xs text-faint">Not shown for your role: {refused.join(", ")} (enforced by the PulseReach API).</p>
+          <p className="text-xs text-faint">{t("coord.profile.refused", { parts: refused.join(t("list.sep")) })}</p>
         )}
 
         {tasks && tasks.length > 0 && (
           <div>
-            <h3 className="mb-2 text-xs font-medium text-faint">Follow-ups</h3>
+            <h3 className="mb-2 text-xs font-medium text-faint">{t("coord.profile.follow_ups")}</h3>
             <TaskList tasks={tasks} team={ready(team)} rules={ready(rules)} today={today} hidePatient />
           </div>
         )}
 
         <div>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h3 className="text-xs font-medium text-faint">Timeline</h3>
+            <h3 className="text-xs font-medium text-faint">{t("coord.profile.timeline")}</h3>
             <div className="overflow-x-auto">
               <Segmented
-                label="Timeline lane"
+                label={t("coord.profile.lane")}
                 value={lane}
                 onChange={setLane}
                 className="min-w-max"
                 options={[
-                  { value: "all", label: "All" },
-                  { value: "follow_up", label: "Follow-up" },
-                  { value: "outreach", label: "Outreach" },
-                  { value: "requests", label: "Requests" },
-                  { value: "appointments", label: "Appointments" },
-                  { value: "referrals", label: "Referrals" },
+                  { value: "all", label: t("coord.profile.lane_all") },
+                  { value: "follow_up", label: t("nav.follow_up") },
+                  { value: "outreach", label: t("coord.profile.lane_outreach") },
+                  { value: "requests", label: t("coord.profile.lane_requests") },
+                  { value: "appointments", label: t("coord.appt.tab_appointments") },
+                  { value: "referrals", label: t("coord.appt.tab_referrals") },
                 ]}
               />
             </div>
           </div>
           {loading ? (
-            <LoadingState rows={4} label="Loading coordination timeline" />
+            <LoadingState rows={4} label={t("coord.profile.loading")} />
           ) : shown.length === 0 ? (
-            <QuietEmpty title="Nothing recorded yet">No coordination activity is recorded for this lane.</QuietEmpty>
+            <QuietEmpty title={t("coord.profile.empty")}>{t("coord.profile.empty_desc")}</QuietEmpty>
           ) : (
-            <ol aria-label="Coordination timeline" className="relative flex flex-col gap-4 border-l border-border pl-5">
+            <ol aria-label={t("coord.profile.timeline_aria")} className="relative flex flex-col gap-4 border-s border-border ps-5">
               {shown.map((e, i) => (
                 <li key={e.id} className="reveal relative" style={{ "--i": Math.min(i, 10) } as React.CSSProperties}>
-                  <span className="absolute -left-[27px] top-1 rounded-full bg-background p-0.5">
+                  <span className="absolute -start-[27px] top-1 rounded-full bg-background p-0.5">
                     <ToneGlyph tone={e.tone} />
                   </span>
                   <div className="flex flex-wrap items-center gap-2">
@@ -178,7 +180,7 @@ export function CoordinationSection({ data }: { data: PersonProfileData }) {
                     <VisibilityBadge visibility={e.visibility} />
                   </div>
                   {e.detail && <p className="mt-0.5 whitespace-pre-wrap text-sm text-muted">{e.detail}</p>}
-                  <p className="mt-0.5 text-xs text-faint">{e.at.length === 10 ? formatDate(e.at) : formatDateTime(e.at)}</p>
+                  <p className="mt-0.5 text-xs text-faint">{e.at.length === 10 ? formatDate(e.at, locale) : formatDateTime(e.at, locale)}</p>
                 </li>
               ))}
             </ol>
@@ -187,8 +189,7 @@ export function CoordinationSection({ data }: { data: PersonProfileData }) {
 
         <p className="flex gap-2 border-t border-border pt-4 text-xs text-faint">
           <ShieldCheck size={14} aria-hidden="true" className="mt-px shrink-0" />
-          Internal entries are staff-only and never appear in the patient portal. Appointments, referrals, patient replies and approved (simulated) outreach are
-          coordination records, not proof that preventive care was completed.
+          {t("coord.profile.footer")}
         </p>
       </div>
     </ProfileSection>

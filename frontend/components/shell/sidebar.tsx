@@ -6,6 +6,7 @@ import { PanelLeftClose, PanelLeft, X } from "lucide-react";
 import { Suspense, useEffect, useSyncExternalStore } from "react";
 import { cn } from "@/lib/cn";
 import { useAuth } from "@/lib/auth/auth-context";
+import { useLocale } from "@/lib/i18n/use-locale";
 import { NAV_GROUPS, isNavItemActive, navItemsFor, navLabel } from "./nav-items";
 import { LogoMark, LogoWordmark } from "./logo";
 
@@ -44,6 +45,7 @@ function RoutedNav({ collapsed, onClose }: { collapsed: boolean; onClose: () => 
 }
 
 export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
+  const { t } = useLocale();
   const collapsed = useSyncExternalStore(subscribeCollapsed, getCollapsed, () => false);
 
   const toggleCollapsed = () => {
@@ -74,26 +76,26 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       />
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-border bg-background-elevated transition-[width,transform] duration-300 ease-[var(--ease-out)]",
+          "fixed inset-y-0 start-0 z-50 flex w-72 flex-col border-e border-border bg-background-elevated transition-[width,transform] duration-300 ease-[var(--ease-out)]",
           // Mobile drawer
-          mobileOpen ? "translate-x-0 shadow-[var(--shadow-popover)]" : "-translate-x-full",
+          mobileOpen ? "translate-x-0 shadow-[var(--shadow-popover)]" : "-translate-x-full rtl:translate-x-full",
           // Desktop: sticky in-flow column, collapsible width
-          "lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:shadow-none",
+          "lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:shadow-none rtl:lg:translate-x-0",
           collapsed ? "lg:w-[76px]" : "lg:w-64"
         )}
       >
         <div className="flex h-16 items-center gap-3 px-4">
-          <Link href="/" aria-label="PulseReach — Population overview" className="flex items-center gap-3 rounded-md">
+          <Link href="/" aria-label={t("app.home_link")} className="flex items-center gap-3 rounded-md">
             <LogoMark />
           </Link>
           <div className={cn("min-w-0 flex-1 transition-opacity duration-200", collapsed && "lg:sr-only lg:opacity-0")}>
             <LogoWordmark />
-            <p className="truncate text-[11px] text-faint">Population health</p>
+            <p className="truncate text-[11px] text-faint">{t("app.tagline")}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close navigation"
+            aria-label={t("shell.close_navigation")}
             className="flex size-9 items-center justify-center rounded-full text-muted hover:bg-surface-sunken hover:text-foreground lg:hidden"
           >
             <X size={18} />
@@ -106,12 +108,16 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           <button
             type="button"
             onClick={toggleCollapsed}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={t(collapsed ? "shell.expand_sidebar" : "shell.collapse_sidebar")}
             aria-pressed={collapsed}
             className="hidden w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-faint transition-colors hover:bg-surface-sunken hover:text-foreground lg:flex"
           >
-            {collapsed ? <PanelLeft size={17} className="mx-auto" /> : <PanelLeftClose size={17} />}
-            <span className={cn(collapsed && "lg:sr-only")}>{collapsed ? "Expand" : "Collapse"}</span>
+            {collapsed ? (
+              <PanelLeft size={17} className="mx-auto rtl:-scale-x-100" />
+            ) : (
+              <PanelLeftClose size={17} className="rtl:-scale-x-100" />
+            )}
+            <span className={cn(collapsed && "lg:sr-only")}>{t(collapsed ? "shell.expand" : "shell.collapse")}</span>
           </button>
         </div>
       </aside>
@@ -121,9 +127,10 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
 function NavLinks({ pathname, collapsed }: { pathname: string | null; collapsed: boolean }) {
   const { can, role } = useAuth();
+  const { t } = useLocale();
   const items = navItemsFor(role, can);
   return (
-    <nav aria-label="Primary" className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
+    <nav aria-label={t("shell.primary_navigation")} className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
       {NAV_GROUPS.map((group) => {
         const groupItems = items.filter((i) => i.group === group.id);
         if (groupItems.length === 0) return null;
@@ -135,7 +142,7 @@ function NavLinks({ pathname, collapsed }: { pathname: string | null; collapsed:
                 collapsed && "lg:sr-only"
               )}
             >
-              {group.label}
+              {t(group.label)}
             </p>
             <ul className="flex flex-col gap-0.5">
               {groupItems.map((item) => {
@@ -156,7 +163,7 @@ function NavLinks({ pathname, collapsed }: { pathname: string | null; collapsed:
                       <span
                         aria-hidden="true"
                         className={cn(
-                          "absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-full bg-accent transition-transform duration-300 ease-[var(--ease-out)]",
+                          "absolute start-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-full bg-accent transition-transform duration-300 ease-[var(--ease-out)]",
                           active ? "scale-y-100" : "scale-y-0"
                         )}
                       />
@@ -166,14 +173,14 @@ function NavLinks({ pathname, collapsed }: { pathname: string | null; collapsed:
                         className={cn("shrink-0", active && "text-accent")}
                         aria-hidden="true"
                       />
-                      <span className={cn("min-w-0 flex-1 truncate", collapsed && "lg:sr-only")}>{navLabel(item, role)}</span>
+                      <span className={cn("min-w-0 flex-1 truncate", collapsed && "lg:sr-only")}>{navLabel(item, role, t)}</span>
                       {/* Tooltip — collapsed desktop only */}
                       {collapsed && (
                         <span
                           role="tooltip"
-                          className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-md border border-border bg-surface-raised px-2.5 py-1.5 text-xs font-medium text-foreground opacity-0 shadow-[var(--shadow-popover)] transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 lg:block"
+                          className="pointer-events-none absolute start-full top-1/2 z-50 ms-3 hidden -translate-y-1/2 whitespace-nowrap rounded-md border border-border bg-surface-raised px-2.5 py-1.5 text-xs font-medium text-foreground opacity-0 shadow-[var(--shadow-popover)] transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 lg:block"
                         >
-                          {navLabel(item, role)}
+                          {navLabel(item, role, t)}
                         </span>
                       )}
                     </Link>

@@ -1,4 +1,7 @@
+"use client";
+
 import type { LucideIcon } from "lucide-react";
+import { useT } from "@/lib/i18n/use-locale";
 import { Surface } from "./surface";
 import { SectionHeader } from "./section-header";
 
@@ -15,6 +18,7 @@ interface NotImplementedStateProps {
  * feature work is scheduled for a later phase.
  */
 export function NotImplementedState({ icon: Icon, title, description, roadmap }: NotImplementedStateProps) {
+  const t = useT();
   return (
     <Surface className="flex flex-col items-start gap-4 p-8">
       <span className="flex size-11 items-center justify-center rounded-full bg-accent-soft text-accent">
@@ -23,7 +27,7 @@ export function NotImplementedState({ icon: Icon, title, description, roadmap }:
       <SectionHeader title={title} description={description} />
       {roadmap && (
         <p className="rounded-md bg-surface-sunken px-3 py-2 text-xs text-muted">
-          Planned: {roadmap}
+          {t("state.planned", { roadmap })}
         </p>
       )}
     </Surface>

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { filterChips, filtersToSearchParams, hasActiveFilters, parseFilters, peopleHref } from "./filters";
+import { englishT, translate, type MessageKey, type Params } from "@/lib/i18n/translate";
 
 describe("population filters", () => {
   it("parses only backend-supported values", () => {
@@ -26,9 +27,17 @@ describe("population filters", () => {
   });
 
   it("labels chips for display", () => {
-    expect(filterChips({ region_id: 2, sex: "female" }).map((c) => c.label)).toEqual([
+    expect(filterChips({ region_id: 2, sex: "female" }, englishT).map((c) => c.label)).toEqual([
       "Region: Al Ain",
       "Sex: Female",
+    ]);
+  });
+
+  it("labels chips in Arabic with official region names", () => {
+    const ar = (k: MessageKey, p?: Params) => translate("ar", k, p);
+    expect(filterChips({ region_id: 1, sex: "male" }, ar).map((c) => c.label.replace(/[\u2068\u2069]/g, ""))).toEqual([
+      "المنطقة: أبوظبي",
+      "الجنس: ذكر",
     ]);
   });
 });

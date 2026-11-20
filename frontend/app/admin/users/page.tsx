@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Users & roles" };
 export default function Page() {
   return (
     <PageTransition>
-      <RequirePermission anyOf={["users.read"]} workspace="Users & roles">
+      <RequirePermission anyOf={["users.read"]} workspace="nav.users_roles">
         <UsersAdmin />
       </RequirePermission>
     </PageTransition>

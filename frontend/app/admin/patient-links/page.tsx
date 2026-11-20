@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Patient portal links" };
 export default function Page() {
   return (
     <PageTransition>
-      <RequirePermission anyOf={["patient_links.manage"]} workspace="Patient portal links">
+      <RequirePermission anyOf={["patient_links.manage"]} workspace="nav.patient_portal_links">
         <PatientLinksAdmin />
       </RequirePermission>
     </PageTransition>

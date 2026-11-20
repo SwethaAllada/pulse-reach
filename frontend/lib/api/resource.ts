@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ApiError, isForbidden } from "./client";
+import { useLocale } from "@/lib/i18n/use-locale";
 
 /** A loaded resource; `forbidden` = the backend (or the role's permissions) refuse it. */
 export type Resource<T> =
@@ -17,25 +18,33 @@ function message(err: unknown, fallback: string): string {
 /**
  * Runs `load` whenever `key` changes (null = disabled, reported as forbidden).
  * Stale responses are ignored; 403 becomes `forbidden`, never an error banner.
+ *
+ * A language switch reloads too (responses carry backend-localized labels), but keeps showing the
+ * loaded data meanwhile, so forms, selections and expanded rows below survive the switch.
  */
 export function useResource<T>(
   key: string | null,
   permission: string,
   load: (signal: AbortSignal) => Promise<T>,
-  attempt: number
+  attempt: number,
+  /** False for responses without backend-localized text (raw records localized at render). */
+  localized = true
 ): Resource<T> {
-  const requestId = `${attempt}|${key}`;
-  const [settled, setSettled] = useState<{ id: string; state: Resource<T> } | null>(null);
+  const { locale, t } = useLocale();
+  const baseId = `${attempt}|${key}`;
+  const requestId = localized ? `${baseId}|${locale}` : baseId;
+  const [settled, setSettled] = useState<{ id: string; baseId: string; state: Resource<T> } | null>(null);
   useEffect(() => {
     if (key === null) return;
     const ctrl = new AbortController();
     load(ctrl.signal).then(
-      (data) => !ctrl.signal.aborted && setSettled({ id: requestId, state: { status: "ready", data } }),
+      (data) => !ctrl.signal.aborted && setSettled({ id: requestId, baseId, state: { status: "ready", data } }),
       (err) => {
         if (ctrl.signal.aborted) return;
         setSettled({
           id: requestId,
-          state: isForbidden(err) ? { status: "forbidden", permission } : { status: "error", message: message(err, "Unexpected error.") },
+          baseId,
+          state: isForbidden(err) ? { status: "forbidden", permission } : { status: "error", message: message(err, t("state.unexpected_error")) },
         });
       }
     );
@@ -44,7 +53,8 @@ export function useResource<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestId]);
   if (key === null) return { status: "forbidden", permission };
-  return settled?.id === requestId ? settled.state : { status: "loading" };
+  if (settled?.id === requestId) return settled.state;
+  return settled?.baseId === baseId && settled.state.status === "ready" ? settled.state : { status: "loading" };
 }
 
 /**

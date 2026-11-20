@@ -20,10 +20,12 @@ import { buttonClass } from "@/components/ui/button-styles";
 import { useAuth } from "@/lib/auth/auth-context";
 import { PageHeader } from "@/components/ui/page-header";
 import { Plate } from "@/components/ui/plate";
+import { useLocale } from "@/lib/i18n/use-locale";
 
 export function PopulationWorkspace() {
   const searchParams = useSearchParams();
   const { scope } = useAuth();
+  const { t } = useLocale();
   const [view, setView] = useState<"compare" | "people">("compare");
   const router = useRouter();
   const pathname = usePathname();
@@ -52,20 +54,16 @@ export function PopulationWorkspace() {
   return (
     <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-6 px-4 pb-16 pt-6 sm:px-6 lg:px-8">
       <PageHeader
-        title={panel ? "Panel insights" : "Population overview"}
-        subtitle={
-          panel
-            ? "Programme membership, documented care gaps and evidence completeness for the patients assigned to you."
-            : "Programme membership, documented care gaps and evidence completeness for the synthetic population in your scope."
-        }
+        title={t(panel ? "nav.panel_insights" : "nav.population_overview")}
+        subtitle={t(panel ? "pop.subtitle_panel" : "pop.subtitle_population")}
         meta={
           summary.status === "ready" ? (
             <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="inline-flex items-center gap-1.5">
-                <Telescope size={12} aria-hidden="true" /> Evaluation run{" "}
-                <span className="font-mono">{summary.data.evaluation_run_id}</span>
+                <Telescope size={12} aria-hidden="true" /> {t("pop.evaluation_run")}{" "}
+                <span className="font-mono ltr-value">{summary.data.evaluation_run_id}</span>
               </span>
-              <span>Reference date {summary.data.reference_date}</span>
+              <span>{t("pop.reference_date", { date: summary.data.reference_date })}</span>
             </span>
           ) : undefined
         }
@@ -73,7 +71,7 @@ export function PopulationWorkspace() {
 
       <section aria-labelledby="population-heading" className="flex flex-col gap-6">
         <h2 id="population-heading" className="sr-only">
-          Population signals
+          {t("pop.signals")}
         </h2>
         <div className="reveal rounded-xl border border-border bg-surface-raised px-4 py-3.5">
           <PopulationFilterBar filters={filters} onChange={(next) => navigate(next, selectedId)} />
@@ -89,17 +87,17 @@ export function PopulationWorkspace() {
             <PopulationOverview model={model} populationTotal={populationTotal} filters={filters} />
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
               <Plate
-                title="Cohort comparison"
-                description="Programme cohorts side by side, split by documented evidence. Select a programme or segment to see its gaps."
+                title={t("pop.cohort_comparison")}
+                description={t("pop.cohort_comparison_desc")}
                 className="[--i:3]"
                 actions={
                   <Segmented
-                    label="Cohort view"
+                    label={t("pop.cohort_view")}
                     value={view}
                     onChange={setView}
                     options={[
-                      { value: "compare", label: "Compare" },
-                      { value: "people", label: "People view" },
+                      { value: "compare", label: t("pop.view_compare") },
+                      { value: "people", label: t("pop.view_people") },
                     ]}
                   />
                 }
@@ -142,7 +140,7 @@ export function PopulationWorkspace() {
       )}
       {population.status === "error" && (
         <p className="text-sm text-muted">
-          Population insights are hidden until the API responds — no values are shown in place of real data.
+          {t("pop.insights_hidden")}
         </p>
       )}
 
@@ -152,8 +150,9 @@ export function PopulationWorkspace() {
 }
 
 function HeroLoading() {
+  const { t } = useLocale();
   return (
-    <div aria-busy="true" aria-label="Loading population data" className="flex flex-col gap-4">
+    <div aria-busy="true" aria-label={t("pop.loading")} className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="skeleton h-[88px] rounded-xl" style={{ animationDelay: `${i * 80}ms` }} />
@@ -165,50 +164,46 @@ function HeroLoading() {
       </div>
       <p className="flex items-center gap-3 text-xs text-faint">
         <span className="progress-track h-0.5 w-16 rounded-full bg-border text-accent" />
-        Loading population data from the PulseReach API…
+        {t("pop.loading_from_api")}
       </p>
     </div>
   );
 }
 
 function HeroError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const { t } = useLocale();
   return (
     <div role="alert" className="reveal flex flex-col items-start gap-3 rounded-xl border border-border bg-surface-raised p-6">
       <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
         <AlertTriangle size={16} aria-hidden="true" className="text-status-error" />
-        Population data is unavailable
+        {t("pop.unavailable_title")}
       </span>
-      <p className="max-w-xl text-sm text-muted">
-        {message} No population figures are shown because none could be loaded.
-      </p>
+      <p className="max-w-xl text-sm text-muted">{t("pop.unavailable_body", { message })}</p>
       <button
         type="button"
         onClick={onRetry}
         className={buttonClass("secondary")}
       >
-        <RotateCcw size={14} aria-hidden="true" /> Retry
+        <RotateCcw size={14} aria-hidden="true" /> {t("access.retry")}
       </button>
     </div>
   );
 }
 
 function HeroEmpty({ filtered, onClear }: { filtered: boolean; onClear: () => void }) {
+  const { t } = useLocale();
   return (
     <div className="reveal flex flex-col items-center gap-3 rounded-xl border border-dashed border-border-strong bg-surface-raised px-6 py-12 text-center">
       <SearchX size={24} strokeWidth={1.5} aria-hidden="true" className="text-faint" />
-      <p className="text-sm font-semibold text-foreground">No people match these filters</p>
-      <p className="max-w-sm text-sm text-muted">
-        {filtered
-          ? "The patients API returned no synthetic people for this combination."
-          : "The patients API returned an empty population."}
-      </p>
+      <p className="text-sm font-semibold text-foreground">{t("pop.empty_title")}</p>
+      <p className="max-w-sm text-sm text-muted">{t(filtered ? "pop.empty_filtered" : "pop.empty_all")}</p>
       {filtered && (
         <button
           type="button"
           onClick={onClear}
           className={buttonClass("primary")}
         >
-          Clear all filters
+          {t("pop.clear_all_filters")}
         </button>
       )}
     </div>

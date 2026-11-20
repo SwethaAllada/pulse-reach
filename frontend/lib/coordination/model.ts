@@ -23,6 +23,9 @@ import type {
   TaskStatus,
   WorkflowStatusEventOut,
 } from "@/lib/api/types";
+import type { MessageKey as I18nKey, Translate } from "@/lib/i18n/translate";
+import { intlLocale, type Locale } from "@/lib/i18n/config";
+import { GAP_TYPE_LABELS } from "@/lib/population/model";
 
 export type Tone = "due" | "upcoming" | "eligible" | "completed" | "not_eligible" | "review" | "insufficient";
 
@@ -39,13 +42,14 @@ export const TONE_COLOR: Record<Tone, { paper: string; ink: string }> = {
 
 export const TASK_STATUS_ORDER: TaskStatus[] = ["open", "awaiting_patient", "patient_responded", "in_progress", "completed", "cancelled"];
 
-export const TASK_STATUS_META: Record<TaskStatus, { label: string; tone: Tone; description: string }> = {
-  open: { label: "Open", tone: "eligible", description: "Internal task, not yet worked." },
-  awaiting_patient: { label: "Awaiting patient", tone: "upcoming", description: "Visible in the patient portal; no reply yet." },
-  patient_responded: { label: "Patient responded", tone: "review", description: "The patient replied or asked for help — needs review." },
-  in_progress: { label: "In progress", tone: "insufficient", description: "Being coordinated by the care team." },
-  completed: { label: "Completed", tone: "completed", description: "Closed with documented, evidence-backed completion." },
-  cancelled: { label: "Cancelled", tone: "not_eligible", description: "Closed without completion." },
+/** Labels and descriptions are message keys: render them with the bound translator. */
+export const TASK_STATUS_META: Record<TaskStatus, { label: I18nKey; tone: Tone; description: I18nKey }> = {
+  open: { label: "coord.task_status.open", tone: "eligible", description: "coord.task_status.open_desc" },
+  awaiting_patient: { label: "coord.task_status.awaiting_patient", tone: "upcoming", description: "coord.task_status.awaiting_patient_desc" },
+  patient_responded: { label: "coord.task_status.patient_responded", tone: "review", description: "coord.task_status.patient_responded_desc" },
+  in_progress: { label: "coord.task_status.in_progress", tone: "insufficient", description: "coord.task_status.in_progress_desc" },
+  completed: { label: "coord.task_status.completed", tone: "completed", description: "coord.task_status.completed_desc" },
+  cancelled: { label: "coord.task_status.cancelled", tone: "not_eligible", description: "coord.task_status.cancelled_desc" },
 };
 
 export const TERMINAL_TASK_STATUSES: TaskStatus[] = ["completed", "cancelled"];
@@ -62,59 +66,64 @@ export const TASK_TRANSITIONS: Record<TaskStatus, ("awaiting_patient" | "in_prog
 
 export const PRIORITY_ORDER: TaskPriority[] = ["urgent", "high", "routine"];
 
-export const PRIORITY_META: Record<TaskPriority, { label: string; tone: Tone; bars: number }> = {
-  urgent: { label: "Urgent", tone: "due", bars: 3 },
-  high: { label: "High", tone: "insufficient", bars: 2 },
-  routine: { label: "Routine", tone: "eligible", bars: 1 },
+export const PRIORITY_META: Record<TaskPriority, { label: I18nKey; tone: Tone; bars: number }> = {
+  urgent: { label: "coord.priority.urgent", tone: "due", bars: 3 },
+  high: { label: "coord.priority.high", tone: "insufficient", bars: 2 },
+  routine: { label: "coord.priority.routine", tone: "eligible", bars: 1 },
 };
 
-export const MESSAGE_KEY_LABELS: Record<MessageKey, string> = {
-  screening_invitation: "Screening invitation",
-  complete_outstanding: "Complete outstanding parts",
-  referral_follow_up: "Referral follow-up",
-  well_child_visit: "Well-child visit invitation",
-  general_check_in: "General check-in",
+export const MESSAGE_KEY_LABELS: Record<MessageKey, I18nKey> = {
+  screening_invitation: "coord.template.screening_invitation",
+  complete_outstanding: "coord.template.complete_outstanding",
+  referral_follow_up: "coord.template.referral_follow_up",
+  well_child_visit: "coord.template.well_child_visit",
+  general_check_in: "coord.template.general_check_in",
 };
 
-export const CONTACT_CHANNEL_LABELS: Record<ContactChannel, string> = {
-  phone: "Phone call",
-  sms: "SMS",
-  email: "E-mail",
-  in_person: "In person",
-  portal: "Portal message",
+export const CONTACT_CHANNEL_LABELS: Record<ContactChannel, I18nKey> = {
+  phone: "coord.channel.phone",
+  sms: "coord.channel.sms",
+  email: "coord.channel.email",
+  in_person: "coord.channel.in_person",
+  portal: "coord.channel.portal",
 };
 
-export const CONTACT_OUTCOME_META: Record<ContactOutcome, { label: string; tone: Tone }> = {
-  reached: { label: "Reached", tone: "completed" },
-  no_answer: { label: "No answer", tone: "not_eligible" },
-  left_message: { label: "Left a message", tone: "upcoming" },
-  wrong_contact_details: { label: "Wrong contact details", tone: "insufficient" },
-  declined: { label: "Declined", tone: "due" },
+export const CONTACT_OUTCOME_META: Record<ContactOutcome, { label: I18nKey; tone: Tone }> = {
+  reached: { label: "coord.outcome.reached", tone: "completed" },
+  no_answer: { label: "coord.outcome.no_answer", tone: "not_eligible" },
+  left_message: { label: "coord.outcome.left_message", tone: "upcoming" },
+  wrong_contact_details: { label: "coord.outcome.wrong_contact_details", tone: "insufficient" },
+  declined: { label: "coord.outcome.declined", tone: "due" },
 };
 
-export const PATIENT_RESPONSE_LABELS: Record<string, string> = {
-  will_book: "Will book",
-  already_done: "Reports already done (unverified)",
-  need_help: "Needs help",
-  not_interested: "Not interested",
-  question: "Has a question",
+export const PATIENT_RESPONSE_LABELS: Record<string, I18nKey> = {
+  will_book: "coord.response.will_book",
+  already_done: "coord.response.already_done",
+  need_help: "coord.response.need_help",
+  not_interested: "coord.response.not_interested",
+  question: "coord.response.question",
 };
 
-export const ROLE_LABELS: Record<string, string> = {
-  SYSTEM_ADMIN: "Administrator",
-  POPULATION_HEALTH_MANAGER: "Population health manager",
-  CARE_COORDINATOR: "Care coordinator",
-  CLINICIAN: "Clinician",
-  PATIENT: "Patient",
+export const ROLE_LABELS: Record<string, I18nKey> = {
+  SYSTEM_ADMIN: "coord.role.admin",
+  POPULATION_HEALTH_MANAGER: "role.POPULATION_HEALTH_MANAGER",
+  CARE_COORDINATOR: "role.CARE_COORDINATOR",
+  CLINICIAN: "role.CLINICIAN",
+  PATIENT: "role.PATIENT",
 };
 
-export const REQUEST_STATUS_META: Record<RequestStatus, { label: string; tone: Tone }> = {
-  submitted: { label: "New", tone: "due" },
-  acknowledged: { label: "Acknowledged", tone: "upcoming" },
-  scheduled: { label: "Appointment recorded", tone: "completed" },
-  declined: { label: "Declined", tone: "not_eligible" },
-  closed: { label: "Closed", tone: "not_eligible" },
-  cancelled: { label: "Cancelled by patient", tone: "not_eligible" },
+/** Localized role name; an unknown role is shown as its identifier. */
+export function roleText(role: string, t: Translate): string {
+  return ROLE_LABELS[role] ? t(ROLE_LABELS[role]) : role;
+}
+
+export const REQUEST_STATUS_META: Record<RequestStatus, { label: I18nKey; tone: Tone }> = {
+  submitted: { label: "coord.request_status.submitted", tone: "due" },
+  acknowledged: { label: "coord.request_status.acknowledged", tone: "upcoming" },
+  scheduled: { label: "coord.request_status.scheduled", tone: "completed" },
+  declined: { label: "coord.request_status.declined", tone: "not_eligible" },
+  closed: { label: "coord.request_status.closed", tone: "not_eligible" },
+  cancelled: { label: "coord.request_status.cancelled", tone: "not_eligible" },
 };
 
 export const REQUEST_TRANSITIONS: Record<RequestStatus, ("acknowledged" | "scheduled" | "declined" | "closed")[]> = {
@@ -126,19 +135,19 @@ export const REQUEST_TRANSITIONS: Record<RequestStatus, ("acknowledged" | "sched
   cancelled: [],
 };
 
-export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
-  appointment: "Appointment request",
-  assistance: "Help request",
-  appointment_change: "Change to an appointment",
+export const REQUEST_TYPE_LABELS: Record<RequestType, I18nKey> = {
+  appointment: "coord.request_type.appointment",
+  assistance: "coord.request_type.assistance",
+  appointment_change: "coord.request_type.appointment_change",
 };
 
-export const APPOINTMENT_STATUS_META: Record<AppointmentStatus, { label: string; tone: Tone }> = {
-  scheduled: { label: "Recorded", tone: "upcoming" },
-  rescheduled: { label: "Rescheduled", tone: "upcoming" },
-  attended: { label: "Attended", tone: "completed" },
-  no_show: { label: "Not attended", tone: "insufficient" },
-  cancelled_by_patient: { label: "Cancelled by patient", tone: "not_eligible" },
-  cancelled_by_facility: { label: "Cancelled by facility", tone: "not_eligible" },
+export const APPOINTMENT_STATUS_META: Record<AppointmentStatus, { label: I18nKey; tone: Tone }> = {
+  scheduled: { label: "coord.appt_status.scheduled", tone: "upcoming" },
+  rescheduled: { label: "coord.appt_status.rescheduled", tone: "upcoming" },
+  attended: { label: "coord.appt_status.attended", tone: "completed" },
+  no_show: { label: "coord.appt_status.no_show", tone: "insufficient" },
+  cancelled_by_patient: { label: "coord.appt_status.cancelled_by_patient", tone: "not_eligible" },
+  cancelled_by_facility: { label: "coord.appt_status.cancelled_by_facility", tone: "not_eligible" },
 };
 
 export const APPOINTMENT_STATUS_ORDER: AppointmentStatus[] = [
@@ -159,19 +168,19 @@ export const APPOINTMENT_TRANSITIONS: Record<AppointmentStatus, AppointmentStatu
   cancelled_by_facility: [],
 };
 
-export const APPOINTMENT_TYPE_LABELS: Record<string, string> = {
-  ifhas_screening: "IFHAS screening",
-  well_child_visit: "Well-child visit",
-  referral_visit: "Referral visit",
-  other: "Other",
+export const APPOINTMENT_TYPE_LABELS: Record<string, I18nKey> = {
+  ifhas_screening: "coord.appt_type.ifhas_screening",
+  well_child_visit: "coord.appt_type.well_child_visit",
+  referral_visit: "coord.appt_type.referral_visit",
+  other: "coord.appt_type.other",
 };
 
-export const REFERRAL_STATUS_META: Record<ReferralStatus, { label: string; tone: Tone }> = {
-  pending: { label: "Pending", tone: "due" },
-  initiated: { label: "Initiated", tone: "upcoming" },
-  completed: { label: "Completed", tone: "completed" },
-  declined: { label: "Declined", tone: "not_eligible" },
-  cancelled: { label: "Cancelled", tone: "not_eligible" },
+export const REFERRAL_STATUS_META: Record<ReferralStatus, { label: I18nKey; tone: Tone }> = {
+  pending: { label: "coord.referral_status.pending", tone: "due" },
+  initiated: { label: "coord.referral_status.initiated", tone: "upcoming" },
+  completed: { label: "coord.referral_status.completed", tone: "completed" },
+  declined: { label: "coord.referral_status.declined", tone: "not_eligible" },
+  cancelled: { label: "coord.referral_status.cancelled", tone: "not_eligible" },
 };
 
 export const REFERRAL_TRANSITIONS: Record<ReferralStatus, ReferralStatus[]> = {
@@ -182,30 +191,30 @@ export const REFERRAL_TRANSITIONS: Record<ReferralStatus, ReferralStatus[]> = {
   cancelled: [],
 };
 
-const BLOCKED_REASONS: Record<string, string> = {
-  contact_consent_absent: "No current contact consent is recorded for this programme.",
-  contact_consent_withdrawn: "The patient withdrew contact consent.",
-  contact_consent_refused: "The patient refused contact.",
-  contact_consent_expired: "The contact consent has expired.",
-  patient_deceased: "The record shows the person is deceased.",
-  rule_not_authoritative: "The rule is not authoritative, so outreach is not offered.",
-  no_open_care_gap: "There is no open care gap for this rule.",
-  evaluation_not_due: "The current evaluation is not due.",
-  channel_unsupported: "This channel is not supported.",
-  language_unsupported: "This language is not supported.",
-  channel_not_permitted: "Drafts use the patient's recorded contact preference; choose that channel.",
-  contact_details_missing_for_channel: "No contact details are recorded for this channel.",
-  guardian_contact_not_supported: "Consent is held by a guardian; guardian outreach is not supported.",
-  care_gap_not_open: "The care gap is no longer open.",
-  no_supported_next_step: "The rule documents no next step that outreach can offer.",
-  template_unavailable: "No approved template exists for this language.",
-  rule_not_found: "The rule was not found.",
+const BLOCKED_REASONS: Record<string, I18nKey> = {
+  contact_consent_absent: "coord.blocked.contact_consent_absent",
+  contact_consent_withdrawn: "coord.blocked.contact_consent_withdrawn",
+  contact_consent_refused: "coord.blocked.contact_consent_refused",
+  contact_consent_expired: "coord.blocked.contact_consent_expired",
+  patient_deceased: "coord.blocked.patient_deceased",
+  rule_not_authoritative: "coord.blocked.rule_not_authoritative",
+  no_open_care_gap: "coord.blocked.no_open_care_gap",
+  evaluation_not_due: "coord.blocked.evaluation_not_due",
+  channel_unsupported: "coord.blocked.channel_unsupported",
+  language_unsupported: "coord.blocked.language_unsupported",
+  channel_not_permitted: "coord.blocked.channel_not_permitted",
+  contact_details_missing_for_channel: "coord.blocked.contact_details_missing_for_channel",
+  guardian_contact_not_supported: "coord.blocked.guardian_contact_not_supported",
+  care_gap_not_open: "coord.blocked.care_gap_not_open",
+  no_supported_next_step: "coord.blocked.no_supported_next_step",
+  template_unavailable: "coord.blocked.template_unavailable",
+  rule_not_found: "coord.blocked.rule_not_found",
 };
 
-export function blockedReasonText(reason: string | null): string {
-  if (!reason) return "Outreach is not permitted for this person.";
-  if (reason.startsWith("contact_details_") && !BLOCKED_REASONS[reason]) return "The recorded contact details are not verified.";
-  return BLOCKED_REASONS[reason] ?? humanize(reason);
+export function blockedReasonText(reason: string | null, t: Translate): string {
+  if (!reason) return t("coord.blocked.default");
+  if (reason.startsWith("contact_details_") && !BLOCKED_REASONS[reason]) return t("coord.blocked.contact_details_unverified");
+  return BLOCKED_REASONS[reason] ? t(BLOCKED_REASONS[reason]) : humanize(reason);
 }
 
 export function humanize(code: string): string {
@@ -213,63 +222,113 @@ export function humanize(code: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/** Label from a key map, falling back to the humanized code for values the UI does not know. */
+function labelOr(key: I18nKey | undefined, code: string, t: Translate): string {
+  return key ? t(key) : humanize(code);
+}
+
+export function gapTypeText(type: string, t: Translate): string {
+  return labelOr(GAP_TYPE_LABELS[type as keyof typeof GAP_TYPE_LABELS], type, t);
+}
+
+const GAP_STATUS_LABELS: Record<string, I18nKey> = {
+  open: "coord.gap_status.open",
+  closed_completed: "coord.gap_status.closed_completed",
+  closed_refused: "coord.gap_status.closed_refused",
+  suppressed: "coord.gap_status.suppressed",
+  superseded: "coord.gap_status.superseded",
+  scheduled: "coord.gap_status.scheduled",
+  cancelled: "coord.gap_status.cancelled",
+};
+
+export function gapStatusText(status: string, t: Translate): string {
+  return labelOr(GAP_STATUS_LABELS[status], status, t);
+}
+
+const SLOT_LABELS: Record<string, I18nKey> = { weekday: "coord.slot.weekday", evening: "coord.slot.evening", weekend: "coord.slot.weekend" };
+
+export function slotText(slot: string, t: Translate): string {
+  return SLOT_LABELS[slot] ? t(SLOT_LABELS[slot]) : slot;
+}
+
+export function templateText(key: string, t: Translate): string {
+  return labelOr(MESSAGE_KEY_LABELS[key as MessageKey], key, t);
+}
+
+export function appointmentTypeText(type: string, t: Translate): string {
+  return APPOINTMENT_TYPE_LABELS[type] ? t(APPOINTMENT_TYPE_LABELS[type]) : type;
+}
+
 /** Simulated outreach status wording — approval is never delivery. */
-export function outreachOutcomeText(outcome: string | null): string {
-  if (outcome === "simulated_not_sent") return "Simulated — not sent";
-  if (outcome === "suppressed" || outcome === "outreach_suppressed") return "Suppressed — not permitted";
-  return outcome ? humanize(outcome) : "Recorded";
+export function outreachOutcomeText(outcome: string | null, t: Translate): string {
+  if (outcome === "simulated_not_sent") return t("coord.outreach_status.simulated_not_sent");
+  if (outcome === "suppressed" || outcome === "outreach_suppressed") return t("coord.outreach_status.suppressed");
+  return outcome ? humanize(outcome) : t("coord.outreach_status.recorded");
 }
 
-export function memberName(team: Map<string, CareTeamMemberOut> | null, userId: string | null): string {
-  if (!userId) return "Unassigned";
+export function memberName(team: Map<string, CareTeamMemberOut> | null, userId: string | null, t: Translate): string {
+  if (!userId) return t("coord.member.unassigned");
   const m = team?.get(userId);
-  return m ? (m.is_self ? `${m.full_name} (you)` : m.full_name) : "Care-team member";
+  return m ? (m.is_self ? t("coord.member.you", { name: m.full_name }) : m.full_name) : t("coord.member.unknown");
 }
 
-export function actorLabel(team: Map<string, CareTeamMemberOut> | null, userId: string, role: string): string {
-  if (role === "PATIENT") return "Patient";
+export function actorLabel(team: Map<string, CareTeamMemberOut> | null, userId: string, role: string, t: Translate): string {
+  if (role === "PATIENT") return t("role.PATIENT");
   const m = team?.get(userId);
-  return m ? (m.is_self ? "You" : m.full_name) : ROLE_LABELS[role] ?? "Staff";
+  return m ? (m.is_self ? t("coord.actor.you") : m.full_name) : ROLE_LABELS[role] ? t(ROLE_LABELS[role]) : t("coord.actor.staff");
 }
 
 /** One-line description of a task event; internal text stays in `detail`. */
-export function taskEventText(e: Pick<TaskEventOut, "event_type" | "to_status" | "from_status" | "priority" | "contact_channel" | "response_code">): string {
+export function taskEventText(
+  e: Pick<TaskEventOut, "event_type" | "to_status" | "from_status" | "priority" | "contact_channel" | "response_code">,
+  t: Translate
+): string {
   switch (e.event_type) {
-    case "created":
-      return `Follow-up created · ${TASK_STATUS_META[(e.to_status as TaskStatus) ?? "open"]?.label ?? e.to_status}`;
+    case "created": {
+      const meta = TASK_STATUS_META[(e.to_status as TaskStatus) ?? "open"];
+      return t("coord.event.created", { status: meta ? t(meta.label) : String(e.to_status) });
+    }
     case "assigned":
-      return "Assignment changed";
+      return t("coord.event.assigned");
     case "status_changed":
-      return `Status: ${statusText(e.from_status)} → ${statusText(e.to_status)}`;
+      return t("coord.event.status_changed", { from: statusText(e.from_status, t), to: statusText(e.to_status, t) });
     case "due_date_changed":
-      return "Due date changed";
-    case "priority_changed":
-      return `Priority set to ${PRIORITY_META[e.priority as TaskPriority]?.label ?? e.priority}`;
+      return t("coord.event.due_date_changed");
+    case "priority_changed": {
+      const meta = PRIORITY_META[e.priority as TaskPriority];
+      return t("coord.event.priority_changed", { priority: meta ? t(meta.label) : String(e.priority) });
+    }
     case "staff_note":
-      return "Internal note";
+      return t("coord.event.staff_note");
     case "staff_message":
-      return "Message to the patient (portal)";
+      return t("coord.event.staff_message");
     case "patient_response":
-      return `Patient response: ${PATIENT_RESPONSE_LABELS[e.response_code ?? ""] ?? humanize(e.response_code ?? "reply")}`;
+      return t("coord.event.patient_response", { response: labelOr(PATIENT_RESPONSE_LABELS[e.response_code ?? ""], e.response_code ?? "reply", t) });
     case "assistance_requested":
-      return "Patient asked for help";
+      return t("coord.event.assistance_requested");
     case "appointment_requested":
-      return "Patient requested an appointment";
+      return t("coord.event.appointment_requested");
     case "escalated":
-      return "Escalated";
+      return t("coord.event.escalated");
     case "completed":
-      return "Completed with documented evidence";
-    case "contact_attempt":
-      return `Contact attempt · ${CONTACT_CHANNEL_LABELS[e.contact_channel as ContactChannel] ?? e.contact_channel} · ${
-        CONTACT_OUTCOME_META[e.response_code as ContactOutcome]?.label ?? e.response_code
-      }`;
+      return t("coord.event.completed");
+    case "contact_attempt": {
+      const channel = CONTACT_CHANNEL_LABELS[e.contact_channel as ContactChannel];
+      const outcome = CONTACT_OUTCOME_META[e.response_code as ContactOutcome];
+      return t("coord.event.contact_attempt", {
+        channel: channel ? t(channel) : String(e.contact_channel),
+        outcome: outcome ? t(outcome.label) : String(e.response_code),
+      });
+    }
     default:
       return humanize(e.event_type);
   }
 }
 
-function statusText(s: string | null): string {
-  return s ? TASK_STATUS_META[s as TaskStatus]?.label ?? humanize(s) : "—";
+export function statusText(s: string | null, t: Translate): string {
+  if (!s) return "—";
+  const meta = TASK_STATUS_META[s as TaskStatus];
+  return meta ? t(meta.label) : humanize(s);
 }
 
 export function eventTone(e: Pick<TaskEventOut, "event_type" | "response_code" | "priority">): Tone {
@@ -305,31 +364,27 @@ export function addDays(base: string, days: number): string {
   return isoDate(d);
 }
 
-export function formatDate(value: string | null): string {
+const DATE_OPTIONS: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" };
+
+/** `16 Nov 2026` (English) / `16 نوفمبر 2026` (Arabic, Western digits). */
+export function formatDate(value: string | null, locale: Locale = "en"): string {
   if (!value) return "—";
   const d = new Date(value.length === 10 ? `${value}T00:00:00Z` : value);
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  return d.toLocaleDateString(intlLocale(locale), DATE_OPTIONS);
 }
 
-export function formatDateTime(value: string): string {
-  return new Date(value).toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "UTC",
-  }) + " UTC";
+export function formatDateTime(value: string, locale: Locale = "en"): string {
+  return new Date(value).toLocaleString(intlLocale(locale), { ...DATE_OPTIONS, hour: "2-digit", minute: "2-digit" }) + " UTC";
 }
 
 /** "in 3 days" / "2 days overdue" relative to `today` (ISO date). */
-export function dueText(due: string | null, today: string, terminal: boolean): string {
-  if (!due) return "No due date";
+export function dueText(due: string | null, today: string, terminal: boolean, t: Translate, locale: Locale = "en"): string {
+  if (!due) return t("coord.due.none");
   const days = Math.round((Date.parse(`${due}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
-  if (terminal) return `Due ${formatDate(due)}`;
-  if (days < 0) return `${-days} ${-days === 1 ? "day" : "days"} overdue`;
-  if (days === 0) return "Due today";
-  return `Due in ${days} ${days === 1 ? "day" : "days"}`;
+  if (terminal) return t("coord.due.on", { date: formatDate(due, locale) });
+  if (days < 0) return t(days === -1 ? "coord.due.overdue_one" : "coord.due.overdue_n", { count: String(-days) });
+  if (days === 0) return t("coord.due.today");
+  return t(days === 1 ? "coord.due.in_one" : "coord.due.in_n", { count: String(days) });
 }
 
 /* ── Patient coordination timeline ───────────────────────────────────────────── */
@@ -364,32 +419,32 @@ export interface TimelineInput {
  * `completion_documented` follow-up is labelled as completion; appointments, referrals, patient
  * replies and outreach reviews are shown as what they are.
  */
-export function buildTimeline(input: TimelineInput): TimelineEntry[] {
+export function buildTimeline(input: TimelineInput, t: Translate, locale: Locale = "en"): TimelineEntry[] {
   const out: TimelineEntry[] = [];
   for (const g of input.careGaps)
     out.push({
       id: `gap-${g.care_gap_id}`,
       at: g.identified_date,
       kind: "gap",
-      title: `Care gap identified · ${g.rule_id}`,
-      detail: humanize(g.gap_type),
+      title: t("coord.tl.gap_identified", { rule: g.rule_id }),
+      detail: gapTypeText(g.gap_type, t),
       tone: "due",
       visibility: "record",
     });
-  for (const t of input.tasks)
-    for (const e of t.events)
+  for (const task of input.tasks)
+    for (const e of task.events)
       out.push({
         id: `task-${e.event_id}`,
         at: e.created_at,
         kind: e.event_type === "staff_note" || e.event_type === "contact_attempt" ? "note" : "task",
-        title: `${taskEventText(e)}${e.event_type === "created" ? ` · ${MESSAGE_KEY_LABELS[t.message_key as MessageKey] ?? t.message_key}` : ""}`,
+        title: `${taskEventText(e, t)}${e.event_type === "created" ? ` · ${MESSAGE_KEY_LABELS[task.message_key as MessageKey] ? t(MESSAGE_KEY_LABELS[task.message_key as MessageKey]) : task.message_key}` : ""}`,
         detail:
           e.event_type === "assigned"
             ? null
-            : e.message ?? (e.event_type === "created" ? `Assigned to ${memberName(input.team, t.assigned_to_user_id)}` : null),
+            : e.message ?? (e.event_type === "created" ? t("coord.tl.assigned_to", { name: memberName(input.team, task.assigned_to_user_id, t) }) : null),
         tone: eventTone(e),
         visibility: e.visibility,
-        href: `/follow-up/${encodeURIComponent(t.task_id)}`,
+        href: `/follow-up/${encodeURIComponent(task.task_id)}`,
       });
   for (const f of input.followUps) {
     // Appointment/referral gap events duplicate the workflow history below.
@@ -400,13 +455,13 @@ export function buildTimeline(input: TimelineInput): TimelineEntry[] {
       at: f.recorded_at,
       kind: completion ? "completion" : f.event_type.startsWith("outreach") ? "outreach" : "note",
       title: completion
-        ? "Completion documented with evidence · care gap closed"
+        ? t("coord.tl.completion")
         : f.event_type === "outreach_attempted"
-          ? `Outreach reviewed and approved · ${outreachOutcomeText(f.outcome_status)}`
+          ? t("coord.tl.outreach_approved", { outcome: outreachOutcomeText(f.outcome_status, t) })
           : f.event_type === "outreach_suppressed"
-            ? `Outreach suppressed · ${blockedReasonText(f.suppression_reason)}`
-            : `Care-gap note · ${humanize(f.event_type)}`,
-      detail: completion ? `Evidence ${f.evidence_reference ?? "—"}` : f.note,
+            ? t("coord.tl.outreach_suppressed", { reason: blockedReasonText(f.suppression_reason, t) })
+            : t("coord.tl.gap_note", { event: humanize(f.event_type) }),
+      detail: completion ? t("coord.tl.evidence", { reference: f.evidence_reference ?? "—" }) : f.note,
       tone: completion ? "completed" : f.event_type === "outreach_suppressed" ? "not_eligible" : "upcoming",
       visibility: "internal",
     });
@@ -415,15 +470,15 @@ export function buildTimeline(input: TimelineInput): TimelineEntry[] {
     const appointment = w.entity_type === "appointment";
     const to = w.to_status;
     const label = appointment
-      ? APPOINTMENT_STATUS_META[to as AppointmentStatus]?.label ?? humanize(to)
-      : REFERRAL_STATUS_META[to as ReferralStatus]?.label ?? humanize(to);
+      ? labelOr(APPOINTMENT_STATUS_META[to as AppointmentStatus]?.label, to, t)
+      : labelOr(REFERRAL_STATUS_META[to as ReferralStatus]?.label, to, t);
     out.push({
       id: `wf-${w.status_event_id}`,
       at: w.recorded_at,
       kind: appointment ? "appointment" : "referral",
       title: appointment
-        ? `${w.from_status ? "Appointment" : "Appointment recorded"} · ${label}${w.scheduled_datetime ? ` · ${formatDateTime(w.scheduled_datetime)}` : ""}`
-        : `Referral ${w.referral_id ?? ""} · ${label}`,
+        ? `${t(w.from_status ? "coord.tl.appointment" : "coord.tl.appointment_recorded", { status: label })}${w.scheduled_datetime ? ` · ${formatDateTime(w.scheduled_datetime, locale)}` : ""}`
+        : t("coord.tl.referral", { id: w.referral_id ?? "", status: label }),
       detail: w.note,
       tone: appointment
         ? APPOINTMENT_STATUS_META[to as AppointmentStatus]?.tone ?? "eligible"
@@ -436,7 +491,7 @@ export function buildTimeline(input: TimelineInput): TimelineEntry[] {
       id: `req-${r.request_id}`,
       at: r.created_at,
       kind: "request",
-      title: `${REQUEST_TYPE_LABELS[r.request_type] ?? humanize(r.request_type)} · ${REQUEST_STATUS_META[r.status]?.label ?? r.status}`,
+      title: `${labelOr(REQUEST_TYPE_LABELS[r.request_type], r.request_type, t)} · ${REQUEST_STATUS_META[r.status] ? t(REQUEST_STATUS_META[r.status].label) : r.status}`,
       detail: r.message,
       tone: REQUEST_STATUS_META[r.status]?.tone ?? "eligible",
       visibility: "patient",
@@ -450,8 +505,11 @@ export function buildTimeline(input: TimelineInput): TimelineEntry[] {
         id: `apt-${a.appointment_id}`,
         at: a.scheduled_datetime,
         kind: "appointment",
-        title: `Appointment · ${APPOINTMENT_TYPE_LABELS[a.appointment_type] ?? a.appointment_type} · ${APPOINTMENT_STATUS_META[a.status]?.label ?? a.status}`,
-        detail: `Scheduled for ${formatDateTime(a.scheduled_datetime)}`,
+        title: t("coord.tl.appointment_seed", {
+          type: appointmentTypeText(a.appointment_type, t),
+          status: APPOINTMENT_STATUS_META[a.status] ? t(APPOINTMENT_STATUS_META[a.status].label) : a.status,
+        }),
+        detail: t("coord.tl.scheduled_for", { datetime: formatDateTime(a.scheduled_datetime, locale) }),
         tone: APPOINTMENT_STATUS_META[a.status]?.tone ?? "eligible",
         visibility: "record",
       });
@@ -461,8 +519,11 @@ export function buildTimeline(input: TimelineInput): TimelineEntry[] {
         id: `ref-${r.referral_id}`,
         at: r.trigger_date,
         kind: "referral",
-        title: `Referral to ${r.referral_target} · ${REFERRAL_STATUS_META[r.status]?.label ?? r.status}`,
-        detail: `Triggered by ${r.trigger_rule_id}`,
+        title: t("coord.tl.referral_to", {
+          target: r.referral_target,
+          status: REFERRAL_STATUS_META[r.status] ? t(REFERRAL_STATUS_META[r.status].label) : r.status,
+        }),
+        detail: t("coord.tl.triggered_by", { rule: r.trigger_rule_id }),
         tone: REFERRAL_STATUS_META[r.status]?.tone ?? "eligible",
         visibility: "record",
       });

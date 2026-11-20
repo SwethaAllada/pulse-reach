@@ -1,13 +1,14 @@
 import { cn } from "@/lib/cn";
 
+/** Section anchors; labels are message keys. */
 export const PROFILE_SECTIONS = [
-  { id: "overview", label: "Overview" },
-  { id: "history", label: "Screening & History" },
-  { id: "assessment", label: "Prevention Assessment" },
-  { id: "evidence", label: "Evidence Trace" },
-  { id: "care-gaps", label: "Care Gaps" },
-  { id: "pathway", label: "Recommended Pathway" },
-  { id: "coordination", label: "Care Coordination" },
+  { id: "overview", label: "profile.sec.overview" },
+  { id: "history", label: "profile.sec.history" },
+  { id: "assessment", label: "profile.sec.assessment" },
+  { id: "evidence", label: "profile.sec.evidence" },
+  { id: "care-gaps", label: "profile.sec.care_gaps" },
+  { id: "pathway", label: "profile.sec.pathway" },
+  { id: "coordination", label: "profile.sec.coordination" },
 ] as const;
 
 export type ProfileSectionId = (typeof PROFILE_SECTIONS)[number]["id"];

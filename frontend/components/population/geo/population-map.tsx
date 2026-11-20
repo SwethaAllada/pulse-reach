@@ -30,6 +30,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { buttonClass } from "@/components/ui/button-styles";
 import { ResourceView } from "@/components/programmes/resource-state";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/use-locale";
 
 const MapCanvas = dynamic(() => import("./map-canvas"), {
   ssr: false,
@@ -516,10 +517,11 @@ function FacilityNotFound({ onClose }: { onClose: () => void }) {
 }
 
 function FacilityDetail({ facility: d }: { facility: FacilityDetailOut }) {
+  const t = useT();
   const type = [d.source_layer ? FACILITY_LAYER_META[d.source_layer]?.label : null, d.facility_type, d.subtype]
     .filter((v, i, a): v is string => Boolean(v) && a.indexOf(v) === i)
     .join(" · ");
-  const place = [d.city, d.region_id !== null ? regionLabel(d.region_id) : null].filter(Boolean).join(" · ");
+  const place = [d.city, d.region_id !== null ? regionLabel(d.region_id, t) : null].filter(Boolean).join(" · ");
   const coords = coordinateText(d.latitude, d.longitude);
   const rows: [string, React.ReactNode][] = [
     ["Type", type || "—"],

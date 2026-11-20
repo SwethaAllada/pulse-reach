@@ -18,6 +18,7 @@ import { buttonClass } from "@/components/ui/button-styles";
 import { ResourceView } from "@/components/programmes/resource-state";
 import { Pager, QuietEmpty, compactInputClass } from "@/components/coordination/primitives";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/use-locale";
 
 const PAGE = 50;
 
@@ -94,6 +95,8 @@ export function filterFacilities(items: FacilityPointOut[], s: Pick<RegisterStat
 
 /** Published SDI care-facility register (hospitals, health centres, clinics with usable coordinates). */
 export function FacilityRegister() {
+  // Region names come from the shared catalog; the rest of this view is localized by Phase 7.
+  const t = useT();
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -173,7 +176,7 @@ export function FacilityRegister() {
                 <option value="">All regions</option>
                 {REGION_OPTIONS.map((r) => (
                   <option key={r.value} value={r.value}>
-                    {r.label}
+                    {t(r.label)}
                   </option>
                 ))}
               </select>
@@ -245,7 +248,7 @@ export function FacilityRegister() {
                               </td>
                               <td className="px-5 py-2.5 text-muted">{typeLabel(f)}</td>
                               <td className="px-5 py-2.5 text-muted">
-                                {f.city ?? "—"} · {f.region_id ? regionLabel(f.region_id) : "—"}
+                                {f.city ?? "—"} · {f.region_id ? regionLabel(f.region_id, t) : "—"}
                               </td>
                               <td className="px-5 py-2.5 text-muted">{sectorLabel(f.is_public)}</td>
                               <td className="px-5 py-2.5 text-muted">{f.license_status ?? "—"}</td>
@@ -341,6 +344,7 @@ function FacilityDetailPanel({
 }
 
 function FacilityFacts({ d, canMap, id }: { d: FacilityDetailOut; canMap: boolean; id: string }) {
+  const t = useT();
   const flags: [string, boolean | null][] = [
     ["Emergency department", d.emergency_department],
     ["Paediatric emergency", d.pediatric_emergency_department],
@@ -360,7 +364,7 @@ function FacilityFacts({ d, canMap, id }: { d: FacilityDetailOut; canMap: boolea
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
         <Fact label="Type">{type || "—"}</Fact>
         <Fact label="City · region">
-          {d.city ?? "—"} · {d.region_id ? regionLabel(d.region_id) : "—"}
+          {d.city ?? "—"} · {d.region_id ? regionLabel(d.region_id, t) : "—"}
         </Fact>
         <Fact label="Sector">{sectorLabel(d.is_public)}</Fact>
         <Fact label="Licence">

@@ -213,6 +213,15 @@ export interface MembershipOut {
   is_active: boolean;
 }
 
+/** `GET/PATCH /me/preferences`. */
+export interface PreferencesOut {
+  preferred_language: "en" | "ar";
+  locale: "en" | "ar";
+  direction: "ltr" | "rtl";
+  supported_locales: ("en" | "ar")[];
+  default_locale: "en" | "ar";
+}
+
 export interface MeOut {
   user: UserOut;
   organization_id: string | null;

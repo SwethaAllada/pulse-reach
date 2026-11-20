@@ -4,6 +4,7 @@ import { useState } from "react";
 import { SEGMENT_META, SEGMENT_ORDER, type Cohort, type Programme, type SegmentId } from "@/lib/population/model";
 import { SEGMENT_COLOR, SegmentGlyph, SegmentMark } from "@/components/population/segment-glyph";
 import { cn } from "@/lib/cn";
+import { useLocale } from "@/lib/i18n/use-locale";
 
 type Tone = "ink" | "paper";
 
@@ -28,6 +29,7 @@ export function CompositionBand({
   showLegend?: boolean;
   className?: string;
 }) {
+  const { t, number } = useLocale();
   const total = programme.people;
   const segs = programme.segments.filter((s) => s.people > 0);
   const plate = tone === "ink";
@@ -35,9 +37,10 @@ export function CompositionBand({
     <div className={className}>
       <div
         role={onSelect ? "group" : "img"}
-        aria-label={`${programme.label} members by evidence: ${programme.segments
-          .map((s) => `${SEGMENT_META[s.segment!].short} ${s.people}`)
-          .join(", ")}`}
+        aria-label={t("prog.band.aria", {
+          programme: programme.label,
+          values: programme.segments.map((s) => `${t(SEGMENT_META[s.segment!].short)} ${s.people}`).join(t("list.sep")),
+        })}
         className={cn("flex h-3 w-full gap-[3px] overflow-hidden rounded-full", plate ? "bg-ink-raised" : "bg-surface-sunken")}
       >
         {segs.map((s, i) => {
@@ -53,7 +56,7 @@ export function CompositionBand({
               key={seg}
               type="button"
               aria-pressed={selected === seg}
-              aria-label={`${SEGMENT_META[seg].label}: ${s.people} people`}
+              aria-label={`${t(SEGMENT_META[seg].label)}: ${t("pop.people_n", { count: s.people })}`}
               onClick={() => onSelect(selected === seg ? null : seg)}
               className={cn("grow-x h-full transition-opacity duration-300", dim && "opacity-30")}
               style={style}
@@ -68,8 +71,8 @@ export function CompositionBand({
           {programme.segments.map((s) => (
             <li key={s.id} className="flex items-center gap-1.5">
               <SegmentGlyph segment={s.segment!} surface={plate ? "ink" : "paper"} />
-              {SEGMENT_META[s.segment!].short}
-              <span className={cn("font-mono tabular-nums", plate ? "text-ink-text" : "text-foreground")}>{s.people}</span>
+              {t(SEGMENT_META[s.segment!].short)}
+              <span className={cn("font-mono tabular-nums", plate ? "text-ink-text" : "text-foreground")}>{number(s.people)}</span>
             </li>
           ))}
         </ul>
@@ -98,6 +101,7 @@ export function MemberLattice({
   selected: SegmentId | null;
   onSelect: (segment: SegmentId | null) => void;
 }) {
+  const { t } = useLocale();
   const [hover, setHover] = useState<SegmentId | null>(null);
   const focus = hover ?? selected;
   const cohorts = SEGMENT_ORDER.map((seg) => programme.segments.find((s) => s.segment === seg)!);
@@ -116,7 +120,7 @@ export function MemberLattice({
     <svg
       viewBox={`0 0 ${W} ${H}`}
       role="group"
-      aria-label={`${programme.people} ${programme.label} members, one mark each, grouped by evidence segment.`}
+      aria-label={t("prog.lattice.aria", { programme: programme.label, count: programme.people })}
       className="h-auto w-full select-none"
     >
       {blocks.map(({ seg, cohort, start }, bi) => {
@@ -130,7 +134,10 @@ export function MemberLattice({
             role="button"
             tabIndex={0}
             aria-pressed={active}
-            aria-label={`${SEGMENT_META[seg].label}: ${cohort.people} people. ${active ? "Selected." : "Select to focus."}`}
+            aria-label={t(active ? "prog.lattice.block_selected" : "prog.lattice.block", {
+              segment: t(SEGMENT_META[seg].label),
+              people: t("pop.people_n", { count: cohort.people }),
+            })}
             onClick={() => onSelect(active ? null : seg)}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {

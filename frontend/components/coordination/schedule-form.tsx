@@ -4,14 +4,16 @@ import { useEffect, useMemo, useState } from "react";
 import { CalendarPlus, Info, Search } from "lucide-react";
 import { api, apiErrorMessage } from "@/lib/api/client";
 import type { AppointmentOut, AppointmentType, CareGapOut, ServiceProfileOut } from "@/lib/api/types";
-import { APPOINTMENT_TYPE_LABELS, humanize } from "@/lib/coordination/model";
+import { APPOINTMENT_TYPE_LABELS, gapTypeText } from "@/lib/coordination/model";
 import { useMutation, useServiceProfiles } from "@/lib/coordination/use-coordination";
 import { buttonClass } from "@/components/ui/button-styles";
 import { FormError, inputClass, labelClass, textareaClass } from "./primitives";
+import { t as activeT, type Translate } from "@/lib/i18n/translate";
+import { useLocale } from "@/lib/i18n/use-locale";
 
-export function profileLabel(p: ServiceProfileOut | undefined, id: string): string {
+export function profileLabel(p: ServiceProfileOut | undefined, id: string, t: Translate): string {
   if (!p) return id;
-  return `${p.facility_name ?? `Facility #${p.facility_id}`} · ${id}`;
+  return `${p.facility_name ?? t("coord.schedule.facility_n", { id: String(p.facility_id) })} · ${id}`;
 }
 
 function slotFor(local: string): "weekday" | "evening" | "weekend" {
@@ -32,7 +34,7 @@ export function ScheduleForm({
   suggestedDate,
   onCreated,
   onCancel,
-  submitLabel = "Record appointment",
+  submitLabel,
 }: {
   patientId?: string;
   careGapId?: string | null;
@@ -42,6 +44,7 @@ export function ScheduleForm({
   onCancel: () => void;
   submitLabel?: string;
 }) {
+  const { t } = useLocale();
   const profiles = useServiceProfiles();
   const [patient, setPatient] = useState(fixedPatient ?? "");
   const [gaps, setGaps] = useState<CareGapOut[] | null>(null);
@@ -65,7 +68,7 @@ export function ScheduleForm({
       if (g) setType(g.rule_id.startsWith("WCV") ? "well_child_visit" : "ifhas_screening");
     } catch (err) {
       setGaps(null);
-      setLookupError(apiErrorMessage(err, "This person could not be loaded."));
+      setLookupError(apiErrorMessage(err, activeT("coord.person_not_loaded")));
     }
   };
 
@@ -96,16 +99,16 @@ export function ScheduleForm({
   };
 
   return (
-    <form onSubmit={submit} aria-label="Record appointment" className="reveal flex flex-col gap-4 rounded-xl border border-border bg-surface p-5">
+    <form onSubmit={submit} aria-label={t("coord.record_appointment")} className="reveal flex flex-col gap-4 rounded-xl border border-border bg-surface p-5">
       <p className="flex items-start gap-2 text-xs leading-relaxed text-muted">
         <Info size={14} aria-hidden="true" className="mt-px shrink-0 text-status-info" />
         {profiles.status === "ready"
           ? profiles.data.notice
-          : "Appointments are recorded for coordination against simulated service profiles; nothing is confirmed with a provider."}
+          : t("coord.schedule.notice_fallback")}
       </p>
       <div className="flex flex-wrap items-end gap-3">
         <label className={`${labelClass} w-full sm:w-72`}>
-          Synthetic person ID
+          {t("coord.person_id_synthetic")}
           <input
             className={`${inputClass} font-mono`}
             value={patient}
@@ -118,72 +121,74 @@ export function ScheduleForm({
         </label>
         {!fixedPatient && (
           <button type="button" className={buttonClass("secondary")} onClick={() => void lookup(patient)}>
-            <Search size={14} aria-hidden="true" /> Look up care gaps
+            <Search size={14} aria-hidden="true" /> {t("coord.schedule.look_up_gaps")}
           </button>
         )}
       </div>
       <FormError message={lookupError} />
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <label className={labelClass}>
-          Care gap
+          {t("coord.care_gap")}
           <select className={inputClass} value={gapId} onChange={(e) => setGapId(e.target.value)}>
-            <option value="">Not linked to a care gap</option>
+            <option value="">{t("coord.not_linked_gap")}</option>
             {(gaps ?? []).map((g) => (
               <option key={g.care_gap_id} value={g.care_gap_id}>
-                {g.rule_id} · {humanize(g.gap_type)}
+                {g.rule_id} · {gapTypeText(g.gap_type, t)}
               </option>
             ))}
             {careGapId && !(gaps ?? []).some((g) => g.care_gap_id === careGapId) && <option value={careGapId}>{careGapId}</option>}
           </select>
         </label>
         <label className={labelClass}>
-          Appointment type
+          {t("coord.schedule.type")}
           <select className={inputClass} value={type} onChange={(e) => setType(e.target.value as AppointmentType)}>
-            {(Object.keys(APPOINTMENT_TYPE_LABELS) as AppointmentType[]).map((t) => (
-              <option key={t} value={t}>
-                {APPOINTMENT_TYPE_LABELS[t]}
+            {(Object.keys(APPOINTMENT_TYPE_LABELS) as AppointmentType[]).map((k) => (
+              <option key={k} value={k}>
+                {t(APPOINTMENT_TYPE_LABELS[k])}
               </option>
             ))}
           </select>
         </label>
         <label className={labelClass}>
-          Facility service profile (simulated)
+          {t("coord.schedule.profile")}
           <select className={inputClass} required value={profile} onChange={(e) => setProfile(e.target.value)}>
-            <option value="">{profiles.status === "loading" ? "Loading…" : "Choose a profile"}</option>
+            <option value="">{profiles.status === "loading" ? t("coord.loading") : t("coord.schedule.choose_profile")}</option>
             {offered.map((p) => (
               <option key={p.profile_id} value={p.profile_id}>
-                {profileLabel(p, p.profile_id)}
-                {p.evening_hours ? " · evenings" : ""}
-                {p.weekend_hours ? " · weekends" : ""}
+                {[profileLabel(p, p.profile_id, t), p.evening_hours && t("coord.schedule.evenings"), p.weekend_hours && t("coord.schedule.weekends")]
+                  .filter(Boolean)
+                  .join(" · ")}
               </option>
             ))}
           </select>
-          {profiles.status === "forbidden" && <span className="normal-case tracking-normal text-faint">Service profiles need facilities.read.</span>}
+          {profiles.status === "forbidden" && (
+            <span className="normal-case tracking-normal text-faint">{t("coord.schedule.profiles_forbidden", { permission: "facilities.read" })}</span>
+          )}
         </label>
         <label className={labelClass}>
-          Date and time (UTC)
+          {t("coord.schedule.when")}
           <input type="datetime-local" className={inputClass} required value={when} onChange={(e) => setWhen(e.target.value)} />
         </label>
         <label className={labelClass}>
-          Slot
+          {t("coord.schedule.slot")}
           <select className={inputClass} value={slotType} onChange={(e) => setSlot(e.target.value as "weekday" | "evening" | "weekend")}>
-            <option value="weekday">Weekday</option>
-            <option value="evening">Evening</option>
-            <option value="weekend">Weekend</option>
+            <option value="weekday">{t("coord.slot.weekday")}</option>
+            <option value="evening">{t("coord.slot.evening")}</option>
+            <option value="weekend">{t("coord.slot.weekend")}</option>
           </select>
         </label>
       </div>
       <label className={labelClass}>
-        Note (staff history)
+        {t("coord.note_staff_history")}
         <textarea className={textareaClass} value={note} maxLength={2000} onChange={(e) => setNote(e.target.value)} />
       </label>
       <FormError message={error} />
       <div className="flex flex-wrap gap-2">
         <button type="submit" className={buttonClass("primary")} disabled={pending || !profile || !when || !patient.trim()}>
-          <CalendarPlus size={15} aria-hidden="true" /> {pending ? "Recording…" : submitLabel}
+          <CalendarPlus size={15} aria-hidden="true" /> {pending ? t("coord.recording") : submitLabel ?? t("coord.record_appointment")}
         </button>
         <button type="button" className={buttonClass("secondary")} onClick={onCancel}>
-          Cancel
+          {t("coord.cancel")}
         </button>
       </div>
     </form>

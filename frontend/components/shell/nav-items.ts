@@ -16,12 +16,13 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import type { MessageKey, Translate } from "@/lib/i18n/translate";
 
 export type Role = "SYSTEM_ADMIN" | "POPULATION_HEALTH_MANAGER" | "CARE_COORDINATOR" | "CLINICIAN";
 
 export interface NavItem {
-  /** A label, or one per role when the same view means something different to each role. */
-  label: string | Partial<Record<Role, string>>;
+  /** A message key, or one per role when the same view means something different to each role. */
+  label: MessageKey | Partial<Record<Role, MessageKey>>;
   href: string;
   icon: LucideIcon;
   group: NavGroupId;
@@ -40,14 +41,14 @@ const STAFF_CARE: Role[] = ["POPULATION_HEALTH_MANAGER", "CARE_COORDINATOR", "CL
 
 export const NAV_ITEMS: NavItem[] = [
   /* Each role's home at "/" — see components/home/role-home.tsx. */
-  { label: "Population overview", href: "/", icon: Radar, group: "home", requires: ["insights.read"], roles: ["POPULATION_HEALTH_MANAGER"] },
-  { label: "My worklist", href: "/", icon: ClipboardList, group: "home", requires: ["followups.read"], roles: ["CARE_COORDINATOR"] },
-  { label: "My patients", href: "/", icon: Stethoscope, group: "home", requires: ["patients.read_assigned", "patients.read"], roles: ["CLINICIAN"] },
-  { label: "Administration", href: "/", icon: LayoutDashboard, group: "home", requires: ["users.read"], roles: ["SYSTEM_ADMIN"] },
+  { label: "nav.population_overview", href: "/", icon: Radar, group: "home", requires: ["insights.read"], roles: ["POPULATION_HEALTH_MANAGER"] },
+  { label: "nav.my_worklist", href: "/", icon: ClipboardList, group: "home", requires: ["followups.read"], roles: ["CARE_COORDINATOR"] },
+  { label: "nav.my_patients", href: "/", icon: Stethoscope, group: "home", requires: ["patients.read_assigned", "patients.read"], roles: ["CLINICIAN"] },
+  { label: "nav.administration", href: "/", icon: LayoutDashboard, group: "home", requires: ["users.read"], roles: ["SYSTEM_ADMIN"] },
 
-  { label: "Follow-up", href: "/follow-up", icon: Route, group: "care", requires: ["followups.read"], roles: STAFF_CARE },
+  { label: "nav.follow_up", href: "/follow-up", icon: Route, group: "care", requires: ["followups.read"], roles: STAFF_CARE },
   {
-    label: "Appointments & referrals",
+    label: "nav.appointments_referrals",
     href: "/appointments",
     icon: CalendarClock,
     group: "care",
@@ -56,32 +57,32 @@ export const NAV_ITEMS: NavItem[] = [
   },
 
   {
-    label: { POPULATION_HEALTH_MANAGER: "People", CARE_COORDINATOR: "Assigned patients", CLINICIAN: "Patient list" },
+    label: { POPULATION_HEALTH_MANAGER: "nav.people", CARE_COORDINATOR: "nav.assigned_patients", CLINICIAN: "nav.patient_list" },
     href: "/people",
     icon: Users,
     group: "insight",
     requires: ["patients.read", "patients.read_assigned"],
     roles: STAFF_CARE,
   },
-  { label: "Programmes", href: "/programmes", icon: Layers, group: "insight", requires: ["rules.read"], roles: STAFF_CARE },
-  { label: "Panel insights", href: "/population", icon: Activity, group: "insight", requires: ["insights.read"], roles: ["CARE_COORDINATOR", "CLINICIAN"] },
+  { label: "nav.programmes", href: "/programmes", icon: Layers, group: "insight", requires: ["rules.read"], roles: STAFF_CARE },
+  { label: "nav.panel_insights", href: "/population", icon: Activity, group: "insight", requires: ["insights.read"], roles: ["CARE_COORDINATOR", "CLINICIAN"] },
 
-  { label: "Users & roles", href: "/admin/users", icon: UserCog, group: "admin", requires: ["users.read"] },
-  { label: "Care-team assignments", href: "/admin/assignments", icon: Link2, group: "admin", requires: ["assignments.manage"] },
-  { label: "Patient portal links", href: "/admin/patient-links", icon: KeyRound, group: "admin", requires: ["patient_links.manage"] },
-  { label: "Audit log", href: "/admin/audit", icon: ScrollText, group: "admin", requires: ["audit_logs.read"] },
-  { label: "Population aggregation", href: "/admin/population", icon: ShieldCheck, group: "admin", requires: ["population.configure", "population.refresh"] },
+  { label: "nav.users_roles", href: "/admin/users", icon: UserCog, group: "admin", requires: ["users.read"] },
+  { label: "nav.care_team_assignments", href: "/admin/assignments", icon: Link2, group: "admin", requires: ["assignments.manage"] },
+  { label: "nav.patient_portal_links", href: "/admin/patient-links", icon: KeyRound, group: "admin", requires: ["patient_links.manage"] },
+  { label: "nav.audit_log", href: "/admin/audit", icon: ScrollText, group: "admin", requires: ["audit_logs.read"] },
+  { label: "nav.population_aggregation", href: "/admin/population", icon: ShieldCheck, group: "admin", requires: ["population.configure", "population.refresh"] },
 
-  { label: "Programme rules", href: "/programmes", icon: Layers, group: "reference", requires: ["rules.read"], roles: ["SYSTEM_ADMIN"] },
-  { label: "Facilities", href: "/facilities", icon: Building, group: "reference", requires: ["facilities.read"] },
+  { label: "nav.programme_rules", href: "/programmes", icon: Layers, group: "reference", requires: ["rules.read"], roles: ["SYSTEM_ADMIN"] },
+  { label: "nav.facilities", href: "/facilities", icon: Building, group: "reference", requires: ["facilities.read"] },
 ];
 
-export const NAV_GROUPS: { id: NavGroupId; label: string }[] = [
-  { id: "home", label: "Workspace" },
-  { id: "care", label: "Care coordination" },
-  { id: "insight", label: "Patients & programmes" },
-  { id: "admin", label: "Administration" },
-  { id: "reference", label: "Reference" },
+export const NAV_GROUPS: { id: NavGroupId; label: MessageKey }[] = [
+  { id: "home", label: "nav.group.home" },
+  { id: "care", label: "nav.group.care" },
+  { id: "insight", label: "nav.group.insight" },
+  { id: "admin", label: "nav.group.admin" },
+  { id: "reference", label: "nav.group.reference" },
 ];
 
 /**
@@ -94,7 +95,7 @@ export function navItemsFor(role: string | null, can: (...perms: string[]) => bo
     if (!can(...item.requires)) return false;
     if (role === null) {
       if (item.href === "/" && !item.roles?.includes("POPULATION_HEALTH_MANAGER")) return false;
-      if (item.href === "/population" || item.label === "Programme rules") return false;
+      if (item.href === "/population" || item.label === "nav.programme_rules") return false;
     } else if (item.roles && !item.roles.includes(role as Role)) return false;
     const key = `${item.group}|${item.href}`;
     if (seen.has(key)) return false;
@@ -103,9 +104,9 @@ export function navItemsFor(role: string | null, can: (...perms: string[]) => bo
   });
 }
 
-export function navLabel(item: NavItem, role: string | null): string {
-  if (typeof item.label === "string") return item.label;
-  return item.label[role as Role] ?? Object.values(item.label)[0]!;
+export function navLabel(item: NavItem, role: string | null, t: Translate): string {
+  if (typeof item.label === "string") return t(item.label);
+  return t(item.label[role as Role] ?? Object.values(item.label)[0]!);
 }
 
 export function isNavItemActive(item: NavItem, pathname: string): boolean {
@@ -113,15 +114,17 @@ export function isNavItemActive(item: NavItem, pathname: string): boolean {
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 
-const HOME_LABEL: Record<Role, string> = {
-  POPULATION_HEALTH_MANAGER: "Population",
-  CARE_COORDINATOR: "My worklist",
-  CLINICIAN: "My patients",
-  SYSTEM_ADMIN: "Administration",
+const HOME_LABEL: Record<Role, MessageKey> = {
+  POPULATION_HEALTH_MANAGER: "nav.crumb_population",
+  CARE_COORDINATOR: "nav.my_worklist",
+  CLINICIAN: "nav.my_patients",
+  SYSTEM_ADMIN: "nav.administration",
 };
 
 /** First breadcrumb: the role's own home. The population home keeps its filter-carrying link. */
-export function homeCrumb(role: string | null, populationLink = "/"): { label: string; href: string } {
-  const label = HOME_LABEL[role as Role];
-  return !label || role === "POPULATION_HEALTH_MANAGER" ? { label: "Population", href: populationLink } : { label, href: "/" };
+export function homeCrumb(role: string | null, t: Translate, populationLink = "/"): { label: string; href: string } {
+  const key = HOME_LABEL[role as Role];
+  return !key || role === "POPULATION_HEALTH_MANAGER"
+    ? { label: t("nav.crumb_population"), href: populationLink }
+    : { label: t(key), href: "/" };
 }

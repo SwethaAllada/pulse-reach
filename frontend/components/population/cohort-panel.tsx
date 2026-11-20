@@ -10,6 +10,7 @@ import { buttonClass } from "@/components/ui/button-styles";
 import { FORWARD } from "@/components/ui/page-transition";
 import { PROGRAMME_COLOR, SegmentGlyph } from "./segment-glyph";
 import { cn } from "@/lib/cn";
+import { useLocale } from "@/lib/i18n/use-locale";
 
 interface Props {
   model: PopulationModel;
@@ -20,9 +21,10 @@ interface Props {
 
 /** Right-hand panel: cohort list when nothing is selected, cohort detail otherwise. */
 export function CohortPanel({ model, selected, filters, onSelect }: Props) {
+  const { t } = useLocale();
   return (
     <aside
-      aria-label="Cohort details"
+      aria-label={t("pop.panel.label")}
       aria-live="polite"
       className="reveal flex h-full flex-col rounded-xl border border-border bg-surface-raised p-5"
       style={{ "--i": 4 } as React.CSSProperties}
@@ -37,26 +39,25 @@ export function CohortPanel({ model, selected, filters, onSelect }: Props) {
 }
 
 function CohortList({ model, onSelect }: { model: PopulationModel; onSelect: (id: CohortId) => void }) {
+  const { t, number } = useLocale();
   return (
     <div>
-      <p className="mb-3 text-[15px] font-semibold text-foreground">
-        Cohorts
-      </p>
+      <p className="mb-3 text-[15px] font-semibold text-foreground">{t("pop.panel.cohorts")}</p>
       <div className="flex flex-col gap-4">
         {model.programmes.map((prog) => (
           <div key={prog.id}>
             <button
               type="button"
               onClick={() => onSelect(prog.id)}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm font-semibold text-ink-text transition-colors hover:bg-hover"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm font-semibold text-ink-text transition-colors hover:bg-hover"
             >
               <span
                 aria-hidden="true"
                 className="size-2.5 shrink-0 rounded-full"
                 style={{ backgroundColor: PROGRAMME_COLOR[prog.pathway].ink }}
               />
-              {pathwayLabel(prog.pathway)}
-              <span className="ml-auto font-mono text-xs tabular-nums text-ink-muted">{prog.people}</span>
+              {pathwayLabel(prog.pathway, t)}
+              <span className="ms-auto font-mono text-xs tabular-nums text-ink-muted">{number(prog.people)}</span>
             </button>
             <ul className="mt-1 flex flex-col">
               {prog.segments.map((seg) => (
@@ -65,12 +66,12 @@ function CohortList({ model, onSelect }: { model: PopulationModel; onSelect: (id
                     type="button"
                     onClick={() => onSelect(seg.id)}
                     disabled={seg.people === 0}
-                    aria-label={`${pathwayLabel(prog.pathway)} — ${seg.label}: ${seg.people} people`}
-                    className="flex w-full items-center gap-2.5 rounded-md py-1 pl-6 pr-2 text-left text-[13px] text-ink-muted transition-colors hover:bg-hover hover:text-ink-text disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent"
+                    aria-label={t("pop.cohort.aria", { programme: pathwayLabel(prog.pathway, t), cohort: seg.label, people: t("pop.people_n", { count: seg.people }) })}
+                    className="flex w-full items-center gap-2.5 rounded-md py-1 ps-6 pe-2 text-start text-[13px] text-ink-muted transition-colors hover:bg-hover hover:text-ink-text disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent"
                   >
                     <SegmentGlyph segment={seg.segment!} surface="ink" />
                     <span className="min-w-0 flex-1 truncate">{seg.label}</span>
-                    <span className="font-mono text-xs tabular-nums text-ink-text">{seg.people}</span>
+                    <span className="font-mono text-xs tabular-nums text-ink-text">{number(seg.people)}</span>
                   </button>
                 </li>
               ))}
@@ -80,7 +81,7 @@ function CohortList({ model, onSelect }: { model: PopulationModel; onSelect: (id
       </div>
       {model.unassignedPeople > 0 && (
         <p className="mt-4 text-[11px] text-ink-faint">
-          {model.unassignedPeople} people have no programme history record and are not shown.
+          {t("pop.panel.unassigned", { count: model.unassignedPeople })}
         </p>
       )}
     </div>
@@ -98,6 +99,7 @@ function CohortDetail({
   filters: PopulationFilters;
   onSelect: (id: CohortId | null) => void;
 }) {
+  const { t, tp, number } = useLocale();
   const programme = model.programmes.find((p) => p.pathway === cohort.pathway)!;
   const isProgramme = cohort.segment === null;
   const topRules = cohort.gapsByRule.slice(0, 5);
@@ -109,49 +111,47 @@ function CohortDetail({
       <button
         type="button"
         onClick={() => onSelect(null)}
-        className="-ml-1 mb-3 inline-flex w-fit items-center gap-1 rounded-md px-1 py-0.5 text-xs text-ink-muted transition-colors hover:text-ink-text"
+        className="-ms-1 mb-3 inline-flex w-fit items-center gap-1 rounded-md px-1 py-0.5 text-xs text-ink-muted transition-colors hover:text-ink-text"
       >
-        <ArrowLeft size={13} aria-hidden="true" /> All cohorts
+        <ArrowLeft size={13} aria-hidden="true" className="rtl:-scale-x-100" /> {t("pop.panel.all_cohorts")}
       </button>
 
       <p className="flex items-center gap-2 text-xs font-medium" style={{ color: PROGRAMME_COLOR[cohort.pathway].ink }}>
-        {pathwayLabel(cohort.pathway)}
-        {!isProgramme && <span className="text-ink-faint">· segment</span>}
+        {pathwayLabel(cohort.pathway, t)}
+        {!isProgramme && <span className="text-ink-faint">· {t("pop.panel.segment")}</span>}
       </p>
       <h2 className="mt-1 flex items-center gap-2 text-lg font-semibold text-ink-text">
         {cohort.segment && <SegmentGlyph segment={cohort.segment} surface="ink" size={14} />}
-        {isProgramme ? "Whole programme" : cohort.label}
+        {isProgramme ? t("pop.panel.whole_programme") : cohort.label}
       </h2>
       <p className="mt-1.5 text-[13px] leading-relaxed text-ink-muted">{cohort.description}</p>
 
       <dl className="mt-4 grid grid-cols-2 gap-3 border-y border-ink-line py-3">
         <div>
-          <dt className="text-[11px] text-ink-faint">People</dt>
-          <dd className="figure text-2xl text-ink-text">{cohort.people}</dd>
+          <dt className="text-[11px] text-ink-faint">{t("pop.panel.people")}</dt>
+          <dd className="figure text-2xl text-ink-text">{number(cohort.people)}</dd>
           {!isProgramme && (
-            <dd className="text-[11px] text-ink-faint">of {programme.people} in programme</dd>
+            <dd className="text-[11px] text-ink-faint">{t("pop.panel.of_programme", { total: programme.people })}</dd>
           )}
         </div>
         <div>
-          <dt className="text-[11px] text-ink-faint">Open documented gaps</dt>
-          <dd className="figure text-2xl text-ink-text">{cohort.openGaps}</dd>
-          <dd className="text-[11px] text-ink-faint">gap records, not people</dd>
+          <dt className="text-[11px] text-ink-faint">{t("pop.panel.open_gaps")}</dt>
+          <dd className="figure text-2xl text-ink-text">{number(cohort.openGaps)}</dd>
+          <dd className="text-[11px] text-ink-faint">{t("pop.panel.records_not_people")}</dd>
         </div>
       </dl>
 
       <div className="mt-4">
-        <p className="mb-2 text-xs font-medium text-ink-muted">
-          Documented gaps by rule
-        </p>
+        <p className="mb-2 text-xs font-medium text-ink-muted">{t("pop.panel.by_rule")}</p>
         {topRules.length === 0 ? (
-          <p className="text-[13px] text-ink-muted">No open documented care gaps in this cohort.</p>
+          <p className="text-[13px] text-ink-muted">{t("pop.panel.no_gaps")}</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {topRules.map((r) => (
               <li key={r.key} title={r.key}>
                 <div className="flex items-baseline justify-between gap-2 text-xs">
-                  <span className="truncate text-ink-muted">{r.label}</span>
-                  <span className="font-mono tabular-nums text-ink-text">{r.count}</span>
+                  <span className="truncate text-ink-muted" dir="auto">{r.label}</span>
+                  <span className="font-mono tabular-nums text-ink-text">{number(r.count)}</span>
                 </div>
                 <div className="mt-1 h-1 rounded-full bg-ink-line">
                   <div
@@ -163,18 +163,18 @@ function CohortDetail({
             ))}
             {cohort.gapsByRule.length > topRules.length && (
               <li className="text-[11px] text-ink-faint">
-                + {cohort.gapsByRule.length - topRules.length} more rules
+                {t("pop.panel.more_rules", { count: cohort.gapsByRule.length - topRules.length })}
               </li>
             )}
           </ul>
         )}
         {cohort.gapsByType.length > 0 && (
           <p className="mt-3 text-[11px] text-ink-faint">
-            By gap type:{" "}
-            {cohort.gapsByType.map((t, i) => (
-              <span key={t.key}>
+            {t("pop.panel.by_type")}{" "}
+            {cohort.gapsByType.map((g, i) => (
+              <span key={g.key}>
                 {i > 0 && " · "}
-                {t.label} <span className="font-mono text-ink-muted">{t.count}</span>
+                {g.label} <span className="font-mono text-ink-muted">{number(g.count)}</span>
               </span>
             ))}
           </p>
@@ -183,18 +183,17 @@ function CohortDetail({
 
       <div className="mt-auto pt-5">
         <ExploreLink href={programmeDetailHref(cohort, filters)} disabled={cohort.people === 0} forward>
-          {isProgramme ? `Open the ${pathwayLabel(cohort.pathway, true)} programme` : "Open this segment in its programme"}
+          {isProgramme
+            ? t("pop.panel.open_programme", { programme: pathwayLabel(cohort.pathway, t, true) })
+            : t("pop.panel.open_segment")}
         </ExploreLink>
         <ExploreLink href={programmeHref} disabled={cohort.people === 0} secondary>
-          Explore {cohort.people} {cohort.people === 1 ? "person" : "people"}
+          {t("pop.panel.explore", { people: tp("pop.people", cohort.people) })}
         </ExploreLink>
         {!isProgramme && (
           <p className="mt-3 flex gap-2 text-[11px] leading-relaxed text-ink-faint">
             <Info size={13} aria-hidden="true" className="mt-px shrink-0" />
-            <span>
-              The People list scopes open-gap and history filters to this programme; the programme view says
-              when an older API version returns a different count.
-            </span>
+            <span>{t("pop.panel.scope_note")}</span>
           </p>
         )}
       </div>
@@ -232,7 +231,7 @@ function ExploreLink({
   return (
     <Link href={href} className={cls} transitionTypes={forward ? FORWARD : undefined}>
       {children}
-      <ArrowRight size={14} aria-hidden="true" />
+      <ArrowRight size={14} aria-hidden="true" className="rtl:-scale-x-100" />
     </Link>
   );
 }

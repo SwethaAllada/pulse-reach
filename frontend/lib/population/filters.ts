@@ -1,4 +1,5 @@
 import type { Pathway, PatientQuery, RegionId, Sex } from "@/lib/api/types";
+import type { MessageKey, Translate } from "@/lib/i18n/translate";
 
 /**
  * Population filters are exactly the filters `GET /api/v1/patients` accepts.
@@ -6,21 +7,22 @@ import type { Pathway, PatientQuery, RegionId, Sex } from "@/lib/api/types";
  */
 export type PopulationFilters = PatientQuery;
 
-export const PATHWAY_OPTIONS: { value: Pathway; label: string; short: string }[] = [
-  { value: "ifhas", label: "IFHAS adult screening", short: "IFHAS" },
-  { value: "well_child", label: "Well-Child visits", short: "Well-Child" },
+/* Labels are message keys; render them with the bound translator (`useLocale().t`). */
+export const PATHWAY_OPTIONS: { value: Pathway; label: MessageKey; short: MessageKey }[] = [
+  { value: "ifhas", label: "pop.pathway.ifhas", short: "pop.pathway.ifhas_short" },
+  { value: "well_child", label: "pop.pathway.well_child", short: "pop.pathway.well_child_short" },
 ];
 
-/** Region ids and labels are loader constants (`official_loader/parse.py` REGIONS). */
-export const REGION_OPTIONS: { value: RegionId; label: string }[] = [
-  { value: 1, label: "Abu Dhabi" },
-  { value: 2, label: "Al Ain" },
-  { value: 3, label: "Al Dhafra" },
+/** Region ids are loader constants (`official_loader/parse.py` REGIONS); names are the official ones. */
+export const REGION_OPTIONS: { value: RegionId; label: MessageKey }[] = [
+  { value: 1, label: "pop.region.1" },
+  { value: 2, label: "pop.region.2" },
+  { value: 3, label: "pop.region.3" },
 ];
 
-export const SEX_OPTIONS: { value: Sex; label: string }[] = [
-  { value: "female", label: "Female" },
-  { value: "male", label: "Male" },
+export const SEX_OPTIONS: { value: Sex; label: MessageKey }[] = [
+  { value: "female", label: "pop.sex.female" },
+  { value: "male", label: "pop.sex.male" },
 ];
 
 export const FILTER_KEYS = ["pathway", "region_id", "sex"] as const;
@@ -59,23 +61,27 @@ export function hasActiveFilters(filters: PopulationFilters): boolean {
   return FILTER_KEYS.some((k) => filters[k] !== undefined);
 }
 
-export function filterChips(filters: PopulationFilters): { key: FilterKey; label: string }[] {
+export function filterChips(filters: PopulationFilters, t: Translate): { key: FilterKey; label: string }[] {
   const chips: { key: FilterKey; label: string }[] = [];
-  if (filters.pathway)
-    chips.push({ key: "pathway", label: `Programme: ${pathwayLabel(filters.pathway)}` });
-  if (filters.region_id) chips.push({ key: "region_id", label: `Region: ${regionLabel(filters.region_id)}` });
-  if (filters.sex)
-    chips.push({ key: "sex", label: `Sex: ${SEX_OPTIONS.find((o) => o.value === filters.sex)!.label}` });
+  if (filters.pathway) chips.push({ key: "pathway", label: t("pop.chip.programme", { value: pathwayLabel(filters.pathway, t) }) });
+  if (filters.region_id) chips.push({ key: "region_id", label: t("pop.chip.region", { value: regionLabel(filters.region_id, t) }) });
+  if (filters.sex) chips.push({ key: "sex", label: t("pop.chip.sex", { value: sexLabel(filters.sex, t) }) });
   return chips;
 }
 
-export function pathwayLabel(p: Pathway, short = false): string {
+export function pathwayLabel(p: Pathway, t: Translate, short = false): string {
   const o = PATHWAY_OPTIONS.find((x) => x.value === p)!;
-  return short ? o.short : o.label;
+  return t(short ? o.short : o.label);
 }
 
-export function regionLabel(id: number): string {
-  return REGION_OPTIONS.find((o) => o.value === id)?.label ?? `Region ${id}`;
+export function regionLabel(id: number, t: Translate): string {
+  const o = REGION_OPTIONS.find((x) => x.value === id);
+  return o ? t(o.label) : t("pop.region.unknown", { id: String(id) });
+}
+
+/** `female` / `male`; anything else (incl. missing) is "Not recorded". */
+export function sexLabel(sex: string | null | undefined, t: Translate): string {
+  return sex === "female" || sex === "male" ? t(`pop.sex.${sex}`) : t("pop.sex.not_recorded");
 }
 
 /** `/people` link carrying only filters the patients API can apply. */

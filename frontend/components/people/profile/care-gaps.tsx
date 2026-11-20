@@ -9,6 +9,7 @@ import { pathwayLabel } from "@/lib/population/filters";
 import { ruleShortLabel } from "@/lib/population/model";
 import {
   gapEvidenceRefs,
+  gapStatusFlags,
   gapStatusMeta,
   gapTypeMeta,
   reasonCodeLabel,
@@ -24,6 +25,7 @@ import { buttonClass } from "@/components/ui/button-styles";
 import { Confirmation, FormError, inputClass, labelClass } from "@/components/coordination/primitives";
 import { cn } from "@/lib/cn";
 import { ProfileSection, UnavailableNote } from "./profile-section";
+import { useLocale } from "@/lib/i18n/use-locale";
 
 export function CareGapsSection({
   data,
@@ -34,9 +36,10 @@ export function CareGapsSection({
   pathways: PathwayEntry[];
   onTrace: (evaluationId: string) => void;
 }) {
+  const { t, rich } = useLocale();
   const gaps = data.evaluations.care_gaps;
-  const open = gaps.filter((g) => gapStatusMeta(g.status).isOpen);
-  const closed = gaps.filter((g) => !gapStatusMeta(g.status).isOpen);
+  const open = gaps.filter((g) => gapStatusFlags(g.status).isOpen);
+  const closed = gaps.filter((g) => !gapStatusFlags(g.status).isOpen);
   const byGap = new Map(pathways.map((p) => [p.gap.care_gap_id, p]));
   /* Kept here: a documented completion closes the gap, so its card moves to the closed group and remounts. */
   const [documented, setDocumented] = useState<{ gapId: string; evidence: string } | null>(null);
@@ -44,32 +47,32 @@ export function CareGapsSection({
   return (
     <ProfileSection
       id="care-gaps"
-      title="Care Gaps"
-      description="Care-gap records produced by the deterministic engine for this person. Only “Closed — completed” means a service was documented as done."
+      title={t("profile.sec.care_gaps")}
+      description={t("gaps.desc")}
     >
       {documented && (
         <div className="mb-4">
           <Confirmation>
-            Completion documented on <span className="font-mono">{documented.gapId}</span> with evidence{" "}
-            <span className="font-mono">{documented.evidence}</span>. The engine re-checked the rule; a linked follow-up is completed from
-            its task page.
+            {rich("gaps.documented", {
+              gap: <span className="font-mono">{documented.gapId}</span>,
+              evidence: <span className="font-mono">{documented.evidence}</span>,
+            })}
           </Confirmation>
         </div>
       )}
       {gaps.length === 0 ? (
         <p className="rounded-md border border-dashed border-border-strong px-4 py-3 text-sm text-muted">
-          No care-gap records for this person in evaluation run {data.evaluations.evaluation_run_id}. This does not mean every
-          recommended service was completed — see the evidence trace for unknown or review results.
+          {t("gaps.none", { run: data.evaluations.evaluation_run_id })}
         </p>
       ) : (
         <div className="flex flex-col gap-6">
           {[
-            { title: "Open", list: open },
-            { title: "Closed or inactive", list: closed },
+            { id: "open", title: t("person.gap_status.open"), list: open },
+            { id: "closed", title: t("gaps.closed_group"), list: closed },
           ].map(
             (group) =>
               group.list.length > 0 && (
-                <div key={group.title}>
+                <div key={group.id}>
                   <h3 className="mb-2 text-sm font-semibold text-foreground">
                     {group.title} <span className="font-mono text-xs text-faint">({group.list.length})</span>
                   </h3>
@@ -103,18 +106,19 @@ function GapCard({
   onDocumented: (done: { gapId: string; evidence: string }) => void;
 }) {
   const rule = data.rules.get(gap.rule_id);
-  const status = gapStatusMeta(gap.status);
-  const type = gapTypeMeta(gap.gap_type);
-  const refs = gapEvidenceRefs(gap);
+  const { t } = useLocale();
+  const status = gapStatusMeta(gap.status, t);
+  const type = gapTypeMeta(gap.gap_type, t);
+  const refs = gapEvidenceRefs(gap, t);
   return (
     <Surface className={cn("flex h-full flex-col p-4", !status.isOpen && "bg-surface-sunken")}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-medium text-faint">
-            {type.label} · {rule ? pathwayLabel(rule.pathway, true) : "Programme unknown"}
+            {type.label} · {rule ? pathwayLabel(rule.pathway, t, true) : t("gaps.programme_unknown")}
           </p>
-          <h4 className="mt-0.5 text-sm font-semibold text-foreground">{ruleShortLabel(rule, gap.rule_id)}</h4>
-          <p className="font-mono text-xs text-muted">
+          <h4 className="mt-0.5 text-sm font-semibold text-foreground" dir="auto">{ruleShortLabel(rule, gap.rule_id)}</h4>
+          <p className="font-mono text-xs text-muted ltr-value">
             {gap.rule_id} v{gap.rule_version}
           </p>
         </div>
@@ -127,34 +131,34 @@ function GapCard({
       <p className="mt-1 text-xs text-muted">{status.description}</p>
       <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
         <div>
-          <dt className="text-faint">Identified</dt>
+          <dt className="text-faint">{t("gaps.identified")}</dt>
           <dd className="text-foreground">{gap.identified_date}</dd>
         </div>
         <div>
-          <dt className="text-faint">Closed</dt>
+          <dt className="text-faint">{t("gaps.closed")}</dt>
           <dd className="text-foreground">{gap.closed_date ?? "—"}</dd>
         </div>
         <div className="col-span-2">
-          <dt className="text-faint">Evidence</dt>
+          <dt className="text-faint">{t("gaps.evidence")}</dt>
           <dd className="text-foreground">
             {refs.length === 0
-              ? "No linked record — the gap reflects the absence of a qualifying documented record."
+              ? t("gaps.no_record")
               : refs.map((r) => (
                   <span key={r.id} className="block">
-                    {r.label} <span className="font-mono">{r.id}</span>
+                    {r.label} <span className="font-mono ltr-value">{r.id}</span>
                   </span>
                 ))}
           </dd>
         </div>
         <div className="col-span-2">
-          <dt className="text-faint">Next step</dt>
+          <dt className="text-faint">{t("gaps.next_step")}</dt>
           <dd className="text-foreground">
             {pathway?.offered ? (
               <a href="#pathway" className="font-medium text-accent hover:text-foreground">
-                Supported pathway available — see Recommended Pathway
+                {t("gaps.pathway_available")}
               </a>
             ) : (
-              (pathway?.blocked ?? "No supported next step.")
+              (pathway?.blocked ?? t("gaps.no_next_step"))
             )}
           </dd>
         </div>
@@ -164,7 +168,7 @@ function GapCard({
         onClick={() => onTrace(gap.evaluation_id)}
         className="mt-auto inline-flex w-fit items-center gap-1 pt-3 text-xs font-medium text-accent transition-colors hover:text-foreground"
       >
-        <ArrowDownRight size={13} aria-hidden="true" /> Trace the evidence for this gap
+        <ArrowDownRight size={13} aria-hidden="true" className="rtl:-scale-x-100" /> {t("gaps.trace")}
       </button>
       {status.isOpen && <DocumentCompletion gap={gap} onDocumented={onDocumented} />}
     </Surface>
@@ -182,16 +186,17 @@ function DocumentCompletion({ gap, onDocumented }: { gap: CareGapOut; onDocument
   const [evidence, setEvidence] = useState("");
   const [note, setNote] = useState("");
   const { run, pending, error } = useMutation();
+  const { t } = useLocale();
   if (!can("care_gaps.complete")) return null;
   if (!open)
     return (
       <button type="button" className={buttonClass("secondary", "mt-3 self-start")} onClick={() => setOpen(true)}>
-        Document completion
+        {t("gaps.document")}
       </button>
     );
   return (
     <form
-      aria-label={`Document completion for ${gap.care_gap_id}`}
+      aria-label={t("gaps.document_for", { id: gap.care_gap_id })}
       className="mt-3 flex flex-col gap-3 border-t border-border pt-3"
       onSubmit={async (e) => {
         e.preventDefault();
@@ -211,21 +216,21 @@ function DocumentCompletion({ gap, onDocumented }: { gap: CareGapOut; onDocument
       }}
     >
       <label className={labelClass}>
-        Evidence record ID
-        <input className={`${inputClass} font-mono`} required value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder="SYNTH-SCR-… / SYNTH-VIS-… / SYNTH-REF-…" />
-        <span className="normal-case tracking-normal text-faint">The completed record must belong to this person and satisfy the gap’s rule.</span>
+        {t("gaps.evidence_id")}
+        <input className={`${inputClass} font-mono`} dir="ltr" required value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder="SYNTH-SCR-… / SYNTH-VIS-… / SYNTH-REF-…" />
+        <span className="normal-case tracking-normal text-faint">{t("gaps.evidence_hint")}</span>
       </label>
       <label className={labelClass}>
-        Note (internal)
+        {t("gaps.note_internal")}
         <input className={inputClass} value={note} onChange={(e) => setNote(e.target.value)} />
       </label>
       <FormError message={error} />
       <div className="flex flex-wrap gap-2">
         <button type="submit" className={buttonClass("primary")} disabled={pending || !evidence.trim()}>
-          {pending ? "Checking evidence…" : "Document completion and close"}
+          {t(pending ? "gaps.checking" : "gaps.document_close")}
         </button>
         <button type="button" className={buttonClass("quiet")} onClick={() => setOpen(false)}>
-          Cancel
+          {t("gaps.cancel")}
         </button>
       </div>
     </form>
@@ -241,26 +246,25 @@ export function PathwaySection({
   pathways: PathwayEntry[];
   trace: TraceItem[];
 }) {
+  const { t, tp } = useLocale();
   const offered = pathways.filter((p) => p.offered);
-  const notOffered = pathways.filter((p) => !p.offered && gapStatusMeta(p.gap.status).isOpen);
+  const notOffered = pathways.filter((p) => !p.offered && gapStatusFlags(p.gap.status).isOpen);
   const missing = new Map<string, number>();
-  for (const t of trace.filter((i) => i.origin === "person_evidence")) {
-    const code = t.evaluation.reason_code ?? t.evaluation.reasons[0]?.reason_code ?? t.evaluation.evaluation_status;
+  for (const item of trace.filter((i) => i.origin === "person_evidence")) {
+    const code = item.evaluation.reason_code ?? item.evaluation.reasons[0]?.reason_code ?? item.evaluation.evaluation_status;
     missing.set(code, (missing.get(code) ?? 0) + 1);
   }
 
   return (
     <ProfileSection
       id="pathway"
-      title="Recommended Pathway"
-      description="Preventive-care services defined by the configured programme rules for open, due gaps under verified, authoritative rules. PulseReach does not generate independent clinical recommendations."
+      title={t("profile.sec.pathway")}
+      description={t("pathway.desc")}
     >
       <div className="flex flex-col gap-4">
         {offered.length === 0 ? (
-          <UnavailableNote title="No supported pathway for this person">
-            {notOffered.length === 0
-              ? "There are no open documented care gaps, so no rule-defined pathway applies. No recommendation is generated in its place."
-              : "None of the open gaps meets the conditions for a rule-defined pathway (open, due, verified and authoritative). Reasons are listed below."}
+          <UnavailableNote title={t("pathway.none_title")}>
+            {t(notOffered.length === 0 ? "pathway.none_no_gaps" : "pathway.none_conditions")}
           </UnavailableNote>
         ) : (
           <ul className="flex flex-col gap-3">
@@ -274,11 +278,11 @@ export function PathwaySection({
 
         {notOffered.length > 0 && (
           <Surface className="p-4">
-            <h3 className="text-sm font-semibold text-foreground">Open gaps without a supported pathway</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t("pathway.not_offered")}</h3>
             <ul className="mt-2 flex flex-col divide-y divide-border">
               {notOffered.map((p) => (
                 <li key={p.gap.care_gap_id} className="py-2 text-sm">
-                  <span className="font-mono text-xs text-foreground">{p.gap.rule_id}</span>
+                  <span className="font-mono text-xs text-foreground ltr-value">{p.gap.rule_id}</span>
                   <span className="block text-muted">{p.blocked}</span>
                 </li>
               ))}
@@ -288,15 +292,13 @@ export function PathwaySection({
 
         {missing.size > 0 && (
           <Surface className="p-4">
-            <h3 className="text-sm font-semibold text-foreground">Information still required</h3>
-            <p className="mt-0.5 text-xs text-muted">Results that could not be determined for this person, by reason.</p>
+            <h3 className="text-sm font-semibold text-foreground">{t("pathway.required")}</h3>
+            <p className="mt-0.5 text-xs text-muted">{t("pathway.required_desc")}</p>
             <ul className="mt-2 flex flex-col gap-1 text-sm">
               {[...missing.entries()].map(([code, n]) => (
                 <li key={code} className="flex justify-between gap-3">
-                  <span className="text-foreground">{reasonCodeLabel(code)}</span>
-                  <span className="font-mono text-xs tabular-nums text-muted">
-                    {n} {n === 1 ? "rule" : "rules"}
-                  </span>
+                  <span className="text-foreground">{reasonCodeLabel(code, t)}</span>
+                  <span className="font-mono text-xs tabular-nums text-muted">{tp("pathway.rules", n)}</span>
                 </li>
               ))}
             </ul>
@@ -304,8 +306,7 @@ export function PathwaySection({
         )}
 
         <p className="text-xs text-faint">
-          Follow-ups, simulated outreach and appointment records for these gaps are under Care Coordination; referral creation is not available. Evaluation run{" "}
-          {data.evaluations.evaluation_run_id}.
+          {t("pathway.footnote", { run: data.evaluations.evaluation_run_id })}
         </p>
       </div>
     </ProfileSection>
@@ -316,6 +317,7 @@ function PathwayCard({ entry }: { entry: PathwayEntry }) {
   const [showServices, setShowServices] = useState(false);
   const { gap, rule, evaluation } = entry;
   const detail = useRuleDetail(gap.rule_id, showServices);
+  const { t, rich } = useLocale();
   if (!rule || !evaluation) return null;
   const panelId = `pathway-services-${gap.care_gap_id}`;
   return (
@@ -325,38 +327,41 @@ function PathwayCard({ entry }: { entry: PathwayEntry }) {
           <Route size={18} aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-faint">{pathwayLabel(rule.pathway)}</p>
-          <h3 className="text-sm font-semibold text-foreground">{ruleShortLabel(rule, rule.rule_id)}</h3>
+          <p className="text-xs font-medium text-faint">{pathwayLabel(rule.pathway, t)}</p>
+          <h3 className="text-sm font-semibold text-foreground" dir="auto">{ruleShortLabel(rule, rule.rule_id)}</h3>
           <dl className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
             <div>
-              <dt className="text-xs text-faint">Why it applies</dt>
+              <dt className="text-xs text-faint">{t("pathway.why")}</dt>
               <dd className="text-foreground">
-                Evaluated as due{evaluation.next_due_date ? ` (next date per rule ${evaluation.next_due_date})` : ""};{" "}
-                {gapTypeMeta(gap.gap_type).label.toLowerCase()}.
+                {evaluation.next_due_date
+                  ? t("pathway.why_due_date", { date: evaluation.next_due_date, type: gapTypeMeta(gap.gap_type, t).label.toLowerCase() })
+                  : t("pathway.why_due", { type: gapTypeMeta(gap.gap_type, t).label.toLowerCase() })}
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-faint">Supporting rule</dt>
+              <dt className="text-xs text-faint">{t("pathway.supporting")}</dt>
               <dd className="text-foreground">
-                <span className="font-mono text-xs">
+                <span className="font-mono text-xs ltr-value">
                   {rule.rule_id} v{rule.rule_version}
                 </span>
-                <span className="block text-xs text-muted">{rule.source_reference}</span>
+                <span className="block text-xs text-muted" dir="auto">{rule.source_reference}</span>
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-faint">Available next step</dt>
+              <dt className="text-xs text-faint">{t("pathway.available")}</dt>
               <dd className="text-muted">
-                Create a follow-up under{" "}
-                <a href="#coordination" className="text-accent underline-offset-4 hover:underline">
-                  Care Coordination
-                </a>
-                ; the rule’s documented step is shown on the follow-up.
+                {rich("pathway.available_body", {
+                  link: (
+                    <a href="#coordination" className="text-accent underline-offset-4 hover:underline">
+                      {t("profile.sec.coordination")}
+                    </a>
+                  ),
+                })}
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-faint">Information still required</dt>
-              <dd className="text-muted">None reported by the engine for this rule.</dd>
+              <dt className="text-xs text-faint">{t("pathway.required")}</dt>
+              <dd className="text-muted">{t("pathway.required_none")}</dd>
             </div>
           </dl>
           <button
@@ -366,22 +371,22 @@ function PathwayCard({ entry }: { entry: PathwayEntry }) {
             onClick={() => setShowServices((v) => !v)}
             className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent transition-colors hover:text-foreground"
           >
-            Services listed by the rule
+            {t("pathway.services")}
             <ChevronDown size={13} aria-hidden="true" className={cn("transition-transform", showServices && "rotate-180")} />
           </button>
           {showServices && (
             <div id={panelId} className="mt-2 text-sm">
               {detail.state?.status === "loading" && (
                 <p className="flex items-center gap-2 text-xs text-muted">
-                  <LoaderCircle size={12} aria-hidden="true" className="animate-spin" /> Loading rule definition…
+                  <LoaderCircle size={12} aria-hidden="true" className="animate-spin" /> {t("pathway.loading_rule")}
                 </p>
               )}
-              {detail.state?.status === "error" && <p className="text-xs text-muted">Unavailable: {detail.state.message}</p>}
+              {detail.state?.status === "error" && <p className="text-xs text-muted">{t("pathway.unavailable", { message: detail.state.message })}</p>}
               {detail.state?.status === "ready" &&
                 (() => {
                   const groups = ruleServices(detail.state.data);
                   return groups.length === 0 ? (
-                    <p className="text-xs text-muted">The rule definition lists no individual services.</p>
+                    <p className="text-xs text-muted">{t("pathway.no_services")}</p>
                   ) : (
                     groups.map((g) => (
                       <div key={g.category} className="mt-2">
@@ -395,8 +400,8 @@ function PathwayCard({ entry }: { entry: PathwayEntry }) {
                                 it.verified ? "border-border text-foreground" : "border-dashed border-border-strong text-muted"
                               )}
                             >
-                              {it.description}
-                              {!it.verified && " (not verified)"}
+                              <span dir="auto">{it.description}</span>
+                              {!it.verified && ` ${t("pathway.not_verified")}`}
                             </li>
                           ))}
                         </ul>

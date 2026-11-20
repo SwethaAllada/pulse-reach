@@ -18,7 +18,7 @@ export function LogoMark({ className }: { className?: string }) {
 
 export function LogoWordmark({ className }: { className?: string }) {
   return (
-    <span className={cn("flex items-baseline font-display", className)}>
+    <span lang="en" dir="ltr" className={cn("flex items-baseline font-display", className)}>
       <span className="text-[19px] font-medium tracking-[-0.02em] text-foreground">
         Pulse<span className="italic text-warm-text">Reach</span>
       </span>

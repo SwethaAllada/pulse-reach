@@ -7,22 +7,26 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { buttonClass } from "@/components/ui/button-styles";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { LogoMark, LogoWordmark } from "@/components/shell/logo";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
+import { t, type MessageKey } from "@/lib/i18n/translate";
+import { useT } from "@/lib/i18n/use-locale";
 
-const REASON_TEXT = {
+const REASON_TEXT: Record<"none" | "expired" | "signed_out", MessageKey | null> = {
   none: null,
-  expired: "Your session ended or was revoked. Sign in again to continue.",
-  signed_out: "You have signed out.",
-} as const;
+  expired: "auth.reason_expired",
+  signed_out: "auth.reason_signed_out",
+};
 
+/** Server messages are already localized by the backend (`Accept-Language`). */
 function failureMessage(err: unknown): string {
   if (err instanceof ApiError) {
-    if (err.status === 401) return err.serverMessage ?? "The e-mail or password is not correct.";
-    if (err.status === 429) return err.serverMessage ?? "Too many attempts. Wait a few minutes and try again.";
-    if (err.status === 422) return "Enter a valid e-mail address and password.";
+    if (err.status === 401) return err.serverMessage ?? t("auth.error_credentials");
+    if (err.status === 429) return err.serverMessage ?? t("auth.error_rate_limited");
+    if (err.status === 422) return t("auth.error_invalid_input");
     if (err.status === null) return err.message;
     return err.serverMessage ?? err.message;
   }
-  return "Sign-in failed unexpectedly. Try again.";
+  return t("auth.error_unexpected");
 }
 
 /**
@@ -31,6 +35,7 @@ function failureMessage(err: unknown): string {
  */
 export function SignInScreen({ reason }: { reason: "none" | "expired" | "signed_out" }) {
   const { signIn } = useAuth();
+  const tr = useT();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -39,7 +44,7 @@ export function SignInScreen({ reason }: { reason: "none" | "expired" | "signed_
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password) return setError("Enter your e-mail and password.");
+    if (!email.trim() || !password) return setError(tr("auth.error_required"));
     setBusy(true);
     setError(null);
     try {
@@ -50,7 +55,8 @@ export function SignInScreen({ reason }: { reason: "none" | "expired" | "signed_
     }
   };
 
-  const notice = REASON_TEXT[reason];
+  const noticeKey = REASON_TEXT[reason];
+  const notice = noticeKey && tr(noticeKey);
   const field =
     "h-10 w-full rounded-lg border border-border-strong bg-surface-raised px-3 text-sm text-foreground placeholder:text-faint transition-[border-color,box-shadow] duration-200 hover:border-faint focus:border-accent focus:outline-none focus:ring-3 focus:ring-accent-soft aria-invalid:border-status-error";
 
@@ -58,18 +64,21 @@ export function SignInScreen({ reason }: { reason: "none" | "expired" | "signed_
     <div className="relative flex min-h-screen flex-col">
       <header className="flex items-center justify-between px-6 py-5 sm:px-10">
         <LogoWordmark />
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher />
+          <ThemeToggle />
+        </div>
       </header>
 
       <main className="flex flex-1 items-center justify-center px-6 pb-16">
         <div className="w-full max-w-[400px]">
           <section
-            aria-label="Sign in"
+            aria-label={tr("auth.sign_in")}
             className="reveal rounded-2xl border border-border bg-surface-raised p-7 shadow-[var(--shadow-lift)] sm:p-8"
           >
             <LogoMark className="size-9" />
-            <h2 className="mt-5 font-display text-[26px] font-medium tracking-[-0.015em] text-foreground">Sign in</h2>
-            <p className="mt-1.5 text-sm text-muted">Use your PulseReach account to continue.</p>
+            <h2 className="mt-5 font-display text-[26px] font-medium tracking-[-0.015em] text-foreground">{tr("auth.sign_in")}</h2>
+            <p className="mt-1.5 text-sm text-muted">{tr("auth.sign_in_subtitle")}</p>
 
             {notice && (
               <p role="status" className="mt-5 rounded-lg bg-highlight px-3 py-2 text-sm text-foreground">
@@ -79,34 +88,35 @@ export function SignInScreen({ reason }: { reason: "none" | "expired" | "signed_
 
             <form onSubmit={submit} noValidate className="mt-6 flex flex-col gap-4">
               <label className="flex flex-col gap-1.5 text-[13px] font-medium text-foreground">
-                E-mail
+                {tr("auth.email")}
                 <input
                   type="email"
+                  dir="ltr"
                   autoComplete="username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className={field}
-                  placeholder="name@organization.example"
+                  placeholder={tr("auth.email_placeholder")}
                   aria-invalid={error !== null}
                 />
               </label>
               <label className="flex flex-col gap-1.5 text-[13px] font-medium text-foreground">
-                Password
+                {tr("auth.password")}
                 <span className="relative">
                   <input
                     type={reveal ? "text" : "password"}
                     autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className={`${field} pr-10`}
+                    className={`${field} pe-10`}
                     aria-invalid={error !== null}
                   />
                   <button
                     type="button"
                     onClick={() => setReveal((r) => !r)}
-                    aria-label={reveal ? "Hide password" : "Show password"}
+                    aria-label={tr(reveal ? "auth.hide_password" : "auth.show_password")}
                     aria-pressed={reveal}
-                    className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-lg text-faint transition-colors hover:text-foreground"
+                    className="absolute inset-y-0 end-0 flex w-10 items-center justify-center rounded-e-lg text-faint transition-colors hover:text-foreground"
                   >
                     {reveal ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
                   </button>
@@ -126,11 +136,11 @@ export function SignInScreen({ reason }: { reason: "none" | "expired" | "signed_
                 {busy ? (
                   <>
                     <span className="progress-track h-1 w-16 rounded-full bg-[color-mix(in_srgb,var(--on-action)_20%,transparent)] text-on-action" />
-                    <span className="sr-only">Signing in…</span>
+                    <span className="sr-only">{tr("auth.signing_in")}</span>
                   </>
                 ) : (
                   <>
-                    Sign in <ArrowRight size={16} aria-hidden="true" />
+                    {tr("auth.sign_in")} <ArrowRight size={16} aria-hidden="true" className="rtl:-scale-x-100" />
                   </>
                 )}
               </button>
@@ -138,22 +148,19 @@ export function SignInScreen({ reason }: { reason: "none" | "expired" | "signed_
 
             <p className="mt-6 flex gap-2 border-t border-border pt-5 text-xs leading-relaxed text-faint">
               <Info size={14} aria-hidden="true" className="mt-px shrink-0" />
-              <span>
-                Accounts are issued by your organization administrator. Care teams and patients sign in here; each account
-                sees only what its role allows.
-              </span>
+              <span>{tr("auth.accounts_note")}</span>
             </p>
           </section>
 
           <ul className="reveal mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-faint [--i:2]">
             <li className="flex items-center gap-1.5">
-              <ShieldCheck size={13} aria-hidden="true" className="text-accent" /> Role-based access
+              <ShieldCheck size={13} aria-hidden="true" className="text-accent" /> {tr("auth.badge_rbac")}
             </li>
             <li className="flex items-center gap-1.5">
-              <FileCheck2 size={13} aria-hidden="true" className="text-accent" /> Every access audited
+              <FileCheck2 size={13} aria-hidden="true" className="text-accent" /> {tr("auth.badge_audited")}
             </li>
             <li className="flex items-center gap-1.5">
-              <FlaskConical size={13} aria-hidden="true" className="text-warm-text" /> Synthetic data only
+              <FlaskConical size={13} aria-hidden="true" className="text-warm-text" /> {tr("auth.badge_synthetic")}
             </li>
           </ul>
         </div>

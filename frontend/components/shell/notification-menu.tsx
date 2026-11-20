@@ -2,9 +2,11 @@
 
 import { Bell, Inbox } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useT } from "@/lib/i18n/use-locale";
 
 /** Notifications entry point — placeholder until a notifications API exists. */
 export function NotificationMenu() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -29,7 +31,7 @@ export function NotificationMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="Notifications"
+        aria-label={t("shell.notifications")}
         aria-expanded={open}
         aria-haspopup="menu"
         className="flex size-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-sunken hover:text-foreground"
@@ -39,14 +41,13 @@ export function NotificationMenu() {
       {open && (
         <div
           role="menu"
-          className="reveal absolute right-0 top-full z-50 mt-2 w-80 rounded-xl border border-border bg-surface-raised p-4 shadow-[var(--shadow-popover)]"
+          className="reveal absolute end-0 top-full z-50 mt-2 w-80 rounded-xl border border-border bg-surface-raised p-4 shadow-[var(--shadow-popover)]"
         >
-          <p className="text-sm font-semibold text-foreground">Notifications</p>
+          <p className="text-sm font-semibold text-foreground">{t("shell.notifications")}</p>
           <div className="mt-3 flex flex-col items-center gap-2 rounded-md border border-dashed border-border-strong px-4 py-6 text-center">
             <Inbox size={20} className="text-faint" aria-hidden="true" />
             <p className="text-xs text-muted">
-              Nothing here yet. Alerts for care gaps, follow-up activity and review requests will
-              appear once the notifications service is connected.
+              {t("shell.notifications_empty")}
             </p>
           </div>
         </div>

@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Facilities" };
 export default function FacilitiesPage() {
   return (
     <PageTransition>
-      <RequirePermission anyOf={["facilities.read"]} workspace="Facilities">
+      <RequirePermission anyOf={["facilities.read"]} workspace="nav.facilities">
         {/* The register keeps its filters and selection in the URL (`useSearchParams`). */}
         <Suspense fallback={<LoadingState rows={6} label="Loading facilities" className="mx-auto w-full max-w-[1280px] px-4 pt-6 sm:px-6 lg:px-8" />}>
           <FacilityRegister />

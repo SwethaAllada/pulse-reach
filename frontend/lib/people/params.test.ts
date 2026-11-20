@@ -1,3 +1,4 @@
+import { englishT } from "@/lib/i18n/translate";
 import { describe, expect, it } from "vitest";
 import {
   activeFilterCount,
@@ -62,7 +63,7 @@ describe("people URL state", () => {
     expect(s.sort).toBe("open_gaps");
     expect(peopleQuery(s)).toMatchObject({ has_open_care_gaps: true, sort_by: "open_gaps", sort_dir: "desc" });
     expect(activeFilterCount(s)).toBe(4);
-    expect(careFilterChips(s.filters).map((c) => c.label)).toEqual(["With open care gaps", "History partial", "Age: 40–59"]);
+    expect(careFilterChips(s.filters, englishT).map((c) => c.label)).toEqual(["With open care gaps", "History partial", "Age: 40–59"]);
 
     const bad = parse("has_open_care_gaps=yes&history_status=none&age_band=40s&sort=age");
     expect(bad.filters).toEqual({});

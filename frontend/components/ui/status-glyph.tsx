@@ -1,4 +1,8 @@
+"use client";
+
 import { cn } from "@/lib/cn";
+import type { MessageKey, Translate } from "@/lib/i18n/translate";
+import { useT } from "@/lib/i18n/use-locale";
 
 /**
  * Status glyph set — shape + colour + text label together, never colour alone.
@@ -16,21 +20,21 @@ export type EvaluationStatus =
 
 const STATUS_META: Record<
   EvaluationStatus,
-  { colorVar: string; label: string }
+  { colorVar: string; label: MessageKey }
 > = {
-  due: { colorVar: "var(--status-due)", label: "Documented gap" },
-  upcoming: { colorVar: "var(--status-upcoming)", label: "Upcoming" },
-  eligible: { colorVar: "var(--status-eligible)", label: "In scope" },
-  completed: { colorVar: "var(--status-completed)", label: "Documented complete" },
-  not_eligible: { colorVar: "var(--status-not-eligible)", label: "Outside rule scope" },
-  unknown: { colorVar: "var(--status-unknown)", label: "History unavailable" },
+  due: { colorVar: "var(--status-due)", label: "status.due" },
+  upcoming: { colorVar: "var(--status-upcoming)", label: "status.upcoming" },
+  eligible: { colorVar: "var(--status-eligible)", label: "status.eligible" },
+  completed: { colorVar: "var(--status-completed)", label: "status.completed" },
+  not_eligible: { colorVar: "var(--status-not-eligible)", label: "status.not_eligible" },
+  unknown: { colorVar: "var(--status-unknown)", label: "status.unknown" },
   insufficient_information: {
     colorVar: "var(--status-insufficient)",
-    label: "Missing required attribute",
+    label: "status.insufficient_information",
   },
   requires_clinical_review: {
     colorVar: "var(--status-review)",
-    label: "Clinical review",
+    label: "status.requires_clinical_review",
   },
 };
 
@@ -116,8 +120,8 @@ export function StatusGlyph({ status, size = 14, className }: StatusGlyphProps) 
   );
 }
 
-export function statusLabel(status: EvaluationStatus): string {
-  return STATUS_META[status].label;
+export function statusLabel(status: EvaluationStatus, t: Translate): string {
+  return t(STATUS_META[status].label);
 }
 
 export function statusColor(status: EvaluationStatus): string {
@@ -132,10 +136,11 @@ interface StatusLabelProps {
 
 /** Glyph + label — the only correct way to surface a status. */
 export function StatusLabel({ status, label, className }: StatusLabelProps) {
+  const t = useT();
   return (
     <span className={cn("inline-flex items-center gap-1.5 text-sm", className)}>
       <StatusGlyph status={status} />
-      <span className="text-muted">{label ?? statusLabel(status)}</span>
+      <span className="text-muted">{label ?? statusLabel(status, t)}</span>
     </span>
   );
 }

@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { CARE_GAPS, PATIENTS, RULES } from "@/test/fixtures";
+import { englishT } from "@/lib/i18n/translate";
 import { buildPopulationModel, findCohort, isCohortId, ruleShortLabel } from "./model";
 
 describe("buildPopulationModel", () => {
-  const model = buildPopulationModel(PATIENTS, CARE_GAPS, RULES);
+  const model = buildPopulationModel(PATIENTS, CARE_GAPS, RULES, englishT);
 
   it("counts people, open gaps and people with open gaps from records", () => {
     expect(model.totalPeople).toBe(6);
@@ -43,7 +44,8 @@ describe("buildPopulationModel", () => {
     const onlyChildren = buildPopulationModel(
       PATIENTS.filter((p) => p.history_by_pathway.well_child),
       CARE_GAPS,
-      RULES
+      RULES,
+      englishT
     );
     expect(onlyChildren.openGaps).toBe(1);
     expect(onlyChildren.gapsByRule).toEqual([
@@ -52,7 +54,7 @@ describe("buildPopulationModel", () => {
   });
 
   it("produces zero cohorts for an empty population", () => {
-    const empty = buildPopulationModel([], CARE_GAPS, RULES);
+    const empty = buildPopulationModel([], CARE_GAPS, RULES, englishT);
     expect(empty.totalPeople).toBe(0);
     expect(empty.openGaps).toBe(0);
     expect(empty.programmes.every((p) => p.people === 0)).toBe(true);

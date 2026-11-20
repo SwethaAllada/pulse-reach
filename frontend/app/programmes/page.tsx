@@ -13,11 +13,11 @@ export default function ProgrammesPage() {
       <Suspense
         fallback={
           <div className="mx-auto w-full max-w-[1280px] px-4 py-8 sm:px-6 lg:px-8">
-            <LoadingState rows={6} label="Loading programmes" />
+            <LoadingState rows={6} labelKey="page.loading_programmes" />
           </div>
         }
       >
-        <RequirePermission anyOf={["rules.read"]} workspace="Programmes">
+        <RequirePermission anyOf={["rules.read"]} workspace="nav.programmes">
           <ProgrammesOverview />
         </RequirePermission>
       </Suspense>

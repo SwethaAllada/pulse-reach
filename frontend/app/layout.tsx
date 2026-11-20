@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
-import { Fraunces, Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Geist, Geist_Mono, IBM_Plex_Sans_Arabic } from "next/font/google";
 import "./globals.css";
 import { ThemeScript } from "@/components/theme/theme-script";
+import { LocaleScript } from "@/components/i18n/locale-script";
+import { LocaleSync } from "@/components/i18n/language-switcher";
+import { SkipLink } from "@/components/shell/skip-link";
+import { DocumentTitle } from "@/components/shell/document-title";
 import { AppShell } from "@/components/shell/app-shell";
 import { AuthProvider } from "@/lib/auth/auth-context";
 
@@ -13,6 +17,14 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+/** Arabic UI face (with Latin) — applied under `:lang(ar)` in globals.css; not preloaded for English. */
+const plexArabic = IBM_Plex_Sans_Arabic({
+  variable: "--font-plex-arabic",
+  subsets: ["arabic"],
+  weight: ["400", "500", "600", "700"],
+  preload: false,
 });
 
 /** Editorial display serif — headings and figures. Variable optical size keeps large numbers crisp. */
@@ -35,20 +47,19 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
+      dir="ltr"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${plexArabic.variable} h-full antialiased`}
     >
       <head>
         <ThemeScript />
+        <LocaleScript />
       </head>
       <body className="min-h-full">
-        <a
-          href="#main-content"
-          className="sr-only rounded-md bg-accent px-3 py-2 text-sm font-medium text-on-accent focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-[60]"
-        >
-          Skip to content
-        </a>
+        <SkipLink />
         <AuthProvider>
+          <LocaleSync />
+          <DocumentTitle />
           <AppShell>{children}</AppShell>
         </AuthProvider>
       </body>

@@ -8,7 +8,7 @@ import { useResource, type Resource } from "@/lib/api/resource";
 import { useAuth, scopeLabel } from "@/lib/auth/auth-context";
 import {
   APPOINTMENT_STATUS_META,
-  APPOINTMENT_TYPE_LABELS,
+  appointmentTypeText,
   REQUEST_STATUS_META,
   REQUEST_TYPE_LABELS,
   formatDateTime,
@@ -36,6 +36,7 @@ import { Plate } from "@/components/ui/plate";
 import { KpiCard } from "@/components/ui/figure";
 import { buttonClass } from "@/components/ui/button-styles";
 import { LoadingState } from "@/components/ui/loading-state";
+import { useLocale } from "@/lib/i18n/use-locale";
 
 /** "/" is each role's home; navigation and the backend decide what else each role reaches. */
 export function RoleHome() {
@@ -44,7 +45,7 @@ export function RoleHome() {
   if (role === "CARE_COORDINATOR") return <CoordinatorHome />;
   if (role === "CLINICIAN") return <ClinicianHome />;
   return (
-    <RequirePermission anyOf={["insights.read"]} workspace="The Population workspace">
+    <RequirePermission anyOf={["insights.read"]} workspace="page.population_workspace">
       <PopulationWorkspace />
     </RequirePermission>
   );
@@ -52,14 +53,15 @@ export function RoleHome() {
 
 function useMe() {
   const { state, scope } = useAuth();
+  const { t } = useLocale();
   const me = state.status === "signed_in" ? state.me : null;
-  return { userId: me?.user.user_id ?? "", scope };
+  return { userId: me?.user.user_id ?? "", scope, scopeText: scopeLabel(scope, t) };
 }
 
 function ViewAll({ href, children }: { href: string; children: React.ReactNode }) {
   return (
     <Link href={href} className={buttonClass("quiet", "h-7 px-0 text-[13px]")}>
-      {children} <ArrowRight size={13} aria-hidden="true" />
+      {children} <ArrowRight size={13} aria-hidden="true" className="rtl:-scale-x-100" />
     </Link>
   );
 }
@@ -69,7 +71,8 @@ function num<T>(r: Resource<T>, pick: (d: T) => number): number | string {
 }
 
 function CoordinatorHome() {
-  const { userId, scope } = useMe();
+  const { t } = useLocale();
+  const { userId, scopeText } = useMe();
   const today = useMemo(() => isoDate(new Date()), []);
   const now = useMemo(() => new Date().toISOString(), []);
   const [attempt, setAttempt] = useState(0);
@@ -85,34 +88,38 @@ function CoordinatorHome() {
   return (
     <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-6 px-4 pb-16 pt-6 sm:px-6 lg:px-8">
       <PageHeader
-        eyebrow="Care coordination"
-        title="My worklist"
-        subtitle="Follow-ups assigned to you, new patient requests and upcoming appointments for your patients."
-        meta={<span>{scopeLabel(scope)} · as of {today}</span>}
+        eyebrow={t("nav.group.care")}
+        title={t("nav.my_worklist")}
+        subtitle={t("home.coord.subtitle")}
+        meta={<span>{t("home.as_of", { scope: scopeText, date: today })}</span>}
         actions={
           <Link href="/follow-up" className={buttonClass("primary")}>
-            Open follow-up queue <ArrowRight size={15} aria-hidden="true" />
+            {t("home.coord.open_queue")} <ArrowRight size={15} aria-hidden="true" className="rtl:-scale-x-100" />
           </Link>
         }
       />
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-        <KpiCard label="Assigned to me" value={num(summary, (d) => d.active)} note="active follow-ups" i={0} />
-        <KpiCard label="Overdue" value={num(summary, (d) => d.overdue)} note="past due, still open" i={1} />
-        <KpiCard label="Due this week" value={num(summary, (d) => d.due_soon)} note="today included" i={2} />
+        <KpiCard label={t("home.kpi.assigned_to_me")} value={num(summary, (d) => d.active)} note={t("home.kpi.assigned_to_me_note")} i={0} />
+        <KpiCard label={t("home.kpi.overdue")} value={num(summary, (d) => d.overdue)} note={t("home.kpi.past_due_note")} i={1} />
+        <KpiCard label={t("home.kpi.due_this_week")} value={num(summary, (d) => d.due_soon)} note={t("home.kpi.due_this_week_note")} i={2} />
         <KpiCard
-          label="Patient replied"
+          label={t("home.kpi.patient_replied")}
           value={num(summary, (d) => d.by_status.patient_responded ?? 0)}
-          note="waiting for you"
+          note={t("home.kpi.patient_replied_note")}
           i={3}
         />
-        <KpiCard label="New requests" value={num(requests, (d) => d.total)} note="submitted by patients" i={4} />
+        <KpiCard label={t("home.kpi.new_requests")} value={num(requests, (d) => d.total)} note={t("home.kpi.new_requests_note")} i={4} />
       </dl>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <Plate title="My active follow-ups" description="Ordered by due date." actions={<ViewAll href="/follow-up">All follow-ups</ViewAll>}>
-          <ResourceView resource={tasks} what="Follow-ups" onRetry={retry} loading={<LoadingState rows={5} />}>
+        <Plate
+          title={t("home.coord.active_title")}
+          description={t("home.coord.active_desc")}
+          actions={<ViewAll href="/follow-up">{t("home.coord.all_follow_ups")}</ViewAll>}
+        >
+          <ResourceView resource={tasks} what={t("home.what.follow_ups")} onRetry={retry} loading={<LoadingState rows={5} />}>
             {(p) =>
               p.items.length === 0 ? (
-                <QuietEmpty title="Nothing assigned to you">New follow-ups assigned to you appear here.</QuietEmpty>
+                <QuietEmpty title={t("home.coord.empty_title")}>{t("home.coord.empty_body")}</QuietEmpty>
               ) : (
                 <TaskList
                   tasks={p.items.slice(0, 8)}
@@ -125,22 +132,22 @@ function CoordinatorHome() {
           </ResourceView>
         </Plate>
         <div className="flex flex-col gap-4">
-          <Plate title="New patient requests" actions={<ViewAll href="/appointments">Handle</ViewAll>} flush>
-            <ResourceView resource={requests} what="Patient requests" onRetry={retry}>
+          <Plate title={t("home.requests.title")} actions={<ViewAll href="/appointments">{t("home.requests.handle")}</ViewAll>} flush>
+            <ResourceView resource={requests} what={t("home.what.requests")} onRetry={retry}>
               {(p) =>
                 p.items.length === 0 ? (
                   <p className="flex items-center gap-2 px-5 py-4 text-sm text-muted">
-                    <Inbox size={15} aria-hidden="true" /> No new requests.
+                    <Inbox size={15} aria-hidden="true" /> {t("home.requests.empty")}
                   </p>
                 ) : (
                   <ul className="divide-y divide-border">
                     {p.items.map((r) => (
                       <li key={r.request_id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
                         <span className="min-w-0">
-                          <span className="block text-foreground">{REQUEST_TYPE_LABELS[r.request_type]}</span>
-                          <span className="font-mono text-xs text-faint">{r.patient_id}</span>
+                          <span className="block text-foreground">{t(REQUEST_TYPE_LABELS[r.request_type])}</span>
+                          <span className="ltr-value font-mono text-xs text-faint">{r.patient_id}</span>
                         </span>
-                        <StatusPill tone={REQUEST_STATUS_META[r.status].tone} label={REQUEST_STATUS_META[r.status].label} />
+                        <StatusPill tone={REQUEST_STATUS_META[r.status].tone} label={t(REQUEST_STATUS_META[r.status].label)} />
                       </li>
                     ))}
                   </ul>
@@ -156,13 +163,14 @@ function CoordinatorHome() {
 }
 
 function UpcomingAppointments({ resource, onRetry }: { resource: ReturnType<typeof useAppointmentPage>; onRetry: () => void }) {
+  const { t } = useLocale();
   return (
-    <Plate title="Upcoming appointments" actions={<ViewAll href="/appointments">Calendar</ViewAll>} flush>
-      <ResourceView resource={resource} what="Appointments" onRetry={onRetry}>
+    <Plate title={t("home.appts.title")} actions={<ViewAll href="/appointments">{t("home.appts.calendar")}</ViewAll>} flush>
+      <ResourceView resource={resource} what={t("home.what.appointments")} onRetry={onRetry}>
         {(p) =>
           p.items.length === 0 ? (
             <p className="flex items-center gap-2 px-5 py-4 text-sm text-muted">
-              <CalendarClock size={15} aria-hidden="true" /> No upcoming appointments.
+              <CalendarClock size={15} aria-hidden="true" /> {t("home.appts.empty")}
             </p>
           ) : (
             <ul className="divide-y divide-border">
@@ -171,10 +179,10 @@ function UpcomingAppointments({ resource, onRetry }: { resource: ReturnType<type
                   <span className="min-w-0">
                     <span className="block text-foreground">{formatDateTime(a.scheduled_datetime)}</span>
                     <span className="text-xs text-faint">
-                      <span className="font-mono">{a.patient_id}</span> · {APPOINTMENT_TYPE_LABELS[a.appointment_type] ?? a.appointment_type}
+                      <span className="ltr-value font-mono">{a.patient_id}</span> · {appointmentTypeText(a.appointment_type, t)}
                     </span>
                   </span>
-                  <StatusPill tone={APPOINTMENT_STATUS_META[a.status].tone} label={APPOINTMENT_STATUS_META[a.status].label} />
+                  <StatusPill tone={APPOINTMENT_STATUS_META[a.status].tone} label={t(APPOINTMENT_STATUS_META[a.status].label)} />
                 </li>
               ))}
             </ul>
@@ -186,7 +194,8 @@ function UpcomingAppointments({ resource, onRetry }: { resource: ReturnType<type
 }
 
 function ClinicianHome() {
-  const { userId, scope } = useMe();
+  const { t } = useLocale();
+  const { userId, scopeText } = useMe();
   const now = useMemo(() => new Date().toISOString(), []);
   const today = useMemo(() => isoDate(new Date()), []);
   const [attempt, setAttempt] = useState(0);
@@ -206,58 +215,58 @@ function ClinicianHome() {
   return (
     <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-6 px-4 pb-16 pt-6 sm:px-6 lg:px-8">
       <PageHeader
-        eyebrow="Clinical care"
-        title="My patients"
-        subtitle="Your assigned patients with open preventive-care gaps, their follow-ups and upcoming visits."
-        meta={<span>{scopeLabel(scope)}</span>}
+        eyebrow={t("home.clin.eyebrow")}
+        title={t("nav.my_patients")}
+        subtitle={t("home.clin.subtitle")}
+        meta={<span>{scopeText}</span>}
         actions={
           <Link href="/people" className={buttonClass("primary")}>
-            Patient list <ArrowRight size={15} aria-hidden="true" />
+            {t("nav.patient_list")} <ArrowRight size={15} aria-hidden="true" className="rtl:-scale-x-100" />
           </Link>
         }
       />
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <KpiCard label="Assigned patients" value={num(total, (d) => d)} note="in your care scope" i={0} />
-        <KpiCard label="With an open care gap" value={num(withGaps, (d) => d.total)} note="documented, evidence-backed" i={1} />
-        <KpiCard label="Active follow-ups" value={num(summary, (d) => d.active)} note="for your patients" i={2} />
-        <KpiCard label="Overdue follow-ups" value={num(summary, (d) => d.overdue)} note="past due, still open" i={3} />
+        <KpiCard label={t("home.kpi.assigned_patients")} value={num(total, (d) => d)} note={t("home.kpi.assigned_patients_note")} i={0} />
+        <KpiCard label={t("home.kpi.with_gap")} value={num(withGaps, (d) => d.total)} note={t("home.kpi.with_gap_note")} i={1} />
+        <KpiCard label={t("home.kpi.active_follow_ups")} value={num(summary, (d) => d.active)} note={t("home.kpi.active_follow_ups_note")} i={2} />
+        <KpiCard label={t("home.kpi.overdue_follow_ups")} value={num(summary, (d) => d.overdue)} note={t("home.kpi.past_due_note")} i={3} />
       </dl>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
         <Plate
-          title="Patients with open care gaps"
-          description="Most open gaps first. Open a profile to see the evidence and document completion."
-          actions={<ViewAll href="/people?has_open_care_gaps=true&sort=open_gaps">All</ViewAll>}
+          title={t("home.clin.gaps_title")}
+          description={t("home.clin.gaps_desc")}
+          actions={<ViewAll href="/people?has_open_care_gaps=true&sort=open_gaps">{t("home.clin.all")}</ViewAll>}
           flush
         >
-          <ResourceView resource={withGaps} what="Patients" onRetry={retry} loading={<div className="p-5"><LoadingState rows={5} /></div>}>
+          <ResourceView resource={withGaps} what={t("home.what.patients")} onRetry={retry} loading={<div className="p-5"><LoadingState rows={5} /></div>}>
             {(p) =>
               p.items.length === 0 ? (
                 <div className="p-5">
-                  <QuietEmpty title="No open care gaps">None of your assigned patients has an open documented gap.</QuietEmpty>
+                  <QuietEmpty title={t("home.clin.empty_title")}>{t("home.clin.empty_body")}</QuietEmpty>
                 </div>
               ) : (
                 <table className="w-full text-sm">
-                  <thead className="text-left text-xs text-muted">
+                  <thead className="text-start text-xs text-muted">
                     <tr className="border-b border-border">
-                      <th className="px-5 py-2.5 font-medium">Patient</th>
-                      <th className="px-3 py-2.5 font-medium">Age · sex</th>
-                      <th className="hidden px-3 py-2.5 font-medium sm:table-cell">Region</th>
-                      <th className="px-5 py-2.5 text-right font-medium">Open gaps</th>
+                      <th className="px-5 py-2.5 font-medium">{t("home.col.patient")}</th>
+                      <th className="px-3 py-2.5 font-medium">{t("home.col.age_sex")}</th>
+                      <th className="hidden px-3 py-2.5 font-medium sm:table-cell">{t("home.col.region")}</th>
+                      <th className="px-5 py-2.5 text-end font-medium">{t("home.col.open_gaps")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {p.items.map((pt) => (
                       <tr key={pt.patient_id} className="transition-colors hover:bg-hover">
                         <td className="px-5 py-2.5">
-                          <Link href={`/people/${encodeURIComponent(pt.patient_id)}`} className="font-mono text-accent hover:underline">
+                          <Link href={`/people/${encodeURIComponent(pt.patient_id)}`} className="ltr-value font-mono text-accent hover:underline">
                             {pt.patient_id}
                           </Link>
                         </td>
                         <td className="px-3 py-2.5 text-muted">
-                          {ageLabel(pt.date_of_birth, today)} · {sexLabel(pt.sex)}
+                          {ageLabel(pt.date_of_birth, today, t)} · {sexLabel(pt.sex, t)}
                         </td>
-                        <td className="hidden px-3 py-2.5 text-muted sm:table-cell">{regionLabel(pt.region_id)}</td>
-                        <td className="px-5 py-2.5 text-right font-semibold tabular-nums text-foreground">{pt.open_care_gaps_count ?? "—"}</td>
+                        <td className="hidden px-3 py-2.5 text-muted sm:table-cell">{regionLabel(pt.region_id, t)}</td>
+                        <td className="px-5 py-2.5 text-end font-semibold tabular-nums text-foreground">{pt.open_care_gaps_count ?? "—"}</td>
                       </tr>
                     ))}
                   </tbody>

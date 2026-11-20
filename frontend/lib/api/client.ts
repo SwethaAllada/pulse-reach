@@ -35,6 +35,7 @@ import type {
   Paginated,
   PaginatedOpenQuestionsOut,
   PaginatedRulesOut,
+  PreferencesOut,
   Pathway,
   PatientEvaluationsOut,
   PatientQuery,
@@ -50,6 +51,9 @@ import type * as A from "./admin-types";
 import type * as G from "./geo-types";
 import type { AggregationRunOut, PopulationConfigOut, PopulationUpdatesOut } from "./admin-types";
 import { clearSession, getSession, isAccessExpired, setSession } from "@/lib/auth/session";
+import type { Locale } from "@/lib/i18n/config";
+import { documentLocale } from "@/lib/i18n/store";
+import { t } from "@/lib/i18n/translate";
 
 /** Backend base URL; `.env.example` documents the local default. Never holds credentials. */
 export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(
@@ -108,7 +112,7 @@ async function apiPatch<T>(path: string, body: unknown): Promise<T> {
 }
 
 /** The backend's localized reason for a refused write (e.g. an invalid transition), else the generic message. */
-export function apiErrorMessage(err: unknown, fallback = "The request failed."): string {
+export function apiErrorMessage(err: unknown, fallback = t("api.request_failed")): string {
   if (!(err instanceof ApiError)) return fallback;
   if (err.status === 401 || err.status === 403 || err.status === null) return err.message;
   return err.serverMessage ?? err.message;
@@ -126,12 +130,12 @@ async function toApiError(res: Response, path: string): Promise<ApiError> {
   }
   const message =
     res.status === 401
-      ? `Your session is not valid (401 for ${path}). Sign in again to continue.`
+      ? t("api.session_invalid", { path })
       : res.status === 403
-        ? `Your role does not have access to ${path} (403).`
+        ? t("api.forbidden", { path })
         : res.status === 429
-          ? `Too many requests (429 for ${path}). Wait a moment and try again.`
-          : `The API responded ${res.status} for ${path}.`;
+          ? t("api.rate_limited", { path })
+          : t("api.status", { status: String(res.status), path });
   return new ApiError(message, res.status, path, code, serverMessage);
 }
 
@@ -244,19 +248,28 @@ async function refreshSession(): Promise<boolean> {
 /** Identity endpoints: not held by the gate and allowed without a token (they establish the session). */
 const UNGATED = new Set(["/me", "/auth/login", "/auth/logout"]);
 
+/*
+ * The signed-in account's own preferences: not held by the staff gate (patients change their
+ * language too) but, like every data request, never sent without an access token.
+ */
+const SESSION_ONLY = new Set(["/me/preferences"]);
+
 function notSignedIn(path: string): ApiError {
-  return new ApiError(`Sign in to load ${path}. No request was sent without a session.`, 401, path, "not_authenticated");
+  return new ApiError(t("api.not_signed_in", { path }), 401, path, "not_authenticated");
 }
 
 async function apiRequest<T>(path: string, pathWithQuery: string, init: RequestInit): Promise<T> {
   const url = `${API_BASE_URL}/api/v1${pathWithQuery}`;
   const identity = UNGATED.has(path);
-  if (!identity) await (path.startsWith("/portal/") ? waitForPortal(init.signal) : waitForGate(init.signal));
+  if (!identity && !SESSION_ONLY.has(path))
+    await (path.startsWith("/portal/") ? waitForPortal(init.signal) : waitForGate(init.signal));
   const send = () => {
     const session = getSession();
     if (!session && !identity && !unauthenticatedAllowed) throw notSignedIn(path);
     const auth: Record<string, string> = session ? { Authorization: `Bearer ${session.accessToken}` } : {};
-    return fetch(url, { ...init, headers: { Accept: "application/json", ...auth, ...init.headers } });
+    // The backend localizes labels and messages from `Accept-Language` (after the user's saved preference).
+    const headers = { Accept: "application/json", "Accept-Language": documentLocale(), ...auth, ...init.headers };
+    return fetch(url, { ...init, headers });
   };
   let res: Response;
   try {
@@ -266,7 +279,7 @@ async function apiRequest<T>(path: string, pathWithQuery: string, init: RequestI
     if (res.status === 401 && getSession() && (await refreshSession())) res = await send();
   } catch (err) {
     if ((err as Error).name === "AbortError" || err instanceof ApiError) throw err;
-    throw new ApiError(`Could not reach the PulseReach API at ${API_BASE_URL}.`, null, path);
+    throw new ApiError(t("api.unreachable", { url: API_BASE_URL }), null, path);
   }
   if (res.status === 404 && path !== "/auth/logout" && identity) missingIdentityEndpoint = path;
   if (!res.ok) throw await toApiError(res, path);
@@ -369,6 +382,8 @@ export const api = {
   login: (email: string, password: string) => apiPost<TokenOut>("/auth/login", { email, password }),
   logout: () => apiPost<void>("/auth/logout", undefined),
   me: (signal?: AbortSignal) => apiGet<MeOut>("/me", {}, signal),
+  /** Saves the signed-in account's UI language (`PATCH /me/preferences`, `en` | `ar`). */
+  updatePreferences: (body: { preferred_language: Locale }) => apiPatch<PreferencesOut>("/me/preferences", body),
 
   /* Population aggregation operations (SYSTEM_ADMIN / PHM). */
   populationUpdates: (signal?: AbortSignal) => apiGet<PopulationUpdatesOut>("/population/updates", {}, signal),

@@ -1,4 +1,7 @@
+"use client";
+
 import { LockKeyhole } from "lucide-react";
+import { useLocale } from "@/lib/i18n/use-locale";
 import { cn } from "@/lib/cn";
 
 /**
@@ -20,6 +23,7 @@ export function PermissionNotice({
   tone?: "paper" | "plate";
 }) {
   const plate = tone === "plate";
+  const { rich } = useLocale();
   return (
     <div
       role="status"
@@ -35,7 +39,7 @@ export function PermissionNotice({
         {children && <div className="mt-0.5 leading-relaxed">{children}</div>}
         {permission && (
           <p className="mt-1 text-xs">
-            Requires <code className="font-mono">{permission}</code>, enforced by the PulseReach API.
+            {rich("access.requires_permission", { permission: <code className="font-mono">{permission}</code> })}
           </p>
         )}
       </div>
