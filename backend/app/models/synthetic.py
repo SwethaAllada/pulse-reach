@@ -17,6 +17,7 @@ from sqlalchemy import (
     CheckConstraint,
     Computed,
     Date,
+    Double,
     ForeignKeyConstraint,
     Index,
     Integer,
@@ -508,6 +509,9 @@ class EligibilityEvaluation(Base):
     evaluation_status: Mapped[str] = mapped_column(Text, nullable=False)
     reason_code: Mapped[str | None] = mapped_column(Text)
     next_due_date: Mapped[date | None] = mapped_column(Date)
+    # Recorded at evaluation time (migration 0010, F-12); NULL on rows written before 0010.
+    reason_detail: Mapped[str | None] = mapped_column(Text)
+    input_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
     __table_args__ = (
         _fk(
@@ -593,6 +597,7 @@ class EvaluationReason(Base):
     reason_code: Mapped[str] = mapped_column(Text, nullable=False)
     item_category: Mapped[str | None] = mapped_column(Text)
     item_code: Mapped[str | None] = mapped_column(Text)
+    reason_detail: Mapped[str | None] = mapped_column(Text)  # migration 0010 (F-12)
 
     __table_args__ = (
         _fk(
@@ -1710,6 +1715,12 @@ class CareGapFollowUpEvent(Base):
             "event_type <> 'outreach_suppressed' OR suppression_reason IS NOT NULL",
             name="suppressed_requires_reason",
         ),
+        UniqueConstraint(
+            "run_id",
+            "patient_id",
+            "follow_up_id",
+            name="uq_care_gap_follow_up_event_run_patient_follow_up",
+        ),
         Index("ix_care_gap_follow_up_event_gap_recorded", "care_gap_id", "recorded_at"),
         Index("ix_care_gap_follow_up_event_patient", "patient_id", "recorded_at"),
         {"schema": SCHEMA},
@@ -1778,5 +1789,141 @@ class WorkflowStatusEvent(Base):
         Index("ix_workflow_status_event_appointment", "appointment_id", "recorded_at"),
         Index("ix_workflow_status_event_referral", "referral_id", "recorded_at"),
         Index("ix_workflow_status_event_patient", "patient_id", "recorded_at"),
+        {"schema": SCHEMA},
+    )
+
+
+class AIAuditRecord(Base):
+    """Durable AI generation / human review audit (migration 0010).
+
+    One append-only row per explanation, outreach draft (generated, fallback or blocked),
+    population insight and human outreach review. Message texts are never stored: only SHA-256
+    fingerprints, references and metadata. A draft accepts at most one terminal review
+    (`approved` / `rejected`), so approval cannot be replayed and a rejected draft cannot be
+    approved later.
+    """
+
+    __tablename__ = "ai_audit_record"
+
+    audit_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    run_id: Mapped[str] = mapped_column(Text, nullable=False)
+    is_synthetic: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    recorded_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    request_id: Mapped[str | None] = mapped_column(Text)
+    feature: Mapped[str] = mapped_column(Text, nullable=False)
+    patient_id: Mapped[str | None] = mapped_column(Text)
+    rule_id: Mapped[str | None] = mapped_column(Text)
+    care_gap_id: Mapped[str | None] = mapped_column(Text)
+    subject: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    prompt_version: Mapped[str] = mapped_column(Text, nullable=False)
+    provider: Mapped[str | None] = mapped_column(Text)
+    model: Mapped[str | None] = mapped_column(Text)
+    generation_mode: Mapped[str] = mapped_column(Text, nullable=False)
+    fallback_reason: Mapped[str | None] = mapped_column(Text)
+    violations: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    input_sha256: Mapped[str | None] = mapped_column(Text)
+    output_sha256: Mapped[str | None] = mapped_column(Text)
+    latency_ms: Mapped[float | None] = mapped_column(Double)
+    extra: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    draft_audit_id: Mapped[str | None] = mapped_column(Text)
+    draft_feature: Mapped[str | None] = mapped_column(
+        Text,
+        Computed(
+            "CASE WHEN draft_audit_id IS NOT NULL THEN 'outreach_draft' END", persisted=True
+        ),
+    )
+    review_decision: Mapped[str | None] = mapped_column(Text)
+    reviewed_by: Mapped[str | None] = mapped_column(Text)
+    follow_up_id: Mapped[str | None] = mapped_column(Text)
+    simulated_outreach_status: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (
+        _fk(["run_id"], ["generation_run.run_id"], "fk_ai_audit_record_run_id_generation_run"),
+        _fk(
+            ["run_id", "patient_id"],
+            ["patient.run_id", "patient.patient_id"],
+            "fk_ai_audit_record_patient_id_patient",
+        ),
+        _fk(
+            ["run_id", "draft_audit_id", "draft_feature"],
+            ["ai_audit_record.run_id", "ai_audit_record.audit_id", "ai_audit_record.feature"],
+            "fk_ai_audit_record_draft_audit_id_ai_audit_record",
+        ),
+        _fk(
+            ["run_id", "patient_id", "follow_up_id"],
+            [
+                "care_gap_follow_up_event.run_id",
+                "care_gap_follow_up_event.patient_id",
+                "care_gap_follow_up_event.follow_up_id",
+            ],
+            "fk_ai_audit_record_follow_up_id_care_gap_follow_up_event",
+        ),
+        UniqueConstraint("run_id", "audit_id", "feature", name="uq_ai_audit_record_run_audit_feature"),
+        CheckConstraint("is_synthetic", name="is_synthetic"),
+        CheckConstraint("audit_id ~ '^[0-9a-f]{32}$'", name="audit_id_format"),
+        CheckConstraint(
+            "feature IN ('explanation', 'outreach_draft', 'outreach_review', 'population_insight')",
+            name="feature",
+        ),
+        CheckConstraint(
+            "generation_mode IN ('llm_grounded', 'deterministic_fallback', 'not_generated', "
+            "'human_approved', 'human_rejected', 'human_blocked', 'human_invalid')",
+            name="generation_mode",
+        ),
+        CheckConstraint(
+            "input_sha256 IS NULL OR input_sha256 ~ '^[0-9a-f]{64}$'", name="input_sha256_format"
+        ),
+        CheckConstraint(
+            "output_sha256 IS NULL OR output_sha256 ~ '^[0-9a-f]{64}$'", name="output_sha256_format"
+        ),
+        CheckConstraint(
+            "(feature = 'outreach_review') = (draft_audit_id IS NOT NULL)", name="review_draft_link"
+        ),
+        CheckConstraint(
+            "(feature = 'outreach_review') = (review_decision IS NOT NULL) AND (review_decision "
+            "IS NULL OR (review_decision IN ('approved', 'rejected', 'blocked', 'invalid') AND "
+            "generation_mode = 'human_' || review_decision))",
+            name="review_decision",
+        ),
+        CheckConstraint(
+            "feature <> 'outreach_review' OR length(btrim(coalesce(reviewed_by, ''))) > 0",
+            name="review_actor",
+        ),
+        CheckConstraint(
+            "follow_up_id IS NULL OR feature = 'outreach_review'", name="follow_up_only_on_review"
+        ),
+        CheckConstraint(
+            "simulated_outreach_status IS NULL OR simulated_outreach_status IN "
+            "('simulated_not_sent', 'suppressed')",
+            name="simulated_outreach_status",
+        ),
+        CheckConstraint(
+            "review_decision IS DISTINCT FROM 'approved' OR (follow_up_id IS NOT NULL AND "
+            "simulated_outreach_status = 'simulated_not_sent')",
+            name="approved_records_simulated_follow_up",
+        ),
+        Index(
+            "uq_ai_audit_record_terminal_review",
+            "draft_audit_id",
+            unique=True,
+            postgresql_where=text("review_decision IN ('approved', 'rejected')"),
+        ),
+        Index(
+            "uq_ai_audit_record_follow_up_id",
+            "follow_up_id",
+            unique=True,
+            postgresql_where=text("follow_up_id IS NOT NULL"),
+        ),
+        Index("ix_ai_audit_record_feature_recorded", "feature", "recorded_at"),
+        Index("ix_ai_audit_record_recorded", "recorded_at"),
+        Index("ix_ai_audit_record_patient", "patient_id", "recorded_at"),
         {"schema": SCHEMA},
     )

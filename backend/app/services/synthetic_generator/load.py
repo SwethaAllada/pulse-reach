@@ -17,6 +17,7 @@ from app.services.synthetic_generator.generator import (
 CHUNK_SIZE = 2000
 
 DELETE_ORDER = (
+    "ai_audit_record",
     "workflow_status_event",
     "care_gap_follow_up_event",
     "outreach_event",
@@ -94,6 +95,14 @@ def _load_with_sa_conn(
                 ),
                 {"run_id": run_id},
             )
+        # Reviews reference their draft in the same table; delete them first.
+        conn.execute(
+            text(
+                "DELETE FROM synthetic.ai_audit_record "
+                "WHERE run_id = :run_id AND draft_audit_id IS NOT NULL"
+            ),
+            {"run_id": run_id},
+        )
         for tbl_name in DELETE_ORDER:
             conn.execute(
                 text(f"DELETE FROM synthetic.{tbl_name} WHERE run_id = :run_id"),

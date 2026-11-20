@@ -19,12 +19,17 @@ Create Date: 2026-11-19
 New CHECK/FK constraints on the existing table are added `NOT VALID` so rows written before
 this revision are kept (the table is append-only); they are enforced for every new row.
 
+Downgrade drops `workflow_status_event` and the follow-up `appointment_id`/`referral_id` links,
+i.e. workflow history; it refuses to run while such history exists unless explicitly allowed
+(`alembic -x allow_data_loss=true downgrade ...`).
+
 Frozen static DDL: does not import live ORM metadata.
 """
 
 from __future__ import annotations
 
-from alembic import op
+from alembic import context, op
+from sqlalchemy import text
 
 revision = "0009"
 down_revision = "0008"
@@ -81,9 +86,10 @@ _UPGRADE = (
             NOT VALID,
         ADD CONSTRAINT ck_care_gap_follow_up_event_appointment_link CHECK (
             (event_type IN ('appointment_scheduled', 'appointment_updated'))
-            = (appointment_id IS NOT NULL)),
+            = (appointment_id IS NOT NULL)) NOT VALID,
         ADD CONSTRAINT ck_care_gap_follow_up_event_referral_link CHECK (
-            (event_type IN ('referral_created', 'referral_updated')) = (referral_id IS NOT NULL)),
+            (event_type IN ('referral_created', 'referral_updated')) = (referral_id IS NOT NULL))
+            NOT VALID,
         ADD CONSTRAINT fk_care_gap_follow_up_event_contact_consent_id_consent
             FOREIGN KEY (run_id, patient_id, contact_consent_id, contact_consent_marker)
             REFERENCES synthetic.consent (run_id, patient_id, consent_id, grants_contact)
@@ -180,11 +186,40 @@ _DOWNGRADE = (
 )
 
 
+# History that downgrade would destroy, and how to count it.
+_DATA_AT_RISK = {
+    "workflow status events": "SELECT count(*) FROM synthetic.workflow_status_event",
+    "follow-up events linked to an appointment or referral": (
+        f"SELECT count(*) FROM {_FUP} WHERE appointment_id IS NOT NULL OR referral_id IS NOT NULL"
+    ),
+}
+
+
+def _refuse_destructive_downgrade() -> None:
+    """Abort a downgrade that would drop workflow history unless `-x allow_data_loss=true`."""
+    if context.is_offline_mode():
+        return
+    if context.get_x_argument(as_dictionary=True).get("allow_data_loss", "").lower() == "true":
+        return
+    bind = op.get_bind()
+    found = {
+        label: n for label, sql in _DATA_AT_RISK.items() if (n := bind.execute(text(sql)).scalar_one())
+    }
+    if found:
+        summary = ", ".join(f"{n} {label}" for label, n in found.items())
+        raise RuntimeError(
+            f"Refusing to downgrade {revision}: it would permanently delete {summary}. "
+            "Back up the database first, then rerun with `-x allow_data_loss=true` if the loss "
+            "is intended."
+        )
+
+
 def upgrade() -> None:
     for stmt in _UPGRADE:
         op.execute(stmt)
 
 
 def downgrade() -> None:
+    _refuse_destructive_downgrade()
     for stmt in _DOWNGRADE:
         op.execute(stmt)

@@ -319,14 +319,59 @@ def test_approval_records_simulated_outreach_and_never_delivers(llm):
 def test_edited_approval_is_revalidated(llm):
     llm()
     draft = _draft()
-    edited = GOOD.replace("We warmly invite", "We invite")
-    ok = _review(draft, decision="approved", final_message=edited).json()
-    assert ok["review_status"] == "approved" and ok["edited"] is True
-
     bad = _review(draft, decision="approved",
                   final_message="Your appointment is on Monday. Please consult a licensed healthcare professional.")
     assert bad.status_code == 422 and "invented_logistics" in bad.json()["detail"]["violations"]
+    assert get_memory_follow_up_events(draft["care_gap_id"]) == []  # an invalid text records nothing
+
+    edited = GOOD.replace("We warmly invite", "We invite")
+    ok = _review(draft, decision="approved", final_message=edited).json()
+    assert ok["review_status"] == "approved" and ok["edited"] is True
     assert len(get_memory_follow_up_events(draft["care_gap_id"])) == 1  # only the valid approval
+
+
+def test_approval_cannot_be_replayed(llm):
+    llm()
+    draft = _draft()
+    first = _review(draft, decision="approved", final_message=GOOD).json()
+    for kw in ({"decision": "approved", "final_message": GOOD}, {"decision": "rejected"}):
+        again = _review(draft, **kw)
+        assert again.status_code == 409, again.text
+        detail = again.json()["detail"]
+        assert detail["code"] == "draft_already_reviewed" and detail["review_status"] == "approved"
+        assert detail["follow_up_id"] == first["follow_up"]["follow_up_id"]
+    assert len(get_memory_follow_up_events(draft["care_gap_id"])) == 1
+
+
+def test_rejected_draft_cannot_be_approved_later(llm):
+    llm()
+    draft = _draft()
+    assert _review(draft, decision="rejected").json()["review_status"] == "rejected"
+    late = _review(draft, decision="approved", final_message=GOOD)
+    assert late.status_code == 409 and late.json()["detail"]["review_status"] == "rejected"
+    assert get_memory_follow_up_events(draft["care_gap_id"]) == []
+
+
+def test_concurrent_approvals_record_one_simulated_outreach(llm):
+    from concurrent.futures import ThreadPoolExecutor
+
+    llm()
+    draft = _draft()
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        codes = sorted(pool.map(lambda _: _review(draft, decision="approved", final_message=GOOD).status_code,
+                                range(6)))
+    assert codes == [200, 409, 409, 409, 409, 409]
+    assert len(get_memory_follow_up_events(draft["care_gap_id"])) == 1
+
+
+def test_blocked_draft_cannot_be_reviewed(llm):
+    llm()
+    blocked = _draft(channel="sms")
+    assert blocked["ai"] is None
+    audit_id = client.get("/api/v1/ai/audit?limit=1").json()["items"][0]["audit_id"]
+    resp = _review({**blocked, "ai": {"audit_id": audit_id}, "care_gap_id": blocked["care_gap_id"]},
+                   decision="approved", final_message=GOOD, channel="sms")
+    assert resp.status_code == 404
 
 
 def test_rejection_and_mismatched_or_unknown_drafts(llm):

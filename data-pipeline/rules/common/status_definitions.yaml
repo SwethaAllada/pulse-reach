@@ -6,8 +6,8 @@
 # Cross-cutting guards (see `guards` below) take precedence over any
 # status-specific logic.
 
-config_version: "1.0.0"
-last_reviewed: "2026-11-14"
+config_version: "1.1.0"
+last_reviewed: "2026-11-20"
 
 verification_statuses:
   - id: verified
@@ -100,6 +100,11 @@ reason_codes:
   - rule_reported_not_verified
   - rule_requires_clinical_review
   - rule_item_unresolved
+  # 1.1.0: reason codes emitted by the evaluation engine for linked-referral workflow states
+  # (cancelled, unrecognised status, completed without a completion date).
+  - referral_cancelled
+  - referral_status_unresolved
+  - missing_completion_evidence
 
 guards:
   - id: GUARD-MISSING-DOB

@@ -12,9 +12,9 @@ from __future__ import annotations
 
 import logging
 import threading
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Protocol
 
 from fastapi import HTTPException
@@ -142,13 +142,48 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+# A follow-up identical to one recorded on the same gap within this window (same requested
+# event, actor and note) is treated as an accidental resubmission (double click, client retry).
+DUPLICATE_SUBMIT_WINDOW = timedelta(seconds=60)
+ACTIVE_APPOINTMENT_STATUSES = ("scheduled", "rescheduled")
+ACTIVE_REFERRAL_STATUSES = ("pending", "initiated")
+
+
+def _duplicate(message: str, existing_id: str) -> HTTPException:
+    return HTTPException(
+        status_code=409,
+        detail={"message": message, "code": "duplicate_request", "existing_id": existing_id},
+    )
+
+
+def _same_event_types(event_type: str) -> tuple[str, ...]:
+    # An outreach attempt is recorded as `outreach_suppressed` when the gate refuses it.
+    return ("outreach_attempted", "outreach_suppressed") if event_type == "outreach_attempted" else (event_type,)
+
+
+def _is_resubmission(row: dict[str, Any], req: FollowUpCreateIn, now: datetime) -> bool:
+    return (
+        row["event_type"] in _same_event_types(req.event_type)
+        and row["recorded_by"] == req.recorded_by
+        and (row.get("note") or None) == (req.note or None)
+        and now - row["recorded_at"] < DUPLICATE_SUBMIT_WINDOW
+    )
+
+
 def _transition_note(entity: str, entity_id: str, old: str | None, new: str, note: str | None) -> str:
     base = f"{entity} {entity_id}: {old} -> {new}" if old else f"{entity} {entity_id} created ({new})"
     return f"{base}. {note}" if note else base
 
 
+# Called with the new event (and the PostgreSQL session) inside the write transaction, before it
+# commits; an exception aborts the whole write.
+OnRecorded = Callable[[FollowUpEventOut, "Session | None"], None]
+
+
 class FollowUpRepository(Protocol):
-    def create_follow_up(self, gap_id: str, req: FollowUpCreateIn) -> FollowUpEventOut: ...
+    def create_follow_up(
+        self, gap_id: str, req: FollowUpCreateIn, *, on_recorded: OnRecorded | None = None
+    ) -> FollowUpEventOut: ...
     def list_follow_ups(self, gap_id: str, limit: int, offset: int) -> PaginatedFollowUpEventsOut: ...
     def list_appointments(
         self, patient_id: str | None, care_gap_id: str | None, status: str | None, limit: int, offset: int
@@ -405,13 +440,17 @@ class MemoryFollowUpRepository:
 
     # -- follow-ups ----------------------------------------------------------------------------
 
-    def create_follow_up(self, gap_id: str, req: FollowUpCreateIn) -> FollowUpEventOut:
+    def create_follow_up(
+        self, gap_id: str, req: FollowUpCreateIn, *, on_recorded: OnRecorded | None = None
+    ) -> FollowUpEventOut:
         # Validation and gap/event mutation happen under one lock so concurrent completion
         # attempts on the same gap cannot both observe it as open.
         with _MEMORY_WRITE_LOCK:
-            return self._create_follow_up_locked(gap_id, req)
+            return self._create_follow_up_locked(gap_id, req, on_recorded)
 
-    def _create_follow_up_locked(self, gap_id: str, req: FollowUpCreateIn) -> FollowUpEventOut:
+    def _create_follow_up_locked(
+        self, gap_id: str, req: FollowUpCreateIn, on_recorded: OnRecorded | None
+    ) -> FollowUpEventOut:
         ds = get_cached_dataset()
         idx = get_cached_index()
         gap = self._gap(gap_id)
@@ -421,6 +460,14 @@ class MemoryFollowUpRepository:
         if patient is None:
             raise HTTPException(status_code=404, detail=f"Patient '{gap['patient_id']}' not found")
         rule = self._rule(gap["rule_id"], gap["rule_version"])
+
+        if not req.close_gap:
+            now = _now()
+            dup = next(
+                (e for e in get_memory_follow_up_events(gap_id) if _is_resubmission(e, req, now)), None
+            )
+            if dup is not None:
+                raise _duplicate("An identical follow-up was just recorded for this care gap.", dup["follow_up_id"])
 
         event_type = req.event_type
         outcome_status: str | None = "noted"
@@ -484,8 +531,9 @@ class MemoryFollowUpRepository:
                 )
             )
 
-        row = self._append_gap_event(
-            _gap_event_row(
+        row = {
+            "follow_up_id": f"SYNTH-FUP-{len(_MEMORY_FOLLOW_UP_EVENTS) + 1:06d}",
+            **_gap_event_row(
                 run_id=ds.generation_run["run_id"],
                 patient_id=gap["patient_id"],
                 care_gap_id=gap_id,
@@ -498,9 +546,13 @@ class MemoryFollowUpRepository:
                 recorded_by=req.recorded_by,
                 recorded_at=_now(),
                 note=req.note,
-            )
-        )
-        return _to_follow_up_out(row)
+            ),
+        }
+        out = _to_follow_up_out(row)
+        if on_recorded is not None:
+            on_recorded(out, None)  # raising here records nothing
+        _MEMORY_FOLLOW_UP_EVENTS.append(row)
+        return out
 
     def list_follow_ups(self, gap_id: str, limit: int, offset: int) -> PaginatedFollowUpEventsOut:
         if self._gap(gap_id) is None:
@@ -549,6 +601,21 @@ class MemoryFollowUpRepository:
             if req.care_gap_id is not None and self._gap(req.care_gap_id, req.patient_id) is None:
                 raise HTTPException(
                     status_code=404, detail=f"Care gap '{req.care_gap_id}' not found for patient"
+                )
+            dup = next(
+                (
+                    a
+                    for a in ds.appointments
+                    if (a["patient_id"], a["profile_id"], a["scheduled_datetime"], a["appointment_type"])
+                    == (req.patient_id, req.profile_id, req.scheduled_datetime, req.appointment_type)
+                    and a["status"] in ACTIVE_APPOINTMENT_STATUSES
+                ),
+                None,
+            )
+            if dup is not None:
+                raise _duplicate(
+                    "An active appointment already exists for this patient, facility, type and time.",
+                    dup["appointment_id"],
                 )
             apt_id = f"SYNTH-APT-{len(ds.appointments) + 1:06d}"
             run_id = ds.generation_run["run_id"]
@@ -715,6 +782,20 @@ class MemoryFollowUpRepository:
             initiated_date=req.initiated_date,
             completed_date=None,
         )
+        dup = next(
+            (
+                r
+                for r in ds.referrals
+                if (r["patient_id"], r["trigger_rule_id"], r["trigger_rule_version"], r["referral_target"])
+                == (req.patient_id, req.trigger_rule_id, req.trigger_rule_version, req.referral_target)
+                and r["status"] in ACTIVE_REFERRAL_STATUSES
+            ),
+            None,
+        )
+        if dup is not None:
+            raise _duplicate(
+                "An active referral already exists for this patient, rule and target.", dup["referral_id"]
+            )
         ref_id = f"SYNTH-REF-{len(ds.referrals) + 1:06d}"
         run_id = ds.generation_run["run_id"]
         row = {
@@ -937,13 +1018,19 @@ class PostgresFollowUpRepository:
     def _row_dict(obj: Any) -> dict[str, Any]:
         return {col.name: getattr(obj, col.name) for col in obj.__table__.columns}
 
+    @property
+    def session(self) -> Session:
+        return self._session
+
+    def _lock(self, key: str) -> None:
+        """Transaction-scoped advisory lock (re-entrant within the transaction)."""
+        if self._session.get_bind().dialect.name == "postgresql":
+            self._session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:k))"), {"k": key})
+
     def _next_id(self, model: Any, column: Any, prefix: str) -> str:
         # Serialise id minting per table for the rest of the transaction, so concurrent writers
         # cannot both read the same MAX() (BE-14).
-        if self._session.get_bind().dialect.name == "postgresql":
-            self._session.execute(
-                text("SELECT pg_advisory_xact_lock(hashtext(:k))"), {"k": prefix}
-            )
+        self._lock(prefix)
         return _next_synth_id(prefix, self._session.scalar(select(func.max(column))))
 
     def _add_workflow_event(self, row: dict[str, Any]) -> WorkflowStatusEvent:
@@ -1010,13 +1097,30 @@ class PostgresFollowUpRepository:
 
     # -- follow-ups ----------------------------------------------------------------------------
 
-    def create_follow_up(self, gap_id: str, req: FollowUpCreateIn) -> FollowUpEventOut:
+    def create_follow_up(
+        self, gap_id: str, req: FollowUpCreateIn, *, on_recorded: OnRecorded | None = None
+    ) -> FollowUpEventOut:
         with self._write():
             gr, er = self._latest_runs()
-            # Serialise concurrent completion attempts on the same gap.
-            gap = self._gap(gr.run_id, gap_id, lock=req.close_gap)
+            # Serialise concurrent writes on the same gap (completion, duplicate resubmissions).
+            gap = self._gap(gr.run_id, gap_id, lock=True)
             if gap is None:
                 raise HTTPException(status_code=404, detail=f"Care gap '{gap_id}' not found")
+            if not req.close_gap:
+                now = _now()
+                recent = self._session.scalars(
+                    select(CareGapFollowUpEvent).where(
+                        CareGapFollowUpEvent.run_id == gr.run_id,
+                        CareGapFollowUpEvent.care_gap_id == gap_id,
+                        CareGapFollowUpEvent.event_type.in_(_same_event_types(req.event_type)),
+                        CareGapFollowUpEvent.recorded_at > now - DUPLICATE_SUBMIT_WINDOW,
+                    )
+                ).all()
+                dup = next((e for e in recent if _is_resubmission(self._row_dict(e), req, now)), None)
+                if dup is not None:
+                    raise _duplicate(
+                        "An identical follow-up was just recorded for this care gap.", dup.follow_up_id
+                    )
             patient = self._patient(gr.run_id, gap.patient_id)
             if patient is None:
                 raise HTTPException(status_code=404, detail=f"Patient '{gap.patient_id}' not found")
@@ -1119,6 +1223,8 @@ class PostgresFollowUpRepository:
                 )
             )
             out = _to_follow_up_out(self._row_dict(fup))
+            if on_recorded is not None:
+                on_recorded(out, self._session)  # same transaction: raising rolls back the event
         return out
 
     def list_follow_ups(self, gap_id: str, limit: int, offset: int) -> PaginatedFollowUpEventsOut:
@@ -1191,6 +1297,21 @@ class PostgresFollowUpRepository:
             if req.care_gap_id is not None and self._gap(gr.run_id, req.care_gap_id, req.patient_id) is None:
                 raise HTTPException(
                     status_code=404, detail=f"Care gap '{req.care_gap_id}' not found for patient"
+                )
+            self._lock("SYNTH-APT")  # serialises the duplicate check with concurrent creates
+            dup = self._session.scalar(
+                select(Appointment.appointment_id).where(
+                    Appointment.run_id == gr.run_id,
+                    Appointment.patient_id == req.patient_id,
+                    Appointment.profile_id == req.profile_id,
+                    Appointment.scheduled_datetime == req.scheduled_datetime,
+                    Appointment.appointment_type == req.appointment_type,
+                    Appointment.status.in_(ACTIVE_APPOINTMENT_STATUSES),
+                )
+            )
+            if dup is not None:
+                raise _duplicate(
+                    "An active appointment already exists for this patient, facility, type and time.", dup
                 )
             apt = Appointment(
                 appointment_id=self._next_id(Appointment, Appointment.appointment_id, "SYNTH-APT"),
@@ -1399,6 +1520,19 @@ class PostgresFollowUpRepository:
                 initiated_date=req.initiated_date,
                 completed_date=None,
             )
+            self._lock("SYNTH-REF")  # serialises the duplicate check with concurrent creates
+            dup = self._session.scalar(
+                select(Referral.referral_id).where(
+                    Referral.run_id == gr.run_id,
+                    Referral.patient_id == req.patient_id,
+                    Referral.trigger_rule_id == req.trigger_rule_id,
+                    Referral.trigger_rule_version == req.trigger_rule_version,
+                    Referral.referral_target == req.referral_target,
+                    Referral.status.in_(ACTIVE_REFERRAL_STATUSES),
+                )
+            )
+            if dup is not None:
+                raise _duplicate("An active referral already exists for this patient, rule and target.", dup)
             ref = Referral(
                 referral_id=self._next_id(Referral, Referral.referral_id, "SYNTH-REF"),
                 run_id=gr.run_id,

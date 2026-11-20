@@ -25,3 +25,8 @@ If PostgreSQL round trips through the published port take hundreds of ms, Podman
 is wedged (high CPU). Restart the machine with the same Podman install that created it
 (`/opt/podman/bin/podman machine stop && /opt/podman/bin/podman machine start`); a mismatched
 Homebrew `podman` fails to start the `libkrun` machine.
+
+Docker builds through the forwarded socket also wedge `gvproxy` (build context uploads at ~0.5 MB/min).
+Build inside the VM instead, then start Compose without building:
+`/opt/podman/bin/podman machine ssh "cd $PWD && podman build -f backend/Dockerfile -t prdeploy-backend:latest . && podman tag prdeploy-backend:latest prdeploy-db-init:latest"`,
+then `docker compose -p prdeploy --env-file <env> -f infrastructure/docker-compose.yml up -d --no-build`.

@@ -46,6 +46,7 @@ TABLES = {
     "workflow_status_event",
     "appointment",
     "outreach_event",
+    "ai_audit_record",
 }
 
 EXPECTED_PKS = {
@@ -67,6 +68,7 @@ EXPECTED_PKS = {
     "care_gap_review": ("review_id",),
     "care_gap_follow_up_event": ("follow_up_id",),
     "workflow_status_event": ("status_event_id",),
+    "ai_audit_record": ("audit_id",),
     "appointment": ("appointment_id",),
     "outreach_event": ("outreach_id",),
 }
@@ -192,6 +194,8 @@ EXPECTED = {
         "evaluation_status": False,
         "reason_code": True,
         "next_due_date": True,
+        "reason_detail": True,
+        "input_snapshot": True,
     },
     "evaluation_reason": {
         "reason_id": False,
@@ -206,6 +210,7 @@ EXPECTED = {
         "reason_code": False,
         "item_category": True,
         "item_code": True,
+        "reason_detail": True,
     },
     "ifhas_screening": {
         "screening_id": False,
@@ -434,6 +439,7 @@ def test_generated_marker_columns_are_persisted():
             ),
         ),
         ("outreach_event", ("contact_consent_marker",)),
+        ("ai_audit_record", ("draft_feature",)),
     ):
         for col_name in col_names:
             col = t[tbl_name].c[col_name]
@@ -466,7 +472,7 @@ def test_migration_0007_uses_frozen_static_ddl():
     src = mig_path.read_text(encoding="utf-8")
     assert "app.models" not in src
     assert "Base.metadata" not in src
-    for tbl_name in TABLES - {"care_gap_follow_up_event", "workflow_status_event"}:
+    for tbl_name in TABLES - {"care_gap_follow_up_event", "workflow_status_event", "ai_audit_record"}:
         assert f"CREATE TABLE synthetic.{tbl_name}" in src
 
 

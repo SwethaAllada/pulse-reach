@@ -7,6 +7,7 @@ Part 1 runs in memory mode through the API. Part 2 runs the same workflow throug
 
 from __future__ import annotations
 
+import argparse
 import os
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -370,7 +371,13 @@ def test_live_0009_round_trip_on_populated_database():
             fups = count("SELECT count(*) FROM synthetic.care_gap_follow_up_event")
             assert fups == 2 and count("SELECT count(*) FROM synthetic.workflow_status_event") == 1
 
+            # Downgrading would drop workflow history: refused unless explicitly allowed.
+            with pytest.raises(RuntimeError, match="Refusing to downgrade"):
+                command.downgrade(cfg, "0008")
+            assert count("SELECT count(*) FROM synthetic.workflow_status_event") == 1
+            cfg.cmd_opts = argparse.Namespace(x=["allow_data_loss=true"])
             command.downgrade(cfg, "0008")
+            cfg.cmd_opts = None
             assert count("SELECT count(*) FROM synthetic.care_gap_follow_up_event") == fups
             assert count("SELECT count(*) FROM information_schema.tables WHERE table_name = 'workflow_status_event'") == 0
 

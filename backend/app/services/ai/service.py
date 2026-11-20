@@ -21,7 +21,8 @@ from functools import lru_cache
 from typing import Any
 
 from app.core.config import Settings, settings
-from app.services.ai.audit import AIAuditLog, AIAuditRecord, sha256
+from app.db.session import get_engine
+from app.services.ai.audit import AIAuditLog, AIAuditRecord, PostgresAIAuditLog, sha256
 from app.services.ai.guardrails import validate_outreach_output, validate_output
 from app.services.ai.prompts import (
     EXPLANATION_PROMPT_VERSION,
@@ -90,7 +91,7 @@ class AIService:
         *,
         provider_status: str = "disabled",
         max_output_tokens: int = 400,
-        audit: AIAuditLog | None = None,
+        audit: AIAuditLog | PostgresAIAuditLog | None = None,
         configured_provider: str | None = None,
     ) -> None:
         self._provider = provider
@@ -102,7 +103,11 @@ class AIService:
 
     def status(self) -> dict[str, Any]:
         """Configuration plus the outcome of the most recent provider call (no probe, no secrets)."""
-        last = next((r for r in self.audit.recent(limit=500) if r.provider is not None), None)
+        try:
+            last = self.audit.last_provider_call()
+        except Exception:  # status must never fail because the audit store is unavailable
+            logger.warning("AI audit store unavailable; provider call history unknown", exc_info=True)
+            last = None
         if self._provider is None:
             availability = "disabled" if self._provider_status == "disabled" else "misconfigured"
         elif last is None:
@@ -134,6 +139,7 @@ class AIService:
         validate: Callable[[str], list[str]],
         extra: dict[str, Any] | None = None,
         fallback_text: str | None = None,
+        run_id: str | None = None,
     ) -> tuple[str | None, AIGenerationMeta]:
         user = facts_json(facts)
         text: str | None = None
@@ -172,6 +178,7 @@ class AIService:
             # `returned_sha256` fingerprints the text actually returned (model or fallback).
             extra={**(extra or {}), **({"returned_sha256": sha256(accepted or fallback_text)}
                                        if fallback_text is not None else {})},
+            run_id=run_id,
         )
         meta = AIGenerationMeta(
             feature=feature,
@@ -188,7 +195,11 @@ class AIService:
     # -- explanation ------------------------------------------------------------------------
 
     def explain(
-        self, inp: BoundedExplanationInput, context: ExplanationContext | None = None
+        self,
+        inp: BoundedExplanationInput,
+        context: ExplanationContext | None = None,
+        *,
+        run_id: str | None = None,
     ) -> tuple[ExplanationResult, AIGenerationMeta]:
         """Deterministic result plus, when accepted, a validated generated summary.
 
@@ -221,6 +232,7 @@ class AIService:
             system=EXPLANATION_SYSTEM,
             facts=facts,
             subject=subject,
+            run_id=run_id,
             validate=lambda t: validate_output(
                 t,
                 facts=facts,
@@ -263,6 +275,7 @@ class AIService:
             ),
             extra=gate.audit_extra,
             fallback_text=gate.deterministic_body,
+            run_id=gate.run_id,
         )
         body = text or gate.deterministic_body
         banner = _SIMULATED_BANNER.format(channel=gate.channel.upper(), language=gate.language)
@@ -274,18 +287,28 @@ class AIService:
             feature="outreach_draft", subject=gate.audit_subject, prompt_version=OUTREACH_PROMPT_VERSION,
             provider=None, model=None, generation_mode=NOT_GENERATED,
             fallback_reason=f"blocked:{gate.blocked_reason}", violations=(), input_sha256=None,
-            output_sha256=None, latency_ms=None, extra=gate.audit_extra,
+            output_sha256=None, latency_ms=None, extra=gate.audit_extra, run_id=gate.run_id,
         )
 
     def record_outreach_review(
-        self, *, subject: dict[str, Any], extra: dict[str, Any], decision: str, violations: tuple[str, ...] = ()
+        self,
+        *,
+        subject: dict[str, Any],
+        extra: dict[str, Any],
+        decision: str,
+        run_id: str | None,
+        violations: tuple[str, ...] = (),
+        session: Any = None,
     ) -> AIAuditRecord:
-        """Audit a human approval/rejection; stores a message fingerprint, never the text."""
+        """Audit a human approval/rejection; stores a message fingerprint, never the text.
+
+        Raises `DuplicateReviewError` if the draft already has an approved/rejected review.
+        """
         return self.audit.record(
             feature="outreach_review", subject=subject, prompt_version=OUTREACH_PROMPT_VERSION,
             provider=None, model=None, generation_mode=f"human_{decision}", fallback_reason=None,
             violations=violations, input_sha256=None, output_sha256=extra.get("message_sha256"),
-            latency_ms=None, extra=extra,
+            latency_ms=None, extra=extra, run_id=run_id, session=session,
         )
 
     # -- population ------------------------------------------------------------------------
@@ -298,6 +321,7 @@ class AIService:
             system=POPULATION_SYSTEM,
             facts=facts,
             subject={"run_id": facts.get("run_id"), "evaluation_run_id": facts.get("evaluation_run_id")},
+            run_id=facts.get("run_id"),
             validate=lambda t: validate_output(t, facts=facts, max_chars=1200, must_contain=("synthetic",)),
         )
         return PopulationInsight(facts=facts, summary_text=text or deterministic, meta=meta)
@@ -319,8 +343,13 @@ def _deterministic_population_summary(f: dict[str, Any]) -> str:
         parts.append("By gap type: " + ", ".join(f"{k}: {v}" for k, v in sorted(by_type.items())) + ".")
     parts.append(
         f"{f['unknown_history_patients_count']} people have unknown screening history and "
-        f"{f['review_flagged_patients_count']} have at least one result requiring clinical review."
+        f"{f['review_flagged_patients_count']} have records that need clinical review."
     )
+    if "rule_review_patients_count" in f:
+        parts.append(
+            f"{f['rule_review_patients_count']} have at least one applicable rule that is itself "
+            "awaiting clinical review."
+        )
     return " ".join(parts)
 
 
@@ -338,4 +367,5 @@ def build_ai_service(cfg: Settings) -> AIService:
         provider_status=status,
         max_output_tokens=cfg.llm_max_output_tokens,
         configured_provider=cfg.llm_provider if cfg.llm_enabled else None,
+        audit=PostgresAIAuditLog(get_engine) if cfg.data_source == "db" else AIAuditLog(),
     )

@@ -38,6 +38,9 @@ REASON_DESCRIPTIONS: dict[str, str] = {
     "rule_reported_not_verified": "The rule comes from a secondary reported source rather than the numbered standard; cannot drive authoritative decisions.",
     "rule_requires_clinical_review": "The governing rule is flagged `requires_clinical_review = true`; no automated recommendation is produced.",
     "rule_item_unresolved": "One or more assessment items on this visit have `verification_status = unresolved` due to a source discrepancy.",
+    "referral_cancelled": "The linked referral was cancelled; routed to a healthcare professional for clinical review.",
+    "referral_status_unresolved": "The linked referral has a status that cannot be interpreted automatically; routed to clinical review.",
+    "missing_completion_evidence": "A linked record is marked completed without a documented completion date; routed to clinical review.",
 }
 
 

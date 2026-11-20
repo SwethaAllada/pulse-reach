@@ -269,6 +269,7 @@ def test_synthetic_dataset_rows_match_sqlalchemy_table_columns(dataset: Syntheti
         "care_gap_review": dataset.care_gap_reviews,
         "care_gap_follow_up_event": [],
         "workflow_status_event": [],
+        "ai_audit_record": [],
         "outreach_event": dataset.outreach_events,
     }
     assert set(collection_by_table) == set(synth_tables)

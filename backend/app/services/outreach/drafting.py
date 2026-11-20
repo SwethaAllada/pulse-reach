@@ -70,6 +70,7 @@ class OutreachDraftGate:
     next_step: dict[str, Any] | None = None
     facts: dict[str, Any] = field(default_factory=dict)
     deterministic_body: str | None = None
+    run_id: str | None = None  # synthetic run of the patient record (durable audit reference)
 
     @property
     def max_chars(self) -> int:
@@ -117,7 +118,7 @@ def gate_outreach_draft(
     """Run the post-consent checks on an existing preview gate result (see module docstring)."""
     base = dict(patient_id=preview.synthetic_patient_id, rule_id=preview.rule_id,
                 rule_version=preview.rule_version, care_gap_id=preview.care_gap_id,
-                channel=channel, language=language, tone=tone)
+                channel=channel, language=language, tone=tone, run_id=patient.get("run_id"))
 
     def blocked(reason: str, **kw: Any) -> OutreachDraftGate:
         return OutreachDraftGate(allowed=False, blocked_reason=reason, **{**base, **kw})

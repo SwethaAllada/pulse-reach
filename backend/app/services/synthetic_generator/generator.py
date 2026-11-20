@@ -37,6 +37,11 @@ from app.services.evaluation import (
     ScreeningEventFact,
     VisitEventFact,
 )
+from app.services.evaluation.recorded import (
+    evaluation_reason_detail,
+    evaluation_snapshot,
+    fired_reason_detail,
+)
 from app.services.followup.completion import (
     CompletionEvidence,
     evaluate_current_rule,
@@ -886,6 +891,8 @@ def generate_synthetic_dataset(
                     "evaluation_status": ev.evaluation_status,
                     "reason_code": ev.reason_code,
                     "next_due_date": ev.next_due_date,
+                    "reason_detail": evaluation_reason_detail(ev),
+                    "input_snapshot": evaluation_snapshot(ctx, ev, reference_date),
                 }
             )
             for ord_idx, reason in enumerate(ev.reasons, 1):
@@ -904,6 +911,7 @@ def generate_synthetic_dataset(
                         "reason_code": reason.reason_code,
                         "item_category": reason.item_category,
                         "item_code": reason.item_code,
+                        "reason_detail": fired_reason_detail(reason),
                     }
                 )
 

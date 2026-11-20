@@ -29,13 +29,21 @@ _CODES = {
 INTERNAL_ERROR_MESSAGE = "Internal server error."
 
 
+def _message(detail: Any) -> str:
+    if isinstance(detail, str):
+        return detail
+    if isinstance(detail, dict) and isinstance(detail.get("message"), str):
+        return detail["message"]
+    return "Request failed."
+
+
 def error_body(status: int, detail: Any, message: str | None = None) -> dict[str, Any]:
     return {
         "detail": detail,
         "error": {
             "status": status,
             "code": _CODES.get(status, "error"),
-            "message": message if message is not None else (detail if isinstance(detail, str) else "Request failed."),
+            "message": message if message is not None else _message(detail),
             "request_id": request_id_var.get(),
         },
     }

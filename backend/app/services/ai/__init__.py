@@ -1,6 +1,6 @@
 """AI assistance layer (explanations, simulated outreach drafts, population insights)."""
 
-from app.services.ai.audit import AIAuditLog, AIAuditRecord
+from app.services.ai.audit import AIAuditLog, AIAuditRecord, DuplicateReviewError, PostgresAIAuditLog
 from app.services.ai.provider import LLMCompletion, LLMProvider, LLMProviderError, build_provider
 from app.services.ai.service import (
     DETERMINISTIC,
@@ -18,6 +18,8 @@ __all__ = [
     "AIAuditRecord",
     "AIGenerationMeta",
     "AIService",
+    "DuplicateReviewError",
+    "PostgresAIAuditLog",
     "DETERMINISTIC",
     "LLMCompletion",
     "LLMProvider",

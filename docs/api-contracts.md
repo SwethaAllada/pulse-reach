@@ -11,7 +11,13 @@
 >
 > **Errors:** every error body keeps `detail` and adds `error: {status, code, message, request_id}` (`code` in `bad_request`, `not_found`, `conflict`, `validation_error`, `service_unavailable`, `internal_error`). Validation `detail` items carry only `type`, `loc`, `msg`. Database and unexpected errors never return SQL, parameters or tracebacks. Database constraint violations on writes are `409`.
 >
-> **Writes:** every write requires a non-blank actor (`recorded_by`, or `reviewer` for reviews).
+> **Writes:** every write requires a non-blank actor (`recorded_by`, or `reviewer` for reviews). The actor is **client-supplied and unauthenticated** (no authentication exists in this MVP); treat it as attribution, not identity.
+>
+> **Conflicts (`409`):** `detail` is a string for constraint violations, or an object for:
+> - duplicate requests — `{"message", "code": "duplicate_request", "existing_id"}`: an active (`scheduled`/`rescheduled`) appointment for the same patient, facility profile, type and `scheduled_datetime`; an active (`pending`/`initiated`) referral for the same patient, rule/version and target; or a non-completion follow-up identical to one recorded on the same gap within 60 s (same requested event type, actor and note). A second completion of a closed gap stays `422` (`care_gap_not_open`).
+> - an outreach draft that already has a final decision — `{"message", "code": "draft_already_reviewed", "review_status": "approved" | "rejected", "review_audit_id", "follow_up_id"}`.
+>
+> `error.message` repeats `detail.message` when `detail` is an object.
 
 ---
 
@@ -20,14 +26,14 @@
 | Method & Path | Purpose | Response Schema |
 |---|---|---|
 | `GET /health` | Service health check | `{"status": "ok"}` |
-| `GET /health/db` | Database connectivity status (`200` when connected, `503` when degraded) | `{"status": "ok" \| "degraded", "database": "connected" \| "not_configured" \| "unreachable"}` |
+| `GET /health/db` | Database connectivity status (`200` when connected, `503` when degraded) | `{"status": "ok" \| "degraded", "database": "ok" \| "not_configured" \| "unavailable"}` |
 | `GET /api/v1/dashboard/summary` | Population, per-person status, pathway, gap, region, and clinical rule breakdowns | `DashboardSummaryOut` |
 | `GET /api/v1/patients` | Paginated synthetic patient list with search (`q`), sorting (`sort_by`, `sort_dir`), and filters (`sex`, `region_id`, `pathway`, `evaluation_status`, `has_open_care_gaps`, `history_status`, `age_band`) | `PaginatedPatientsOut` |
 | `GET /api/v1/patients/{patient_id}` | Single synthetic patient detail and pathway history availability | `PatientSummaryOut` |
 | `GET /api/v1/patients/{patient_id}/history` | Clinical history, screenings, well-child visits, component results, assessments, and referrals | `PatientHistoryOut` |
 | `GET /api/v1/patients/{patient_id}/consents` | Recorded consent history and current effective consent state | `PatientConsentsOut` |
 | `GET /api/v1/patients/{patient_id}/evaluations` | All 54 deterministic rule evaluations, fired reasons/guards, rule citations, zero-PII `input_snapshot`, and care gaps. Evaluations are the unchanged historical results of `evaluation_run_id` at `reference_date`; `superseded_by_completion` / `superseded_by_care_gap_id` mark an evaluation whose care gap was later closed as `closed_completed` (the care gap holds the current state) | `PatientEvaluationsOut` |
-| `POST /api/v1/evaluations` | Run dynamic deterministic evaluation for a synthetic patient (`patient_id`, `look_ahead_days` `0..365`) | `PatientEvaluationsOut` |
+| `POST /api/v1/evaluations` | Deterministic evaluation for a synthetic patient (`patient_id`, `look_ahead_days` `0..365`). With the run's default look-ahead (30) it returns the stored evaluations (`is_persisted: true`). Otherwise it recomputes ad hoc and stores nothing: `is_persisted: false` and ids are `EPHEMERAL-{patient_id}-EVL-NNNN` / `EPHEMERAL-{patient_id}-GAP-NNNN`, which never resolve via `/care-gaps/{id}` | `PatientEvaluationsOut` |
 | `GET /api/v1/rules` | List/filter clinical rules (`pathway` in `ifhas\|well_child`, `verification_status` in `verified\|reported\|unresolved`, `is_authoritative`) | `PaginatedRulesOut` |
 | `GET /api/v1/rules/{rule_id}` | Full rule detail, partial-date triples, items (`effective_authority`), and open questions | `RuleDetailOut` |
 | `GET /api/v1/care-gaps` | Paginated evidence-backed care gaps (`patient_id`, `status`, `gap_type`, `rule_id`, `limit`, `offset`) | `PaginatedCareGapsOut` |
@@ -46,15 +52,18 @@
 | `PATCH /api/v1/referrals/{referral_id}` | Validated referral status/date transition (`ReferralPatchIn`, `recorded_by` required). Logged on every linked gap (subject gap or `care_gap_id` given at creation) | `ReferralOut` |
 | `GET /api/v1/referrals/{referral_id}/history` | Append-only status history incl. initiated/completed dates | `WorkflowHistoryOut` |
 | `GET /api/v1/facilities` | Official Abu Dhabi SDI facility facts with published coordinates (`latitude`, `longitude`, `geo_quality`). Filters: `region_id` (1-3), `facility_type` (case-insensitive, e.g. `Hospital`), `source_layer`, `q` (name/city). `capability_basis: "unverified_sdi_facts_only"`; capability fields are always `null` | `PaginatedFacilitiesOut` |
-| `GET /api/v1/facilities/{ch_fid}` | All published SDI facts for one facility, by publisher key `ch_fid` (URL-encode it: it contains `#`) | `FacilityDetailOut` |
+| `GET /api/v1/facilities/{ch_fid}` | All published SDI facts for one facility, by publisher key `ch_fid`. Always percent-encode it as one path segment (`encodeURIComponent`): it contains `#`, which a browser otherwise treats as a fragment and never sends (e.g. `/api/v1/facilities/abc%23123`) | `FacilityDetailOut` |
 | `GET /api/v1/open-questions` | Open-question register (`oq_id`, `title`, `detail`, `status`, `category`, `affects`, `resolve_via`, linked `rule_ids`); filters `status`, `category`. Questions are reported, never answered | `PaginatedOpenQuestionsOut` |
 | `GET /api/v1/open-questions/{oq_id}` | One open question | `OpenQuestionOut` |
 | `POST /api/v1/explanations` | Plain-language explanation of a precomputed evaluation; AI-grounded when enabled, deterministic otherwise. `ai` gives `generation_mode`, `prompt_version`, `provider`, `model`, `fallback_reason`, `violations`, `audit_id` | `ExplanationOut` |
 | `POST /api/v1/outreach/preview` | Permission-checked simulated outreach message preview (never sends real messages) | `OutreachPreviewOut` |
-| `POST /api/v1/outreach/draft` | Same gate as the preview; when allowed, an AI-assisted (or template) simulated draft. `sendable` is always `false`; the model is never called for blocked outreach | `OutreachDraftOut` |
+| `POST /api/v1/outreach/draft` | Same gate as the preview; when allowed, an AI-assisted (or template) simulated draft. `sendable` is always `false`; the model is never called for blocked outreach. `ai.audit_id` is the durable draft id used for review (in `DATA_SOURCE=db` it survives restarts and is shared by all workers) | `OutreachDraftOut` |
+| `POST /api/v1/outreach/draft/review` | Human decision on a draft (`draft_audit_id`, `patient_id`, `rule_id`, `care_gap_id`, `channel`, `language` must match the draft; `decision` = `approved` \| `rejected`; `final_message` required for approval; `reviewed_by`; optional `reason`, whose text is not stored). Approval re-checks consent and eligibility (`review_status: "blocked"` + `blocked_reason` if they changed), re-validates the possibly edited text (`422` with `violations`), and records one `outreach_attempted` follow-up with `outcome_status: "simulated_not_sent"`, returned as `follow_up` (also visible at once in `/care-gaps/{id}/follow-ups` and `/patients/{id}/activity`). Response also has `review_audit_id`, `edited`, `simulated_outreach_status`, and `simulated_only: true`, `sendable: false`, `delivered: false`. One final decision per draft: a replayed or concurrent approval, or approving a rejected draft, is `409 draft_already_reviewed`; unknown or blocked drafts are `404` | `OutreachDraftReviewOut` |
 | `GET /api/v1/insights/population` | Aggregate facts from the dashboard plus a narrative restating them (numbers not in the facts are rejected) | `PopulationInsightOut` |
 | `GET /api/v1/ai/status` | AI configuration (enabled, provider, model, prompt versions; never the key) | `AIStatusOut` |
-| `GET /api/v1/ai/audit` | Recent AI generation audit records (hashes of input/output, outcome, violations, latency); `feature`, `limit` | `AIAuditOut` |
+| `GET /api/v1/ai/audit` | Recent AI generation and human-review audit records, newest first (`feature` = `explanation` \| `outreach_draft` \| `outreach_review` \| `population_insight`, `limit` 1-500). Each record: `audit_id`, `recorded_at`, `request_id`, `feature`, `subject` (synthetic ids), `run_id`, `prompt_version`, `provider`, `model`, `generation_mode` (`llm_grounded`, `deterministic_fallback`, `not_generated`, `human_approved` / `_rejected` / `_blocked` / `_invalid`), `fallback_reason`, `violations`, `input_sha256`, `output_sha256`, `latency_ms`, `extra` (channel, language, tone, `reviewed_by`, `follow_up_id`, `simulated_outreach_status`, `edited`, fingerprints). Message texts are never stored. `durable: true` when stored in PostgreSQL (`synthetic.ai_audit_record`, append-only); memory mode keeps a bounded in-process buffer | `AIAuditOut` |
+
+`EvaluationItemOut` carries `reason_detail` (the engine's own reason text recorded at evaluation time, or the generic template for the code), `input_snapshot` (de-identified inputs) and `input_snapshot_basis`: `recorded_at_evaluation` (stored with the evaluation) or `reconstructed_at_read` (legacy rows evaluated before migration 0010, rebuilt from current records and possibly different from what the engine saw). `PatientEvaluationsOut.is_persisted` is `false` only for ad-hoc recomputations.
 
 `EvaluationItemOut` also carries `applicability` (`in_band` \| `out_of_band` \| `not_determined`: is the person inside the rule's printed age/sex band, or the pathway's programme scope when the rule has none) with `applicability_basis`, and `review_origin` (`rule` \| `record`, only for `requires_clinical_review`).
 
@@ -84,6 +93,23 @@
     "insufficient_information": 108,
     "upcoming": 26
   },
+  "unknown_history_patients_count": 64,
+  "review_flagged_patients_count": 39,
+  "rule_review_patients_count": 550,
+  "patient_status_counts": {
+    "due": 384, "eligible": 61, "insufficient_information": 2,
+    "unknown": 64, "requires_clinical_review": 39
+  },
+  "patient_status_precedence": [
+    "requires_clinical_review", "overdue", "due", "upcoming", "unknown",
+    "insufficient_information", "eligible", "completed", "not_eligible"
+  ],
+  "pathway_breakdown": {
+    "ifhas": {"patients_with_history": 357, "programme_eligible_patients": 411,
+              "due_or_upcoming_patients": 273, "unknown_history_patients": 54,
+              "review_flagged_patients": 35, "rule_review_patients": 411,
+              "open_care_gaps_count": 1334}
+  },
   "rules_summary": {
     "total_rules": 54,
     "authoritative_rules": 47,
@@ -95,6 +121,13 @@
   "governance_disclaimer": "All patient records shown are 100% synthetic (`is_synthetic=true`). Clinical rules are transcribed from published DoH standards for engineering use (`clinical_review_status=not_reviewed`) and require healthcare-professional review."
 }
 ```
+
+Dashboard semantics (numbers above are illustrative):
+- `evaluation_status_counts` counts **evaluations**; every `*_patients*` field counts **people**.
+- `patient_status_counts` is mutually exclusive and sums to `total_patients`: each person is counted once, under the first status in `patient_status_precedence` among their results that are inside the rule's band (`applicability != out_of_band`) and not rule-origin reviews (`no_applicable_result` if none).
+- `review_flagged_patients_count` / `pathway_breakdown.*.review_flagged_patients`: people whose **own records** need clinical review (`review_origin = record`). `rule_review_patients_count` / `rule_review_patients`: people with an in-band result under a rule that itself is unresolved or review-flagged (`review_origin = rule`). Do not present the latter as "people needing review".
+- `pathway_breakdown.*`: `programme_eligible_patients` (in-band programme `eligible`, not a care need) and `due_or_upcoming_patients` (in-band `due`/`upcoming`/`overdue`) replace the former `eligible_or_due_patients`.
+- `/insights/population` facts include `review_flagged_patients_count` and `rule_review_patients_count`.
 
 ### `POST /api/v1/explanations`
 Request:
@@ -157,4 +190,5 @@ Response (blocked because contact consent was withdrawn):
 - Fresh database (from `backend/`, `DATABASE_URL` set): `python -m app.db.init --seed` (migrations → official register if empty → clinical + synthetic seed if unseeded; safe to re-run). Explicit reseed: `python -m app.services.synthetic_generator.seed` (replaces the synthetic run, including follow-up history; official and clinical data are untouched; atomic).
 - Docker: `docker compose --env-file .env -f infrastructure/docker-compose.yml up --build` (`db-init` runs the bootstrap once, then `backend` starts).
 - The API refuses to start if the rule bundle is missing/invalid, or (in `DATA_SOURCE=db`) if the database has no matching clinical load or seeded run.
+- Migrations: head is `0010`. Downgrading `0010`/`0009` refuses while it would delete recorded data (AI audit, recorded snapshots, workflow history) unless run with `alembic -x allow_data_loss=true downgrade <rev>`.
 - AI: `LLM_ENABLED`, `LLM_PROVIDER` (`openai_compatible` \| `anthropic`), `LLM_MODEL`, `LLM_API_KEY`, optional `LLM_BASE_URL`, `LLM_TIMEOUT_SECONDS`.

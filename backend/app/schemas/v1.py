@@ -23,10 +23,23 @@ class RulesSummaryOut(BaseModel):
 
 
 class PathwayBreakdownOut(BaseModel):
+    """People (not evaluations) per pathway; results outside the person's rule band are ignored."""
+
     patients_with_history: int = 0
-    eligible_or_due_patients: int = 0
+    programme_eligible_patients: int = Field(
+        default=0, description="People with an in-band programme `eligible` result (not a care need)."
+    )
+    due_or_upcoming_patients: int = Field(
+        default=0, description="People with an in-band `due`, `upcoming` or `overdue` result."
+    )
     unknown_history_patients: int = 0
-    review_flagged_patients: int = 0
+    review_flagged_patients: int = Field(
+        default=0, description="People whose own records need clinical review (review_origin=record)."
+    )
+    rule_review_patients: int = Field(
+        default=0,
+        description="People with an in-band result under a rule that itself needs review (review_origin=rule).",
+    )
     open_care_gaps_count: int = 0
 
 
@@ -47,9 +60,22 @@ class DashboardSummaryOut(BaseModel):
     open_care_gaps_count: int
     closed_refused_care_gaps_count: int
     unknown_history_patients_count: int = 0
-    review_flagged_patients_count: int = 0
-    evaluation_status_counts: dict[str, int]
-    patient_status_counts: dict[str, int] = Field(default_factory=dict)
+    review_flagged_patients_count: int = Field(
+        default=0, description="People whose own records need clinical review (review_origin=record)."
+    )
+    rule_review_patients_count: int = Field(
+        default=0,
+        description="People with an in-band result under a rule that itself needs review (review_origin=rule).",
+    )
+    evaluation_status_counts: dict[str, int] = Field(description="Per evaluation (not per person).")
+    patient_status_counts: dict[str, int] = Field(
+        default_factory=dict,
+        description=(
+            "Per person, mutually exclusive (sums to total_patients): each person under the first "
+            "status in `patient_status_precedence` among their in-band, non-rule-review results."
+        ),
+    )
+    patient_status_precedence: list[str] = Field(default_factory=list)
     pathway_breakdown: dict[str, PathwayBreakdownOut] = Field(default_factory=dict)
     gaps_by_type: dict[str, int] = Field(default_factory=dict)
     gaps_by_pathway: dict[str, int] = Field(default_factory=dict)
@@ -118,6 +144,14 @@ class EvaluationItemOut(BaseModel):
     next_due_date: date | None = None
     evaluated_at: datetime
     input_snapshot: dict[str, Any] = Field(default_factory=dict)
+    input_snapshot_basis: Literal["recorded_at_evaluation", "reconstructed_at_read"] = Field(
+        default="recorded_at_evaluation",
+        description=(
+            "'recorded_at_evaluation': the de-identified inputs stored with the evaluation when it "
+            "ran. 'reconstructed_at_read': legacy row without a stored snapshot; rebuilt from the "
+            "current records, so it may differ from what the engine saw."
+        ),
+    )
     reasons: list[EvaluationReasonOut] = Field(default_factory=list)
     superseded_by_completion: bool = Field(
         default=False,
@@ -172,6 +206,14 @@ class CareGapOut(BaseModel):
 
 class PatientEvaluationsOut(BaseModel):
     is_synthetic: bool = True
+    is_persisted: bool = Field(
+        default=True,
+        description=(
+            "False for an ad-hoc recomputation (POST /evaluations with a non-default "
+            "look_ahead_days): nothing is stored and evaluation/care-gap ids are 'EPHEMERAL-…' "
+            "placeholders that never resolve to stored records."
+        ),
+    )
     patient_id: str
     evaluation_run_id: str
     reference_date: date
@@ -410,9 +452,14 @@ class AIAuditRecordOut(BaseModel):
     output_sha256: str | None = None
     latency_ms: float | None = None
     extra: dict[str, Any] = Field(default_factory=dict)
+    run_id: str | None = None
 
 
 class AIAuditOut(BaseModel):
+    durable: bool = Field(
+        default=False,
+        description="True when records are stored in PostgreSQL (survive restarts, shared by workers).",
+    )
     items: list[AIAuditRecordOut]
 
 

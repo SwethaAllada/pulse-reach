@@ -98,6 +98,13 @@ from app.services.evaluation import (
     ScreeningEventFact,
     VisitEventFact,
 )
+from app.services.evaluation.recorded import (
+    SNAPSHOT_RECONSTRUCTED,
+    SNAPSHOT_RECORDED,
+    build_safe_input_snapshot_from_context,
+    compute_age_parts as _compute_age_parts,
+    describe_reason,
+)
 from app.services.official_loader import parse as official_parse
 from app.services.care_pathway import (
     recommended_pathway,
@@ -415,55 +422,6 @@ def _review_out(r: dict[str, Any]) -> CareGapReviewOut:
     )
 
 
-_REASON_DETAIL_TEMPLATES: dict[str, str] = {
-    "due": "Patient meets eligibility criteria and screening/visit is due now.",
-    "due_now": "Patient meets eligibility criteria and screening/visit is due now.",
-    "upcoming": "Patient meets eligibility criteria and next due date falls within the look-ahead window.",
-    "due_within_lookahead": "Patient meets eligibility criteria and next due date falls within the look-ahead window.",
-    "overdue": "Patient meets eligibility criteria and the approved overdue window has elapsed.",
-    "completed": "Screening/visit has documented completion within the active interval.",
-    "eligible": "Patient meets programme eligibility criteria.",
-    "not_eligible": "Patient does not meet eligibility criteria for this rule.",
-    "unknown": "Screening/visit history is unavailable; status cannot be assumed due.",
-    "insufficient_information": "Required patient demographic or clinical attributes are missing.",
-    "requires_clinical_review": "Rule or clinical state requires clinical review before recommendation.",
-    "history_not_available": "Screening/visit history for this pathway is not available; status remains unknown.",
-    "missing_required_attributes": "Required patient demographic or clinical attributes are missing.",
-    "rule_requires_clinical_review": "Rule or required open question is unresolved and requires clinical review.",
-    "consent_refused_valid": "Valid documented refusal on file for this screening or pathway.",
-    "referral_cancelled": "Linked referral was cancelled and requires clinical review.",
-    "referral_pending": "Linked referral is currently pending.",
-    "referral_upcoming": "Linked referral is initiated or scheduled.",
-    "referral_completed": "Linked referral has documented completion.",
-    "completed_within_interval": "Most recent screening/visit was completed within the active rule interval.",
-    "age_out_of_range": "Patient age is outside the rule's target age range.",
-    "sex_mismatch": "Rule applies to a different sex than recorded for the patient.",
-    "deceased": "Patient is recorded as deceased.",
-    "not_thiqa_member": "Rule requires Thiqa membership which is not recorded for the patient.",
-}
-
-
-def describe_reason(
-    reason_code: str | None,
-    guard_id: str | None = None,
-    item_category: str | None = None,
-    item_code: str | None = None,
-    evaluation_status: str | None = None,
-) -> str | None:
-    code = reason_code or evaluation_status
-    if not code:
-        return None
-    base = _REASON_DETAIL_TEMPLATES.get(
-        code, f"Evaluation reason '{code.replace('_', ' ')}'."
-    )
-    parts = [base]
-    if guard_id:
-        parts.append(f"guard={guard_id}")
-    if item_category or item_code:
-        parts.append(f"item={item_category or ''}:{item_code or ''}".strip(":"))
-    return " ".join(parts)
-
-
 @lru_cache(maxsize=1)
 def _bundle_rules_by_id() -> dict[str, Any]:
     return rules_index(get_cached_bundle().rules)
@@ -488,16 +446,6 @@ def evaluation_markers(
         "applicability_basis": basis,
         "review_origin": review_origin(evaluation_status, reason_code),
     }
-
-
-def _compute_age_parts(dob: date | None, ref_date: date) -> tuple[int | None, int | None]:
-    if dob is None:
-        return None, None
-    years = ref_date.year - dob.year - ((ref_date.month, ref_date.day) < (dob.month, dob.day))
-    months = (ref_date.year - dob.year) * 12 + (ref_date.month - dob.month)
-    if ref_date.day < dob.day:
-        months -= 1
-    return max(years, 0), max(months, 0)
 
 
 def build_safe_input_snapshot(
@@ -536,39 +484,12 @@ def build_safe_input_snapshot(
     }
 
 
-def build_safe_input_snapshot_from_context(
-    *,
-    ctx: PatientContext,
-    pathway: str,
-    has_prior_activity: bool,
-    has_referral: bool,
-    reference_date: date,
-) -> dict[str, Any]:
-    age_years, age_months = _compute_age_parts(ctx.date_of_birth, reference_date)
-    h_status = ctx.history_by_pathway.get(pathway, "not_available")
-    relevant_consents = [
-        c
-        for c in ctx.consents
-        if c.consent_type == "screening_participation"
-        and c.scope_pathway in (None, pathway)
-    ]
-    latest_consent = (
-        max(relevant_consents, key=lambda c: (c.recorded_at, c.consent_id)).state
-        if relevant_consents
-        else "absent"
-    )
-    return {
-        "pathway": pathway,
-        "age_years": age_years,
-        "age_months": age_months,
-        "sex": ctx.sex,
-        "thiqa_member": ctx.thiqa_member,
-        "ever_smoked": ctx.ever_smoked,
-        "history_status": h_status,
-        "screening_consent_state": latest_consent,
-        "has_prior_screening_or_visit": has_prior_activity,
-        "has_referral": has_referral,
-    }
+def _snapshot_fields(recorded: dict[str, Any] | None, reconstruct) -> dict[str, Any]:
+    """Prefer the snapshot recorded at evaluation time; rows written before migration 0010 have
+    none, so their snapshot is rebuilt from current records and labelled as such."""
+    if recorded is not None:
+        return {"input_snapshot": recorded, "input_snapshot_basis": SNAPSHOT_RECORDED}
+    return {"input_snapshot": reconstruct(), "input_snapshot_basis": SNAPSHOT_RECONSTRUCTED}
 
 
 def _age_band_bounds(age_band: str, ref_date: date) -> tuple[date | None, date | None]:
@@ -762,6 +683,24 @@ def _build_patient_context_from_dicts(
     )
 
 
+# Person-level status (F-10): each person is counted once, under the first status in this order
+# that any of their in-scope results has. Results for rules whose printed band excludes the person
+# (`applicability = out_of_band`) and reviews caused by the rule itself (`review_origin = rule`,
+# counted separately) do not classify a person.
+PATIENT_STATUS_PRECEDENCE: tuple[str, ...] = (
+    "requires_clinical_review",
+    "overdue",
+    "due",
+    "upcoming",
+    "unknown",
+    "insufficient_information",
+    "eligible",
+    "completed",
+    "not_eligible",
+)
+NO_APPLICABLE_RESULT = "no_applicable_result"
+
+
 def _build_dashboard_summary_out(
     *,
     run_id: str,
@@ -769,19 +708,25 @@ def _build_dashboard_summary_out(
     reference_date: date,
     n_adults: int,
     n_children: int,
-    patients: list[tuple[str, int]],
-    evaluations: list[tuple[str, str, str]],
+    patients: list[tuple[str, int, date | None, str | None]],
+    evaluations: list[tuple[str, str, str, str | None]],
     care_gaps: list[tuple[str, str, str, str]],
     history_rows: list[tuple[str, str, str]],
     rule_pathway_map: dict[str, str],
     rules_summary: RulesSummaryOut,
 ) -> DashboardSummaryOut:
-    status_counts = Counter(st for _, _, st in evaluations)
-    patients_by_status: dict[str, set[str]] = {}
+    status_counts = Counter(st for _, _, st, _ in evaluations)
+    person = {pid: (dob, sex) for pid, _, dob, sex in patients}
+    person_statuses: dict[str, set[str]] = {pid: set() for pid in person}
+    unknown_patients: set[str] = set()
+    record_review: set[str] = set()
+    rule_review: set[str] = set()
     pathway_patients_with_history: dict[str, set[str]] = {"ifhas": set(), "well_child": set()}
     pathway_unknown_history: dict[str, set[str]] = {"ifhas": set(), "well_child": set()}
-    pathway_eligible_due: dict[str, set[str]] = {"ifhas": set(), "well_child": set()}
-    pathway_review_flagged: dict[str, set[str]] = {"ifhas": set(), "well_child": set()}
+    pathway_eligible: dict[str, set[str]] = {"ifhas": set(), "well_child": set()}
+    pathway_due: dict[str, set[str]] = {"ifhas": set(), "well_child": set()}
+    pathway_record_review: dict[str, set[str]] = {"ifhas": set(), "well_child": set()}
+    pathway_rule_review: dict[str, set[str]] = {"ifhas": set(), "well_child": set()}
 
     for pid, pw, hst in history_rows:
         if pw in pathway_patients_with_history:
@@ -790,15 +735,37 @@ def _build_dashboard_summary_out(
             elif hst == "not_available":
                 pathway_unknown_history[pw].add(pid)
 
-    for pid, rid, st in evaluations:
-        patients_by_status.setdefault(st, set()).add(pid)
+    for pid, rid, st, rc in evaluations:
+        dob, sex = person.get(pid, (None, None))
+        markers = evaluation_markers(rid, st, rc, date_of_birth=dob, sex=sex, reference_date=reference_date)
+        if markers["applicability"] == "out_of_band":
+            continue
         pw = rule_pathway_map.get(rid)
-        if pw in pathway_eligible_due:
-            if st in ("eligible", "due", "upcoming", "overdue"):
-                pathway_eligible_due[pw].add(pid)
-            if st == "requires_clinical_review":
-                pathway_review_flagged[pw].add(pid)
+        if markers["review_origin"] == "rule":
+            rule_review.add(pid)
+            if pw in pathway_rule_review:
+                pathway_rule_review[pw].add(pid)
+            continue
+        person_statuses.setdefault(pid, set()).add(st)
+        if st == "unknown":
+            unknown_patients.add(pid)
+        if pw not in pathway_eligible:
+            continue
+        if st == "eligible":
+            pathway_eligible[pw].add(pid)
+        elif st in ("due", "upcoming", "overdue"):
+            pathway_due[pw].add(pid)
+        elif st == "requires_clinical_review":
+            record_review.add(pid)
+            pathway_record_review[pw].add(pid)
 
+    patient_status_counts: Counter[str] = Counter()
+    for statuses in person_statuses.values():
+        patient_status_counts[
+            next((st for st in PATIENT_STATUS_PRECEDENCE if st in statuses), NO_APPLICABLE_RESULT)
+        ] += 1
+
+    patients = [(pid, reg) for pid, reg, _, _ in patients]
     patient_region = {pid: reg for pid, reg in patients}
     open_gaps_count = 0
     closed_refused_count = 0
@@ -831,9 +798,11 @@ def _build_dashboard_summary_out(
     pathway_breakdown = {
         pw: PathwayBreakdownOut(
             patients_with_history=len(pathway_patients_with_history[pw]),
-            eligible_or_due_patients=len(pathway_eligible_due[pw]),
+            programme_eligible_patients=len(pathway_eligible[pw]),
+            due_or_upcoming_patients=len(pathway_due[pw]),
             unknown_history_patients=len(pathway_unknown_history[pw]),
-            review_flagged_patients=len(pathway_review_flagged[pw]),
+            review_flagged_patients=len(pathway_record_review[pw]),
+            rule_review_patients=len(pathway_rule_review[pw]),
             open_care_gaps_count=gaps_by_pathway[pw],
         )
         for pw in ("ifhas", "well_child")
@@ -849,12 +818,12 @@ def _build_dashboard_summary_out(
         n_children=n_children,
         open_care_gaps_count=open_gaps_count,
         closed_refused_care_gaps_count=closed_refused_count,
-        unknown_history_patients_count=len(patients_by_status.get("unknown", set())),
-        review_flagged_patients_count=len(
-            patients_by_status.get("requires_clinical_review", set())
-        ),
+        unknown_history_patients_count=len(unknown_patients),
+        review_flagged_patients_count=len(record_review),
+        rule_review_patients_count=len(rule_review),
         evaluation_status_counts=dict(status_counts),
-        patient_status_counts={st: len(pids) for st, pids in patients_by_status.items()},
+        patient_status_counts=dict(patient_status_counts),
+        patient_status_precedence=list(PATIENT_STATUS_PRECEDENCE),
         pathway_breakdown=pathway_breakdown,
         gaps_by_type=dict(gaps_by_type),
         gaps_by_pathway=dict(gaps_by_pathway),
@@ -883,9 +852,11 @@ class MemoryReadRepository:
             reference_date=er["reference_date"],
             n_adults=gr["n_adults"],
             n_children=gr["n_children"],
-            patients=[(p["patient_id"], p["region_id"]) for p in ds.patients],
+            patients=[
+                (p["patient_id"], p["region_id"], p["date_of_birth"], p["sex"]) for p in ds.patients
+            ],
             evaluations=[
-                (e["patient_id"], e["rule_id"], e["evaluation_status"])
+                (e["patient_id"], e["rule_id"], e["evaluation_status"], e["reason_code"])
                 for e in ds.eligibility_evaluations
             ],
             care_gaps=[
@@ -1087,7 +1058,8 @@ class MemoryReadRepository:
                 EvaluationReasonOut(
                     reason_ordinal=r["reason_ordinal"],
                     reason_code=r["reason_code"],
-                    reason_detail=describe_reason(
+                    reason_detail=r.get("reason_detail")
+                    or describe_reason(
                         r["reason_code"],
                         r["guard_id"],
                         r["item_category"],
@@ -1116,20 +1088,24 @@ class MemoryReadRepository:
                     look_ahead_days=er.get("look_ahead_days"),
                     evaluation_status=ev["evaluation_status"],
                     reason_code=ev["reason_code"],
-                    reason_detail=describe_reason(
+                    reason_detail=ev.get("reason_detail")
+                    or describe_reason(
                         ev.get("reason_code"),
                         evaluation_status=ev["evaluation_status"],
                     ),
                     next_due_date=ev["next_due_date"],
                     evaluated_at=ev["evaluated_at"],
-                    input_snapshot=build_safe_input_snapshot(
-                        patient=p,
-                        pathway=pathway,
-                        history_status=h_status,
-                        consents=consents,
-                        has_prior_activity=ev["rule_id"] in prior_by_rule,
-                        has_referral=ev["rule_id"] in referral_by_rule,
-                        reference_date=ref_date,
+                    **_snapshot_fields(
+                        ev.get("input_snapshot"),
+                        lambda: build_safe_input_snapshot(
+                            patient=p,
+                            pathway=pathway,
+                            history_status=h_status,
+                            consents=consents,
+                            has_prior_activity=ev["rule_id"] in prior_by_rule,
+                            has_referral=ev["rule_id"] in referral_by_rule,
+                            reference_date=ref_date,
+                        ),
                     ),
                     reasons=reasons,
                     superseded_by_completion=ev["evaluation_id"] in completed_gap_by_eval,
@@ -1316,7 +1292,8 @@ class MemoryReadRepository:
             EvaluationReasonOut(
                 reason_ordinal=r["reason_ordinal"],
                 reason_code=r["reason_code"],
-                reason_detail=describe_reason(
+                reason_detail=r.get("reason_detail")
+                or describe_reason(
                     r["reason_code"],
                     r["guard_id"],
                     r["item_category"],
@@ -1772,6 +1749,7 @@ class PostgresReadRepository:
                         EligibilityEvaluation.patient_id,
                         EligibilityEvaluation.rule_id,
                         EligibilityEvaluation.evaluation_status,
+                        EligibilityEvaluation.reason_code,
                     ).where(
                         EligibilityEvaluation.evaluation_run_id == er.evaluation_run_id
                     )
@@ -1789,9 +1767,9 @@ class PostgresReadRepository:
             )
             patient_rows = list(
                 self._session.execute(
-                    select(Patient.patient_id, Patient.region_id).where(
-                        Patient.run_id == gr.run_id
-                    )
+                    select(
+                        Patient.patient_id, Patient.region_id, Patient.date_of_birth, Patient.sex
+                    ).where(Patient.run_id == gr.run_id)
                 ).all()
             )
             history_rows = list(
@@ -1818,8 +1796,8 @@ class PostgresReadRepository:
             reference_date=er.reference_date,
             n_adults=gr.n_adults,
             n_children=gr.n_children,
-            patients=[(pid, reg) for pid, reg in patient_rows],
-            evaluations=[(pid, rid, st) for pid, rid, st in eval_rows],
+            patients=[tuple(r) for r in patient_rows],
+            evaluations=[tuple(r) for r in eval_rows],
             care_gaps=[(pid, rid, gt, gst) for pid, rid, gt, gst in gap_rows],
             history_rows=[(pid, pw, hst) for pid, pw, hst in history_rows],
             rule_pathway_map={r.rule_id: r.pathway for r in rules},
@@ -2143,26 +2121,31 @@ class PostgresReadRepository:
                     look_ahead_days=er.look_ahead_days,
                     evaluation_status=ev.evaluation_status,
                     reason_code=ev.reason_code,
-                    reason_detail=describe_reason(
+                    reason_detail=ev.reason_detail
+                    or describe_reason(
                         ev.reason_code,
                         evaluation_status=ev.evaluation_status,
                     ),
                     next_due_date=ev.next_due_date,
                     evaluated_at=ev.evaluated_at,
-                    input_snapshot=build_safe_input_snapshot(
-                        patient=p_dict,
-                        pathway=rm.pathway,
-                        history_status=h_status,
-                        consents=consents,
-                        has_prior_activity=ev.rule_id in prior_by_rule,
-                        has_referral=ev.rule_id in referral_by_rule,
-                        reference_date=er.reference_date,
+                    **_snapshot_fields(
+                        ev.input_snapshot,
+                        lambda: build_safe_input_snapshot(
+                            patient=p_dict,
+                            pathway=rm.pathway,
+                            history_status=h_status,
+                            consents=consents,
+                            has_prior_activity=ev.rule_id in prior_by_rule,
+                            has_referral=ev.rule_id in referral_by_rule,
+                            reference_date=er.reference_date,
+                        ),
                     ),
                     reasons=[
                         EvaluationReasonOut(
                             reason_ordinal=r.reason_ordinal,
                             reason_code=r.reason_code,
-                            reason_detail=describe_reason(
+                            reason_detail=r.reason_detail
+                            or describe_reason(
                                 r.reason_code,
                                 r.guard_id,
                                 r.item_category,
@@ -2458,7 +2441,8 @@ class PostgresReadRepository:
                 EvaluationReasonOut(
                     reason_ordinal=r.reason_ordinal,
                     reason_code=r.reason_code,
-                    reason_detail=describe_reason(
+                    reason_detail=r.reason_detail
+                    or describe_reason(
                         r.reason_code,
                         r.guard_id,
                         r.item_category,
@@ -2644,12 +2628,12 @@ class PostgresReadRepository:
         self, patient_id: str
     ) -> tuple[dict[str, Any] | None, list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
         try:
+            gr, er = self._latest_runs()
             p = self._session.scalars(
-                select(Patient).where(Patient.patient_id == patient_id)
+                select(Patient).where(Patient.run_id == gr.run_id, Patient.patient_id == patient_id)
             ).first()
             if p is None:
                 return None, [], [], []
-            _, er = self._latest_runs()
             evals = [
                 _row_to_dict(e)
                 for e in self._session.scalars(
@@ -2662,13 +2646,13 @@ class PostgresReadRepository:
             gaps = [
                 _row_to_dict(g)
                 for g in self._session.scalars(
-                    select(CareGap).where(CareGap.patient_id == patient_id)
+                    select(CareGap).where(CareGap.run_id == gr.run_id, CareGap.patient_id == patient_id)
                 ).all()
             ]
             consents = [
                 _row_to_dict(c)
                 for c in self._session.scalars(
-                    select(Consent).where(Consent.patient_id == patient_id)
+                    select(Consent).where(Consent.run_id == gr.run_id, Consent.patient_id == patient_id)
                 ).all()
             ]
         except SQLAlchemyError as exc:
@@ -2679,7 +2663,7 @@ class PostgresReadRepository:
         self, patient_id: str, rule_id: str
     ) -> tuple[dict[str, Any] | None, dict[str, Any] | None, str, list[dict[str, Any]], list[str]]:
         try:
-            _, er = self._latest_runs()
+            gr, er = self._latest_runs()
             ev = self._session.scalars(
                 select(EligibilityEvaluation).where(
                     EligibilityEvaluation.patient_id == patient_id,
@@ -2692,7 +2676,7 @@ class PostgresReadRepository:
             r_meta = self._session.scalars(select(Rule).where(Rule.rule_id == rule_id)).first()
             if r_meta is None:
                 return None, None, "not_available", [], []
-            h_status = self._patient_history_map([patient_id]).get(patient_id, {}).get(
+            h_status = self._patient_history_map([patient_id], run_id=gr.run_id).get(patient_id, {}).get(
                 r_meta.pathway, "not_available"
             )
             eval_reasons = [

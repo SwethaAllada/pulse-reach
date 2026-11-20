@@ -22,8 +22,6 @@ from app.repositories.read_repo import (
     MemoryReadRepository,
     PostgresReadRepository,
     ReadRepository,
-    build_safe_input_snapshot_from_context,
-    describe_reason,
     evaluation_markers,
     get_cached_bundle,
     get_cached_engine,
@@ -78,7 +76,12 @@ from app.schemas.v1 import (
     WorkflowHistoryOut,
 )
 from app.services.evaluation.engine import ENGINE_VERSION
-from app.services.ai import AIGenerationMeta, AIService, get_ai_service
+from app.services.evaluation.recorded import (
+    evaluation_reason_detail,
+    evaluation_snapshot,
+    fired_reason_detail,
+)
+from app.services.ai import AIGenerationMeta, AIService, DuplicateReviewError, get_ai_service
 from app.services.ai.audit import sha256
 from app.services.ai.guardrails import validate_outreach_output
 from app.services.ai.service import NOT_GENERATED
@@ -273,14 +276,13 @@ def run_evaluation(
         look_ahead_days=req.look_ahead_days,
     )
     rule_meta = {r["rule_id"]: r for r in get_cached_bundle().rules}
-    prior_rules = {s.rule_id for s in ctx.ifhas_screenings} | {
-        v.rule_id for v in ctx.well_child_visits
-    }
-    referral_rules = {r.trigger_rule_id for r in ctx.referrals if r.trigger_rule_id}
+    # Not persisted: ids are namespaced per patient so they can never collide with (or resolve
+    # to) stored evaluations or care gaps of this or another patient (F-18).
+    ephemeral = f"EPHEMERAL-{req.patient_id}"
     eval_items: list[EvaluationItemOut] = []
     eval_id_by_rule: dict[str, str] = {}
     for ord_ev, ev in enumerate(summary.evaluations, 1):
-        eid = f"SYNTH-EVL-{ord_ev:06d}"
+        eid = f"{ephemeral}-EVL-{ord_ev:04d}"
         eval_id_by_rule[ev.rule_id] = eid
         rm = rule_meta.get(ev.rule_id, {})
         eval_items.append(
@@ -300,29 +302,15 @@ def run_evaluation(
                 look_ahead_days=req.look_ahead_days,
                 evaluation_status=ev.evaluation_status,
                 reason_code=ev.reason_code,
-                reason_detail=describe_reason(
-                    ev.reason_code,
-                    evaluation_status=ev.evaluation_status,
-                ),
+                reason_detail=evaluation_reason_detail(ev),
                 next_due_date=ev.next_due_date,
                 evaluated_at=ev.evaluated_at,
-                input_snapshot=build_safe_input_snapshot_from_context(
-                    ctx=ctx,
-                    pathway=ev.pathway,
-                    has_prior_activity=ev.rule_id in prior_rules,
-                    has_referral=ev.rule_id in referral_rules,
-                    reference_date=ref_date,
-                ),
+                input_snapshot=evaluation_snapshot(ctx, ev, ref_date),
                 reasons=[
                     EvaluationReasonOut(
                         reason_ordinal=i,
                         reason_code=r.reason_code,
-                        reason_detail=describe_reason(
-                            r.reason_code,
-                            r.guard_id,
-                            r.item_category,
-                            r.item_code,
-                        ),
+                        reason_detail=fired_reason_detail(r),
                         guard_id=r.guard_id,
                         item_category=r.item_category,
                         item_code=r.item_code,
@@ -341,7 +329,7 @@ def run_evaluation(
         )
     gap_items = [
         CareGapOut(
-            care_gap_id=f"SYNTH-GAP-{i:06d}",
+            care_gap_id=f"{ephemeral}-GAP-{i:04d}",
             patient_id=req.patient_id,
             evaluation_id=eval_id_by_rule[gf.rule_id],
             rule_id=gf.rule_id,
@@ -361,6 +349,7 @@ def run_evaluation(
     ]
     return PatientEvaluationsOut(
         is_synthetic=True,
+        is_persisted=False,
         patient_id=req.patient_id,
         evaluation_run_id=eval_run_id,
         reference_date=summary.reference_date,
@@ -551,6 +540,7 @@ def create_explanation(
                 ),
             ),
             context,
+            run_id=ev_match.get("run_id"),
         )
     except PrivacyViolationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -643,12 +633,13 @@ def _draft_gate(
     """All pre-generation checks (`app.services.outreach.drafting`); never calls a provider."""
     early = pre_consent_block(req.channel, req.language)
     if early is not None:
-        if repo.get_patient(req.patient_id) is None:
+        patient = repo.get_patient(req.patient_id)
+        if patient is None:
             raise HTTPException(status_code=404, detail=f"Synthetic patient '{req.patient_id}' not found")
         return OutreachDraftGate(
             allowed=False, blocked_reason=early, patient_id=req.patient_id, rule_id=req.rule_id,
             rule_version=None, care_gap_id=req.care_gap_id, channel=req.channel,
-            language=req.language, tone=tone,
+            language=req.language, tone=tone, run_id=patient.run_id,
         )
     res, _, (p, gaps, consents) = _gated_preview(req, repo)
     rule = repo.get_rule_detail(req.rule_id)
@@ -698,8 +689,10 @@ def review_outreach_draft(
     followups: FollowUpRepository = Depends(get_followup_repository),
     ai: AIService = Depends(get_ai_service),
 ) -> OutreachDraftReviewOut:
-    """Human approval or rejection of a draft. Approval re-checks consent, validates the final
-    text and records a *simulated* outreach attempt (`simulated_not_sent`); nothing is sent."""
+    """Human approval or rejection of a draft. Approval re-checks consent and eligibility,
+    validates the final text and records a *simulated* outreach attempt (`simulated_not_sent`);
+    nothing is sent. A draft takes one terminal decision: approval cannot be replayed and a
+    rejected draft cannot be approved later (409)."""
     src = ai.audit.get(req.draft_audit_id)
     if src is None or src.feature != "outreach_draft" or src.generation_mode == NOT_GENERATED:
         raise HTTPException(status_code=404, detail="Outreach draft not found; generate a new draft.")
@@ -707,6 +700,7 @@ def review_outreach_draft(
             src.extra.get("channel"), src.extra.get("language")) != (
             req.patient_id, req.rule_id, req.care_gap_id, req.channel, req.language):
         raise HTTPException(status_code=409, detail="Review does not match the generated draft.")
+    _ensure_not_reviewed(ai, req.draft_audit_id)
 
     subject = {"patient_id": req.patient_id, "rule_id": req.rule_id, "care_gap_id": req.care_gap_id}
     extra: dict[str, Any] = {"draft_audit_id": req.draft_audit_id, "channel": req.channel,
@@ -715,15 +709,19 @@ def review_outreach_draft(
                care_gap_id=req.care_gap_id, rule_id=req.rule_id, channel=req.channel,
                language=req.language, disclaimer=_OUTREACH_DRAFT_DISCLAIMER)
 
+    def review(decision: str, **kw: Any):
+        try:
+            return ai.record_outreach_review(subject=subject, decision=decision, run_id=src.run_id, **kw)
+        except DuplicateReviewError as exc:
+            raise _already_reviewed(ai, req.draft_audit_id) from exc
+
     if req.decision == "rejected":
-        rec = ai.record_outreach_review(subject=subject, decision="rejected",
-                                        extra={**extra, "reason_provided": bool(req.reason)})
+        rec = review("rejected", extra={**extra, "reason_provided": bool(req.reason)})
         return OutreachDraftReviewOut(**out, review_audit_id=rec.audit_id, review_status="rejected")
 
     gate = _draft_gate(req, repo, str(src.extra.get("tone") or "supportive"))
     if not gate.allowed:  # consent or eligibility changed since the draft was generated
-        rec = ai.record_outreach_review(subject=subject, decision="blocked",
-                                        extra={**extra, "blocked_reason": gate.blocked_reason})
+        rec = review("blocked", extra={**extra, "blocked_reason": gate.blocked_reason})
         return OutreachDraftReviewOut(**out, review_audit_id=rec.audit_id, review_status="blocked",
                                       blocked_reason=gate.blocked_reason)
 
@@ -734,25 +732,63 @@ def review_outreach_draft(
     violations = validate_outreach_output(body, facts=gate.facts, channel=gate.channel,
                                           language=gate.language, max_chars=gate.max_chars)
     if violations:
-        ai.record_outreach_review(subject=subject, decision="invalid", violations=tuple(violations),
-                                  extra={**extra, "message_sha256": sha256(body)})
+        review("invalid", violations=tuple(violations), extra={**extra, "message_sha256": sha256(body)})
         raise HTTPException(status_code=422, detail={"message": "Final message failed validation.",
                                                      "violations": violations})
 
-    follow_up = followups.create_follow_up(req.care_gap_id, FollowUpCreateIn(
-        event_type="outreach_attempted", recorded_by=req.reviewed_by,
-        note=f"AI-assisted outreach draft approved by reviewer (draft audit {req.draft_audit_id}; "
-             f"channel {req.channel}; language {req.language}). Simulated only; not sent.",
-    ))
     edited = sha256(body) != src.extra.get("returned_sha256")
-    rec = ai.record_outreach_review(subject=subject, decision="approved", extra={
-        **extra, "message_sha256": sha256(body), "edited": edited,
-        "follow_up_id": follow_up.follow_up_id, "simulated_outreach_status": follow_up.outcome_status,
-    })
+    recorded: dict[str, Any] = {}
+
+    def record_review(follow_up: FollowUpEventOut, session: Any) -> None:
+        # Same transaction as the follow-up event: a concurrent or replayed approval violates the
+        # one-terminal-review-per-draft constraint and rolls the follow-up back too.
+        approved = follow_up.event_type == "outreach_attempted"
+        recorded["rec"] = review(
+            "approved" if approved else "blocked", session=session,
+            extra={**extra, "message_sha256": sha256(body), "edited": edited,
+                   "follow_up_id": follow_up.follow_up_id,
+                   "simulated_outreach_status": follow_up.outcome_status,
+                   **({} if approved else {"blocked_reason": follow_up.suppression_reason})},
+        )
+
+    try:
+        follow_up = followups.create_follow_up(req.care_gap_id, FollowUpCreateIn(
+            event_type="outreach_attempted", recorded_by=req.reviewed_by,
+            note=f"AI-assisted outreach draft approved by reviewer (draft audit {req.draft_audit_id}; "
+                 f"channel {req.channel}; language {req.language}). Simulated only; not sent.",
+        ), on_recorded=record_review)
+    except HTTPException as exc:
+        if exc.status_code == 409 and ai.audit.terminal_review(req.draft_audit_id) is not None:
+            raise _already_reviewed(ai, req.draft_audit_id) from exc
+        raise
+    rec = recorded["rec"]
+    if follow_up.event_type != "outreach_attempted":  # the write-time consent gate suppressed it
+        return OutreachDraftReviewOut(
+            **out, review_audit_id=rec.audit_id, review_status="blocked",
+            blocked_reason=follow_up.suppression_reason, follow_up=follow_up,
+            simulated_outreach_status=follow_up.outcome_status,
+        )
     return OutreachDraftReviewOut(
         **out, review_audit_id=rec.audit_id, review_status="approved", edited=edited,
         simulated_outreach_status=follow_up.outcome_status, follow_up=follow_up,
     )
+
+
+def _already_reviewed(ai: AIService, draft_audit_id: str) -> HTTPException:
+    prior = ai.audit.terminal_review(draft_audit_id)
+    status = prior.generation_mode.removeprefix("human_") if prior else "reviewed"
+    return HTTPException(status_code=409, detail={
+        "message": f"Outreach draft was already {status}; generate a new draft.",
+        "code": "draft_already_reviewed",
+        "review_status": status,
+        "review_audit_id": prior.audit_id if prior else None,
+        "follow_up_id": prior.extra.get("follow_up_id") if prior else None,
+    })
+
+
+def _ensure_not_reviewed(ai: AIService, draft_audit_id: str) -> None:
+    if ai.audit.terminal_review(draft_audit_id) is not None:
+        raise _already_reviewed(ai, draft_audit_id)
 
 
 @router.get("/insights/population", response_model=PopulationInsightOut)
@@ -775,6 +811,7 @@ def population_insight(
         "open_gaps_by_region": {str(r.region_id): r.open_care_gaps_count for r in d.region_breakdown},
         "unknown_history_patients_count": d.unknown_history_patients_count,
         "review_flagged_patients_count": d.review_flagged_patients_count,
+        "rule_review_patients_count": d.rule_review_patients_count,
     }
     insight = ai.population_insight(facts)
     return PopulationInsightOut(
@@ -799,6 +836,7 @@ def ai_audit(
     ai: AIService = Depends(get_ai_service),
 ) -> AIAuditOut:
     return AIAuditOut(
+        durable=ai.audit.durable,
         items=[
             AIAuditRecordOut(**{**r.__dict__, "violations": list(r.violations)})
             for r in ai.audit.recent(limit=limit, feature=feature)

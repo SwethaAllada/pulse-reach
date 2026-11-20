@@ -77,10 +77,10 @@ def test_real_clinical_bundle_matches_canonical_counts_and_authority():
     }
     assert all(s["acquisition_state"] == "blocked" for s in bundle.standards)
 
-    # Vocabularies: 3 / 9 / 9 / 7
+    # Vocabularies: 3 / 9 / 12 / 7
     assert len(bundle.verification_statuses) == 3
     assert len(bundle.evaluation_statuses) == 9
-    assert len(bundle.reason_codes) == 9
+    assert len(bundle.reason_codes) == 12
     assert len(bundle.guards) == 7
 
     # 23 open questions
