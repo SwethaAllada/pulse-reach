@@ -9,7 +9,9 @@
 > - Outreach previews (`POST /api/v1/outreach/preview`) are **simulated only** (`simulated_only: true`) and blocked unless `contact` consent is `granted`.
 > - AI assistance (explanations, outreach drafts, population insights) only restates deterministic results; it is off unless `LLM_ENABLED=true` with `LLM_API_KEY` and `LLM_MODEL`, and every output is validated with a deterministic fallback.
 >
-> **Errors:** every error body keeps `detail` and adds `error: {status, code, message, request_id}` (`code` in `bad_request`, `not_found`, `conflict`, `validation_error`, `service_unavailable`, `internal_error`). Validation `detail` items carry only `type`, `loc`, `msg`. Database and unexpected errors never return SQL, parameters or tracebacks. Database constraint violations on writes are `409`.
+> **Errors:** every error body keeps `detail` and adds `error: {status, code, message, request_id}` (`code` in `bad_request`, `unauthorized`, `not_found`, `conflict`, `validation_error`, `service_unavailable`, `internal_error`). Validation `detail` items carry only `type`, `loc`, `msg`. Database and unexpected errors never return SQL, parameters or tracebacks. Database constraint violations on writes are `409`.
+>
+> **Write key:** every non-GET request except `POST /evaluations`, `POST /outreach/preview` and `POST /explanations` needs header `X-PulseReach-Write-Key` (shared demo access code, `WRITE_API_KEY`); missing/invalid → `401`, key not configured on the server → `503`. GET endpoints are public.
 >
 > **Writes:** every write requires a non-blank actor (`recorded_by`, or `reviewer` for reviews). The actor is **client-supplied and unauthenticated** (no authentication exists in this MVP); treat it as attribution, not identity.
 >

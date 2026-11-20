@@ -9,6 +9,10 @@ x-backend-env: &backend-env
   RULES_DIR: /app/data-pipeline/rules
   DATA_DIR: /app/data
   CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+  # Writes need X-PulseReach-Write-Key = WRITE_API_KEY; without a key they are refused unless
+  # ALLOW_UNPROTECTED_WRITES=true (local only).
+  WRITE_API_KEY: ${WRITE_API_KEY:-}
+  ALLOW_UNPROTECTED_WRITES: ${ALLOW_UNPROTECTED_WRITES:-false}
   LLM_ENABLED: ${LLM_ENABLED:-false}
   LLM_PROVIDER: ${LLM_PROVIDER:-openai_compatible}
   LLM_MODEL: ${LLM_MODEL:-}

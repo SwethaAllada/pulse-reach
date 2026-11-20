@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 from alembic import command
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import Session
@@ -76,12 +77,17 @@ def db():
         assert again["clinical"]["load_id"] == first["clinical"]["load_id"]  # clinical load reused
         mp = pytest.MonkeyPatch()
         mp.setattr(settings, "data_source", "db")
+        # Deployment configuration: writes go through the shared write key.
+        mp.setattr(settings, "allow_unprotected_writes", False)
+        mp.setattr(settings, "write_api_key", SecretStr("live-test-write-key"))
+        client.headers["X-PulseReach-Write-Key"] = "live-test-write-key"
         ai = _new_ai()
         app.dependency_overrides[get_ai_service] = lambda: ai
         try:
             yield eng
         finally:
             app.dependency_overrides.pop(get_ai_service, None)
+            client.headers.pop("X-PulseReach-Write-Key", None)
             mp.undo()
             eng.dispose()
 

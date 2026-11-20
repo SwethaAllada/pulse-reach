@@ -38,6 +38,15 @@ async def _lifespan(_app: FastAPI):
             report.authoritative_rules,
             report.db_rule_load_id,
         )
+    from app.core.write_auth import write_protection_status
+
+    protection = write_protection_status()
+    if protection == "enforced":
+        logger.info("Write protection: enforced (X-PulseReach-Write-Key)")
+    elif protection == "unprotected":
+        logger.warning("Write protection: DISABLED by ALLOW_UNPROTECTED_WRITES=true; never use publicly")
+    else:
+        logger.warning("Write protection: WRITE_API_KEY not set; all state-changing requests are refused")
     from app.services.ai import get_ai_service
 
     logger.info("AI service: %s", get_ai_service().status())

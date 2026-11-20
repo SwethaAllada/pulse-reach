@@ -5,6 +5,10 @@ from __future__ import annotations
 import os
 from collections.abc import Iterator
 
+# Workflow tests exercise business rules, not the shared write key; write protection itself is
+# covered with explicit settings in `test_write_auth.py`. Set before `app` settings are imported.
+os.environ.setdefault("ALLOW_UNPROTECTED_WRITES", "true")
+
 import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine

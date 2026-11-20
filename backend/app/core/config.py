@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     # When unset the API still starts; database features report "not configured".
     database_url: SecretStr | None = None
     cors_origins: str = "http://localhost:3000"
+    # Shared demo access code required on state-changing requests (`X-PulseReach-Write-Key`).
+    # Without it writes are refused, unless unprotected writes are explicitly allowed (local only).
+    write_api_key: SecretStr | None = None
+    allow_unprotected_writes: bool = False
     rules_dir: str | None = None
     data_dir: str | None = None
     log_level: str = "INFO"

@@ -12,6 +12,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.core.config import settings
+from app.core.write_auth import require_write_key
 from app.db.deps import get_db_session
 from app.repositories.followup_repo import (
     FollowUpRepository,
@@ -90,7 +91,7 @@ from app.services.explanation.context import build_explanation_context
 from app.services.outreach import OutreachRuleNotFoundError, OutreachService
 from app.services.outreach.drafting import OutreachDraftGate, gate_outreach_draft, pre_consent_block
 
-router = APIRouter(prefix="/api/v1", tags=["v1"])
+router = APIRouter(prefix="/api/v1", tags=["v1"], dependencies=[Depends(require_write_key)])
 
 _outreach_service = OutreachService()
 _OUTREACH_DRAFT_DISCLAIMER = (

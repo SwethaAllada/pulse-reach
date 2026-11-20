@@ -3,14 +3,20 @@
 Scope: 10-day live hackathon demo of the MVP backend. **Not production-ready and not clinically
 validated.** All patient data is synthetic.
 
-## 1. Authentication — not implemented (known limitation)
+## 1. Access control — shared write key (no user accounts)
 
-- There is **no authentication or authorisation**. Any client that can reach the API can read every
-  synthetic record and the AI audit, and can call every write endpoint.
-- `recorded_by` / `reviewed_by` / `reviewer` are client-supplied strings. They are attribution, not
-  authenticated identity, and must not be presented as such.
+- There are **no user accounts or OAuth**. Reads are public; state-changing requests need a shared
+  demo access code in the `X-PulseReach-Write-Key` header, compared in constant time with
+  `WRITE_API_KEY` (`app/core/write_auth.py`). Missing or wrong key → `401`
+  (`error.code = "unauthorized"`), before the request body is processed.
+- **Fails closed:** if `WRITE_API_KEY` is unset or empty, every protected request is refused with
+  `503` and the API logs `Write protection: WRITE_API_KEY not set`. Only
+  `ALLOW_UNPROTECTED_WRITES=true` (local development, tests) disables the check — never set it in
+  a public deployment. Startup logs the mode (`enforced` / `DISABLED` / not set), never the key.
+- The key is a shared demo code, not identity: `recorded_by` / `reviewed_by` / `reviewer` remain
+  client-supplied attribution. Anyone holding the code can write.
 
-### Endpoints that mutate data
+### Protected (every non-GET `/api/v1` route except the three below)
 
 | Endpoint | Effect |
 |---|---|
@@ -18,25 +24,44 @@ validated.** All patient data is synthetic.
 | `POST /api/v1/care-gaps/{gap_id}/reviews` | Appends clinical-review decisions |
 | `POST /api/v1/appointments`, `PATCH /api/v1/appointments/{id}` | Creates/changes appointments + history |
 | `POST /api/v1/referrals`, `PATCH /api/v1/referrals/{id}` | Creates/changes referrals + history |
-| `POST /api/v1/outreach/draft/review` | Records review audit; approval appends a simulated follow-up |
-| `POST /api/v1/outreach/draft`, `POST /api/v1/explanations` | Append AI audit records (and may call the LLM provider when enabled, which costs money) |
-| `GET /api/v1/insights/population` | Appends an AI audit record (and may call the provider) |
+| `POST /api/v1/outreach/draft` | Appends AI audit; may call the LLM provider when enabled |
+| `POST /api/v1/outreach/draft/review` | Records the review; approval appends a simulated follow-up |
 
-Read-only: all other `GET` endpoints, `POST /api/v1/evaluations` (stores nothing),
-`POST /api/v1/outreach/preview` (stores nothing).
+New non-GET routes are protected by default (router-level dependency); a test fails if a route is
+neither protected nor explicitly exempt.
 
-### Minimum protection before public judging (recommended, smallest option first)
+### Public
 
-1. **Platform-level access control, no code change (preferred):** deploy Cloud Run with
-   `--no-allow-unauthenticated` and grant `roles/run.invoker` only to the judges' / team's Google
-   accounts (or front it with IAP). The frontend then needs an identity token or IAP session.
-2. **If the API must be publicly reachable for the frontend:** a single shared write key —
-   a small middleware rejecting `POST`/`PATCH` without `X-PulseReach-Key` equal to a secret from
-   Secret Manager (~15 lines; not implemented yet). Reads stay public (synthetic data only). This
-   prevents anonymous vandalism of the demo data and LLM cost abuse; it is not user identity.
-3. Keep `LLM_ENABLED=false` unless provider spend is capped at the provider.
+- All `GET` endpoints. Note: `GET /api/v1/insights/population` appends one AI-audit record.
+- Read-oriented POSTs (verified in code): `POST /api/v1/evaluations` and
+  `POST /api/v1/outreach/preview` store nothing; `POST /api/v1/explanations` changes no workflow
+  state but appends one AI-audit record and calls the LLM only when `LLM_ENABLED=true`. Keep
+  `LLM_ENABLED=false`, or cap provider spend, while these remain public.
 
-Do not build a user/role system for the hackathon.
+### Configuration
+
+```bash
+# Create the shared demo access code in Secret Manager (never in --set-env-vars, the image,
+# the repository or a NEXT_PUBLIC_* frontend variable)
+openssl rand -hex 16 | gcloud secrets create pulsereach-write-key --replication-policy=automatic --data-file=-
+gcloud secrets add-iam-policy-binding pulsereach-write-key \
+  --member=serviceAccount:pulsereach-run@pulsereach-hackathon-2026.iam.gserviceaccount.com \
+  --role=roles/secretmanager.secretAccessor
+# Mount it into the API (the init job does not need it)
+gcloud run deploy pulsereach-api ... \
+  --set-secrets=DATABASE_URL=pulsereach-database-url:latest,WRITE_API_KEY=pulsereach-write-key:latest \
+  --allow-unauthenticated
+# Share the code with judges out of band; read it once with:
+gcloud secrets versions access latest --secret=pulsereach-write-key
+# Rotate: add a new version, redeploy (or deploy a new revision) to pick it up
+openssl rand -hex 16 | gcloud secrets versions add pulsereach-write-key --data-file=-
+```
+
+- Frontend: ask the judge for the code, keep it only in `sessionStorage`, and send it as
+  `X-PulseReach-Write-Key` on protected requests only. The CORS configuration already allows
+  custom request headers.
+- Local Compose: set `WRITE_API_KEY` in the (untracked) env file, or
+  `ALLOW_UNPROTECTED_WRITES=true` for local-only use.
 
 ## 2. Data
 
@@ -72,8 +97,10 @@ Do not build a user/role system for the hackathon.
 - **Rate limiting:** none in the app. Use Cloud Run `--max-instances` (cost ceiling) and
   `--concurrency`, and Cloud Armor or the API gateway if the URL is public. LLM-backed endpoints are
   the main cost risk.
-- **Database:** use Cloud SQL with no public IP (Cloud SQL connector / private IP), a dedicated
-  user, automated backups on. The Compose file publishes PostgreSQL on host port 5432 — for local
+- **Database:** reach Cloud SQL only through the Cloud Run Cloud SQL connector (Unix socket
+  `/cloudsql/<connection-name>`). The connector needs either a public IP with **no authorized
+  networks** (simplest; only IAM-authorised connector traffic is accepted) or a private IP with VPC
+  egress. Use a dedicated user, a generated URL-safe password and automated backups. The Compose file publishes PostgreSQL on host port 5432 — for local
   use only; do not expose it on a shared host.
 - **Migrations:** run `python -m app.db.init --seed` as a one-off job (idempotent; never reseeds a
   seeded DB). Destructive downgrades are refused unless `-x allow_data_loss=true`.

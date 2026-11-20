@@ -19,6 +19,7 @@ from app.core.logging import request_id_var
 
 _CODES = {
     400: "bad_request",
+    401: "unauthorized",
     404: "not_found",
     405: "method_not_allowed",
     409: "conflict",
