@@ -282,6 +282,9 @@ MessageKey = Literal[
     "screening_invitation", "complete_outstanding", "referral_follow_up", "well_child_visit", "general_check_in"
 ]
 TaskStatus = Literal["open", "awaiting_patient", "patient_responded", "in_progress", "completed", "cancelled"]
+TaskPriority = Literal["routine", "high", "urgent"]
+ContactChannel = Literal["phone", "sms", "email", "in_person", "portal"]
+ContactOutcome = Literal["reached", "no_answer", "left_message", "wrong_contact_details", "declined"]
 
 
 class TaskCreateIn(_In):
@@ -290,6 +293,7 @@ class TaskCreateIn(_In):
     assigned_to_user_id: str | None = None
     due_date: date | None = None
     message_key: MessageKey = "screening_invitation"
+    priority: TaskPriority = "routine"
     patient_visible: bool = True
     staff_note: FreeText | None = None
     language: Locale | None = Field(default=None, description="Defaults to the patient's preferred language.")
@@ -300,11 +304,20 @@ class TaskUpdateIn(_In):
     assigned_to_user_id: str | None = None
     due_date: date | None = None
     clear_due_date: bool = False
+    priority: TaskPriority | None = None
 
 
 class TaskNoteIn(_In):
     text: FreeText
     patient_visible: bool = False
+
+
+class ContactAttemptIn(_In):
+    """A contact attempt a staff member made outside PulseReach (documentation only; nothing is sent)."""
+
+    channel: ContactChannel
+    outcome: ContactOutcome
+    note: FreeText | None = None
 
 
 class TaskEscalateIn(_In):
@@ -328,6 +341,8 @@ class TaskEventOut(BaseModel):
     to_status: str | None
     response_code: str | None
     message: str | None
+    priority: str | None = None
+    contact_channel: str | None = None
     created_at: datetime
 
 
@@ -340,8 +355,10 @@ class TaskOut(BaseModel):
     assigned_to_user_id: str | None
     created_by_user_id: str
     status: TaskStatus
+    priority: TaskPriority
     due_date: date | None
     is_overdue: bool
+    is_due_soon: bool
     escalated_at: datetime | None
     language: Locale
     message_key: str
@@ -364,6 +381,65 @@ class PaginatedTasksOut(BaseModel):
     limit: int
     offset: int
     items: list[TaskOut]
+
+
+class TaskWorkloadOut(BaseModel):
+    assigned_to_user_id: str | None = Field(description="Null groups the unassigned active tasks.")
+    active: int
+    overdue: int
+    due_soon: int
+    urgent: int
+
+
+class TaskActivityOut(BaseModel):
+    """Recent task event without its text (open the task for internal notes and messages)."""
+
+    event_id: str
+    task_id: str
+    patient_id: str
+    event_type: str
+    visibility: Literal["patient", "internal"]
+    actor_user_id: str
+    actor_role: str
+    to_status: str | None
+    response_code: str | None
+    priority: str | None
+    contact_channel: str | None
+    created_at: datetime
+
+
+class TaskSummaryOut(BaseModel):
+    """Counts over every task in the caller's scope matching the filters (computed server-side)."""
+
+    as_of: date
+    due_soon_days: int
+    total: int
+    active: int
+    overdue: int
+    due_soon: int
+    completed: int
+    cancelled: int
+    unassigned_active: int
+    patient_reported_completion: int
+    by_status: dict[str, int]
+    active_by_priority: dict[str, int]
+    workload: list[TaskWorkloadOut]
+    recent_events: list[TaskActivityOut]
+
+
+class CareTeamMemberOut(BaseModel):
+    user_id: str
+    full_name: str
+    role: str
+    patient_access: Literal["organization", "assigned"]
+    is_self: bool
+    can_be_assigned: bool | None = Field(
+        default=None, description="With `patient_id`: whether the member may be assigned that patient's task."
+    )
+
+
+class CareTeamOut(BaseModel):
+    items: list[CareTeamMemberOut]
 
 
 class StaffPatientRequestOut(BaseModel):

@@ -58,6 +58,27 @@ TASK_STATUSES = (
     "cancelled",
 )
 TASK_TERMINAL_STATUSES = ("completed", "cancelled")
+# Operational coordination urgency set by staff (migration 0013). Not a clinical risk score:
+# care-gap priority stays with the deterministic evaluation engine.
+TASK_PRIORITIES = ("routine", "high", "urgent")
+# Staff-documented contact attempts (migration 0013). Documentation only: PulseReach never sends.
+CONTACT_CHANNELS = ("phone", "sms", "email", "in_person", "portal")
+CONTACT_OUTCOMES = ("reached", "no_answer", "left_message", "wrong_contact_details", "declined")
+TASK_EVENT_TYPES = (
+    "created",
+    "assigned",
+    "status_changed",
+    "due_date_changed",
+    "staff_note",
+    "staff_message",
+    "patient_response",
+    "assistance_requested",
+    "appointment_requested",
+    "escalated",
+    "completed",
+    "priority_changed",  # 0013
+    "contact_attempt",  # 0013
+)
 REQUEST_TYPES = ("appointment", "assistance", "appointment_change")
 REQUEST_STATUSES = ("submitted", "acknowledged", "scheduled", "declined", "closed", "cancelled")
 
@@ -429,6 +450,7 @@ class FollowUpTask(IdentityBase):
         Boolean, nullable=False, server_default=text("false")
     )
     completion_follow_up_id: Mapped[str | None] = mapped_column(String(64))
+    priority: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'routine'"))  # 0013
     escalated_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
@@ -438,6 +460,7 @@ class FollowUpTask(IdentityBase):
         CheckConstraint(_in("status", TASK_STATUSES), name="status"),
         CheckConstraint(_in("language", LOCALES), name="language"),
         CheckConstraint("(status = 'completed') = (completed_at IS NOT NULL)", name="completed_at"),
+        CheckConstraint(_in("priority", TASK_PRIORITIES), name="priority"),
         Index("ix_follow_up_task_org_status", "organization_id", "status"),
         Index("ix_follow_up_task_patient", "patient_id"),
         Index("ix_follow_up_task_assignee", "assigned_to_user_id", "status"),
@@ -465,29 +488,15 @@ class FollowUpTaskEvent(IdentityBase):
     to_status: Mapped[str | None] = mapped_column(String(24))
     response_code: Mapped[str | None] = mapped_column(String(32))
     message: Mapped[str | None] = mapped_column(Text)
+    # 0013: new priority for `created`/`priority_changed`; channel for `contact_attempt`
+    # (its outcome is stored in `response_code`).
+    priority: Mapped[str | None] = mapped_column(String(16))
+    contact_channel: Mapped[str | None] = mapped_column(String(16))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
 
     __table_args__ = (
         CheckConstraint(_in("visibility", ("patient", "internal")), name="visibility"),
-        CheckConstraint(
-            _in(
-                "event_type",
-                (
-                    "created",
-                    "assigned",
-                    "status_changed",
-                    "due_date_changed",
-                    "staff_note",
-                    "staff_message",
-                    "patient_response",
-                    "assistance_requested",
-                    "appointment_requested",
-                    "escalated",
-                    "completed",
-                ),
-            ),
-            name="event_type",
-        ),
+        CheckConstraint(_in("event_type", TASK_EVENT_TYPES), name="event_type"),
         Index("ix_follow_up_task_event_task", "task_id", "created_at"),
         {"schema": ENGAGEMENT_SCHEMA},
     )

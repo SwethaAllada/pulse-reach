@@ -822,6 +822,29 @@ class AppointmentPatchIn(BaseModel):
         return self
 
 
+class ServiceProfileOut(BaseModel):
+    """Simulated facility service profile an appointment is recorded against (`capability_basis`
+    is always `simulated`: no availability, slots or booking engine exist behind it)."""
+
+    profile_id: str
+    facility_id: int
+    facility_name: str | None = Field(
+        default=None, description="Published SDI name when the official facility register is loaded (DB mode)."
+    )
+    offers_ifhas: bool
+    offers_wcv: bool
+    evening_hours: bool
+    weekend_hours: bool
+    capability_basis: str
+    is_synthetic: bool = True
+
+
+class ServiceProfilesOut(BaseModel):
+    is_synthetic: bool = True
+    notice: str
+    items: list[ServiceProfileOut]
+
+
 class PaginatedAppointmentsOut(BaseModel):
     is_synthetic: bool = True
     total: int

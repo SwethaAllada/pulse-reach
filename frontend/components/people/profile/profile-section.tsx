@@ -7,6 +7,7 @@ export const PROFILE_SECTIONS = [
   { id: "evidence", label: "Evidence Trace" },
   { id: "care-gaps", label: "Care Gaps" },
   { id: "pathway", label: "Recommended Pathway" },
+  { id: "coordination", label: "Care Coordination" },
 ] as const;
 
 export type ProfileSectionId = (typeof PROFILE_SECTIONS)[number]["id"];

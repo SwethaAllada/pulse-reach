@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { api, ApiError, isForbidden } from "@/lib/api/client";
+import { useCallback, useState } from "react";
+import { api, ApiError } from "@/lib/api/client";
+import { useResource, type Resource } from "@/lib/api/resource";
 import { cached } from "@/lib/api/cache";
 import type {
   AgeBand,
@@ -18,49 +19,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { buildPopulationModel, type PopulationModel } from "@/lib/population/model";
 import { AGE_BAND_OPTIONS, peopleFiltersToSearchParams, type PeopleFilters } from "@/lib/people/params";
 
-/** A loaded resource; `forbidden` = the backend (or the role's permissions) refuse it. */
-export type Resource<T> =
-  | { status: "loading" }
-  | { status: "error"; message: string }
-  | { status: "forbidden"; permission: string }
-  | { status: "ready"; data: T };
-
-function message(err: unknown, fallback: string): string {
-  return err instanceof ApiError ? err.message : fallback;
-}
-
-/**
- * Runs `load` whenever `key` changes (null = disabled, reported as forbidden).
- * Stale responses are ignored; 403 becomes `forbidden`, never an error banner.
- */
-function useResource<T>(
-  key: string | null,
-  permission: string,
-  load: (signal: AbortSignal) => Promise<T>,
-  attempt: number
-): Resource<T> {
-  const requestId = `${attempt}|${key}`;
-  const [settled, setSettled] = useState<{ id: string; state: Resource<T> } | null>(null);
-  useEffect(() => {
-    if (key === null) return;
-    const ctrl = new AbortController();
-    load(ctrl.signal).then(
-      (data) => !ctrl.signal.aborted && setSettled({ id: requestId, state: { status: "ready", data } }),
-      (err) => {
-        if (ctrl.signal.aborted) return;
-        setSettled({
-          id: requestId,
-          state: isForbidden(err) ? { status: "forbidden", permission } : { status: "error", message: message(err, "Unexpected error.") },
-        });
-      }
-    );
-    return () => ctrl.abort();
-    // `load` is derived from `key`; re-running on identity changes would refetch every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestId]);
-  if (key === null) return { status: "forbidden", permission };
-  return settled?.id === requestId ? settled.state : { status: "loading" };
-}
+export type { Resource } from "@/lib/api/resource";
 
 /* Reference data: shared across views for the session (cleared on sign-in/out). */
 const loadRules = () => cached("rules", () => api.rules().then((r) => r.items));

@@ -89,7 +89,12 @@ gap or a task. Care gaps close only through `completion_documented` with validat
 7. Workflow updates: `PATCH /api/v1/follow-up-tasks/{id}` (status
    `awaiting_patient`/`in_progress`/`cancelled`, assignee, due date),
    `POST …/notes {text, patient_visible}` (internal note or patient-visible message),
-   `POST …/escalate {reason}`.
+   `POST …/escalate {reason}`. Phase 5 (migration 0013): `priority` (`routine`/`high`/`urgent`)
+   on create/PATCH (internal `priority_changed` event) and
+   `POST …/contact-attempts {channel, outcome, note?}` to document a contact a staff member made
+   outside PulseReach (internal `contact_attempt` event; consent-checked; nothing is sent; the
+   status does not change). Workload overview: `GET /follow-up-tasks/summary`; assignees:
+   `GET /care-team?patient_id=`.
 8. Completion: `POST /api/v1/follow-up-tasks/{id}/complete {completion_follow_up_id}` succeeds
    only if that id is a `completion_documented` follow-up on the task's care gap
    (`422 workflow.completion_evidence_required` otherwise). Tasks without a care gap can be
@@ -99,7 +104,7 @@ Task statuses: `open`, `awaiting_patient`, `patient_responded`, `in_progress`, `
 `cancelled`. Request statuses: `submitted`, `acknowledged`, `scheduled`, `declined`, `closed`,
 `cancelled`. `is_overdue` = due date passed and not terminal (`GET /follow-up-tasks?overdue=true`).
 Task history (`engagement.follow_up_task_event`) is append-only; `visibility = internal` events
-(notes, assignment, escalation) are never returned to patients. Every action is audited
+(notes, assignment, escalation, priority changes, contact attempts) are never returned to patients. Every action is audited
 (`follow_up_task.*`, `patient_request.*`).
 
 Staff permissions: `followups.read` (list/detail), `followups.create`, `followups.update`,

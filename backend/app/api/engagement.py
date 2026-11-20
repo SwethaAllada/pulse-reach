@@ -6,6 +6,7 @@ coordinators/clinicians, the whole organization for population health managers).
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -18,6 +19,9 @@ from app.models.identity import FollowUpTask, FollowUpTaskEvent, PatientRequest
 from app.repositories.followup_repo import FollowUpRepository
 from app.repositories.read_repo import ReadRepository
 from app.schemas.portal import (
+    CareTeamMemberOut,
+    CareTeamOut,
+    ContactAttemptIn,
     PaginatedStaffRequestsOut,
     PaginatedTasksOut,
     RequestUpdateIn,
@@ -28,12 +32,18 @@ from app.schemas.portal import (
     TaskEscalateIn,
     TaskEventOut,
     TaskNoteIn,
+    TaskActivityOut,
     TaskOut,
+    TaskPriority,
+    TaskSummaryOut,
     TaskUpdateIn,
+    TaskWorkloadOut,
 )
+from app.core.permissions import STAFF_ROLES, Role
 from app.services.identity import directory, engagement
 from app.services.identity.audit import record_event
 from app.services.identity.store import identity_session
+from app.services.outreach.service import resolve_applicable_contact_consent
 
 router = APIRouter(prefix="/api/v1", tags=["engagement"], dependencies=[Depends(_users_mode_only)])
 
@@ -42,8 +52,9 @@ def _task_out(task: FollowUpTask) -> dict:
     return dict(
         task_id=task.task_id, organization_id=task.organization_id, patient_id=task.patient_id,
         care_gap_id=task.care_gap_id, rule_id=task.rule_id, assigned_to_user_id=task.assigned_to_user_id,
-        created_by_user_id=task.created_by_user_id, status=task.status, due_date=task.due_date,
-        is_overdue=engagement.is_overdue(task), escalated_at=task.escalated_at, language=task.language,
+        created_by_user_id=task.created_by_user_id, status=task.status, priority=task.priority,
+        due_date=task.due_date, is_overdue=engagement.is_overdue(task), is_due_soon=engagement.is_due_soon(task),
+        escalated_at=task.escalated_at, language=task.language,
         message_key=task.message_key, patient_message=t(f"task.{task.message_key}", task.language),
         patient_visible=task.patient_visible, staff_note=task.staff_note,
         patient_reported_completion=task.patient_reported_completion,
@@ -98,34 +109,112 @@ def create_task(
             rule_id=rule_id, assigned_to_user_id=req.assigned_to_user_id, created_by_user_id=p.user_id,
             actor_role=p.role, due_date=req.due_date, message_key=req.message_key,
             patient_visible=req.patient_visible, staff_note=req.staff_note,
-            language=req.language or patient.preferred_language,
+            language=req.language or patient.preferred_language, priority=req.priority,
         )
         out = _detail(s, task)
     record_event(p, "follow_up_task.create", "follow_up_task", resource_id=out.task_id, patient_id=req.patient_id,
                  status_code=201, permission="followups.create",
-                 details={"care_gap_id": req.care_gap_id, "assigned_to_user_id": req.assigned_to_user_id})
+                 details={"care_gap_id": req.care_gap_id, "assigned_to_user_id": req.assigned_to_user_id,
+                          "priority": req.priority})
     return out
+
+
+TaskStatusFilter = Literal["open", "awaiting_patient", "patient_responded", "in_progress", "completed", "cancelled"]
+
+
+class TaskFilters:
+    """Shared list/summary filters, resolved against the caller's organization and patient scope."""
+
+    def __init__(self, **kw) -> None:
+        self.__dict__.update(kw)
+
+    def resolve(self, p: Principal, reads: ReadRepository) -> dict:
+        scope = p.patient_scope()
+        if self.region_id is not None:
+            scope = frozenset(x.patient_id for x in reads.list_patients(
+                limit=1_000_000, offset=0, sex=None, region_id=self.region_id, pathway=None, patient_ids=scope).items)
+        rule_ids = None if self.pathway is None else {
+            r.rule_id for r in reads.list_rules(pathway=self.pathway, verification_status=None,
+                                                is_authoritative=None).items}
+        return dict(
+            organization_id=p.organization_id or "", patient_ids=scope, patient_id=self.patient_id,
+            status=self.status, active=self.active, overdue=self.overdue, priority=self.priority,
+            assigned_to_user_id=p.user_id if self.assigned_to == "me"
+            else None if self.assigned_to == "unassigned" else self.assigned_to,
+            unassigned=self.assigned_to == "unassigned", rule_ids=rule_ids,
+            due_after=self.due_after, due_before=self.due_before,
+        )
+
+
+def task_filters(
+    patient_id: str | None = Query(default=None),
+    status: TaskStatusFilter | None = Query(default=None),
+    active: bool | None = Query(default=None, description="true = not completed/cancelled; false = closed."),
+    assigned_to: str | None = Query(default=None, description="A user id, 'me' or 'unassigned'."),
+    overdue: bool | None = Query(default=None),
+    priority: TaskPriority | None = Query(default=None),
+    pathway: Literal["ifhas", "well_child"] | None = Query(default=None, description="Programme of the task's rule."),
+    region_id: int | None = Query(default=None, description="Region of the task's patient."),
+    due_after: date | None = Query(default=None),
+    due_before: date | None = Query(default=None),
+) -> TaskFilters:
+    return TaskFilters(patient_id=patient_id, status=status, active=active, assigned_to=assigned_to,
+                       overdue=overdue, priority=priority, pathway=pathway, region_id=region_id,
+                       due_after=due_after, due_before=due_before)
 
 
 @router.get("/follow-up-tasks", response_model=PaginatedTasksOut)
 def list_tasks(
-    patient_id: str | None = Query(default=None),
-    status: Literal["open", "awaiting_patient", "patient_responded", "in_progress", "completed", "cancelled"]
-    | None = Query(default=None),
-    assigned_to: str | None = Query(default=None, description="A user id, or 'me'."),
-    overdue: bool | None = Query(default=None),
+    filters: TaskFilters = Depends(task_filters),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     p: Principal = Depends(require("followups.read")),
+    reads: ReadRepository = Depends(get_read_repository),
 ) -> PaginatedTasksOut:
+    resolved = filters.resolve(p, reads)
     with identity_session() as s:
-        total, rows = engagement.list_tasks(
-            s, organization_id=p.organization_id or "", patient_ids=p.patient_scope(), patient_id=patient_id,
-            status=status, assigned_to_user_id=p.user_id if assigned_to == "me" else assigned_to,
-            overdue=overdue, limit=limit, offset=offset,
-        )
+        total, rows = engagement.list_tasks(s, limit=limit, offset=offset, **resolved)
         items = [TaskOut(**_task_out(tk)) for tk in rows]
     return PaginatedTasksOut(total=total, limit=limit, offset=offset, items=items)
+
+
+@router.get("/follow-up-tasks/summary", response_model=TaskSummaryOut)
+def task_summary(
+    filters: TaskFilters = Depends(task_filters),
+    p: Principal = Depends(require("followups.read")),
+    reads: ReadRepository = Depends(get_read_repository),
+) -> TaskSummaryOut:
+    """Workload overview: exact counts over every matching task in scope, per-assignee workload and
+    the most recent task events (event types only; open a task for its notes and messages)."""
+    resolved = filters.resolve(p, reads)
+    with identity_session() as s:
+        out = engagement.task_summary(s, **resolved)
+        recent = [TaskActivityOut(**{k: getattr(e, k) for k in TaskActivityOut.model_fields})
+                  for e in out.pop("recent_events")]
+        workload = [TaskWorkloadOut(**w) for w in out.pop("workload")]
+    return TaskSummaryOut(**out, workload=workload, recent_events=recent)
+
+
+@router.get("/care-team", response_model=CareTeamOut)
+def care_team(
+    patient_id: str | None = Query(default=None, description="Flags who may be assigned this patient's tasks."),
+    p: Principal = Depends(require("followups.read")),
+) -> CareTeamOut:
+    """Active staff of the caller's organization (names and roles only) for assignment and workload views."""
+    if patient_id is not None:
+        ensure_patient_access(p, patient_id, f"Synthetic patient '{patient_id}' not found")
+    with identity_session() as s:
+        _, rows = directory.list_members(s, p.organization_id or "", role=None, limit=500, offset=0)
+        items = [
+            CareTeamMemberOut(
+                user_id=u.user_id, full_name=u.full_name, role=m.role, patient_access=m.patient_access,
+                is_self=u.user_id == p.user_id,
+                can_be_assigned=None if patient_id is None else directory.can_staff_access_patient(
+                    s, u.user_id, p.organization_id or "", patient_id),
+            )
+            for u, m in rows if u.is_active and m.is_active and Role(m.role) in STAFF_ROLES
+        ]
+    return CareTeamOut(items=sorted(items, key=lambda i: (not i.is_self, i.full_name.lower())))
 
 
 @router.get("/follow-up-tasks/{task_id}", response_model=TaskDetailOut)
@@ -158,10 +247,52 @@ def update_task(task_id: str, req: TaskUpdateIn, p: Principal = Depends(require(
         _check_assignee(s, p, req.assigned_to_user_id, task.patient_id)
         engagement.update_task(s, task, actor_user_id=p.user_id, actor_role=p.role, status=req.status,
                                assigned_to_user_id=req.assigned_to_user_id, due_date=req.due_date,
-                               unset_due_date=req.clear_due_date)
+                               unset_due_date=req.clear_due_date, priority=req.priority)
 
     return _mutate(p, task_id, "follow_up_task.update", apply,
-                   details={"status": req.status, "assigned_to_user_id": req.assigned_to_user_id})
+                   details={"status": req.status, "assigned_to_user_id": req.assigned_to_user_id,
+                            "priority": req.priority})
+
+
+def _contact_block_reason(reads: ReadRepository, task: FollowUpTask) -> str | None:
+    """Same consent semantics as outreach (`resolve_applicable_contact_consent`): the current
+    applicable `contact` consent for the task's rule/programme must be granted and unexpired."""
+    patient = reads.get_patient(task.patient_id)
+    if patient is None:
+        raise HTTPException(status_code=404, detail=f"Synthetic patient '{task.patient_id}' not found")
+    if patient.date_of_death is not None:
+        return "patient_deceased"
+    rule = reads.get_rule_meta(task.rule_id) if task.rule_id else None
+    consents = reads.get_patient_consents(task.patient_id)
+    consent = resolve_applicable_contact_consent(
+        [c.model_dump() for c in (consents.history if consents else [])],
+        rule_id=task.rule_id or "", pathway=str(rule["pathway"]) if rule else "")
+    if consent is None:
+        return "contact_consent_absent"
+    if consent.get("state") != "granted":
+        return f"contact_consent_{consent.get('state')}"
+    return None
+
+
+@router.post("/follow-up-tasks/{task_id}/contact-attempts", response_model=TaskDetailOut)
+def record_contact_attempt(
+    task_id: str,
+    req: ContactAttemptIn,
+    p: Principal = Depends(require("followups.update")),
+    reads: ReadRepository = Depends(get_read_repository),
+) -> TaskDetailOut:
+    """Documents a contact attempt a staff member made (internal; never shown to the patient).
+    PulseReach sends nothing; refused (422) when the patient's contact consent does not permit contact."""
+
+    def apply(s, task):
+        reason = _contact_block_reason(reads, task)
+        if reason is not None:
+            raise AppError(422, "workflow.contact_not_permitted", params={"reason": reason})
+        engagement.record_contact_attempt(s, task, actor_user_id=p.user_id, actor_role=p.role,
+                                          channel=req.channel, outcome=req.outcome, note=req.note)
+
+    return _mutate(p, task_id, "follow_up_task.contact_attempt", apply,
+                   details={"channel": req.channel, "outcome": req.outcome})
 
 
 @router.post("/follow-up-tasks/{task_id}/notes", response_model=TaskDetailOut)

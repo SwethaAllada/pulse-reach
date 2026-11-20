@@ -30,6 +30,7 @@ import { Field, PROFILE_SECTIONS, ProfileSection, UnavailableNote } from "./prof
 import { AssessmentSection } from "./assessment-section";
 import { EvidenceTraceSection } from "./evidence-trace";
 import { CareGapsSection, PathwaySection } from "./care-gaps";
+import { CoordinationSection } from "./coordination-section";
 
 /**
  * `via` = the programme or rule page the profile was opened from. Only same-origin
@@ -206,7 +207,12 @@ function ProfileBody({
               ? `${offered.length} supported ${offered.length === 1 ? "pathway" : "pathways"}`
               : "No supported pathway"}
           </p>
-          <p className="mt-1 text-xs text-muted">Outreach and referrals are not available in this phase.</p>
+          <p className="mt-1 text-xs text-muted">
+            <a href="#coordination" className="underline-offset-4 hover:underline">
+              Follow-ups, appointments and referrals
+            </a>{" "}
+            are under Care Coordination.
+          </p>
         </Glance>
       </section>
 
@@ -300,6 +306,8 @@ function ProfileBody({
         <CareGapsSection data={data} pathways={pathways} onTrace={openTrace} />
 
         <PathwaySection data={data} pathways={pathways} trace={trace} />
+
+        <CoordinationSection data={data} />
       </div>
     </>
   );

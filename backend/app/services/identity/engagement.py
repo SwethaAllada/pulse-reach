@@ -12,14 +12,17 @@ Nothing here sends messages: "patient-visible" means visible in the portal.
 
 from __future__ import annotations
 
-from datetime import date
-from typing import Any
+from collections import Counter
+from datetime import date, timedelta
+from typing import Any, Iterable
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.i18n import AppError
 from app.models.identity import (
+    TASK_PRIORITIES,
+    TASK_STATUSES,
     TASK_TERMINAL_STATUSES,
     FollowUpTask,
     FollowUpTaskEvent,
@@ -45,18 +48,21 @@ REQUEST_TRANSITIONS: dict[str, frozenset[str]] = {
     "cancelled": frozenset(),
 }
 PATIENT_RESPONSES = ("will_book", "already_done", "need_help", "not_interested", "question")
+DUE_SOON_DAYS = 7
 
 
 def _event(
     session: Session, task: FollowUpTask, *, actor_user_id: str, actor_role: str, event_type: str,
     visibility: str, from_status: str | None = None, to_status: str | None = None,
-    response_code: str | None = None, message: str | None = None,
+    response_code: str | None = None, message: str | None = None, priority: str | None = None,
+    contact_channel: str | None = None,
 ) -> FollowUpTaskEvent:
     ev = FollowUpTaskEvent(
         event_id=new_id(), task_id=task.task_id, organization_id=task.organization_id,
         patient_id=task.patient_id, actor_user_id=actor_user_id, actor_role=actor_role,
         event_type=event_type, visibility=visibility, from_status=from_status, to_status=to_status,
-        response_code=response_code, message=message, created_at=now(),
+        response_code=response_code, message=message, priority=priority, contact_channel=contact_channel,
+        created_at=now(),
     )
     session.add(ev)
     return ev
@@ -67,6 +73,13 @@ def is_overdue(task: FollowUpTask, today: date | None = None) -> bool:
     return task.due_date is not None and task.due_date < today and task.status not in TASK_TERMINAL_STATUSES
 
 
+def is_due_soon(task: FollowUpTask, today: date | None = None) -> bool:
+    """Active task due today or within the next `DUE_SOON_DAYS` days (never overdue ones)."""
+    today = today or now().date()
+    return (task.due_date is not None and today <= task.due_date <= today + timedelta(days=DUE_SOON_DAYS)
+            and task.status not in TASK_TERMINAL_STATUSES)
+
+
 # --- tasks ---------------------------------------------------------------------------------
 
 
@@ -74,6 +87,7 @@ def create_task(
     session: Session, *, organization_id: str, patient_id: str, care_gap_id: str | None,
     rule_id: str | None, assigned_to_user_id: str | None, created_by_user_id: str, actor_role: str,
     due_date: date | None, message_key: str, patient_visible: bool, staff_note: str | None, language: str,
+    priority: str = "routine",
 ) -> FollowUpTask:
     ts = now()
     task = FollowUpTask(
@@ -81,12 +95,15 @@ def create_task(
         rule_id=rule_id, assigned_to_user_id=assigned_to_user_id, created_by_user_id=created_by_user_id,
         status="awaiting_patient" if patient_visible else "open", due_date=due_date, language=language,
         message_key=message_key, patient_visible=patient_visible, staff_note=staff_note,
-        patient_reported_completion=False, created_at=ts, updated_at=ts,
+        patient_reported_completion=False, priority=priority, created_at=ts, updated_at=ts,
     )
     session.add(task)
     session.flush()
     _event(session, task, actor_user_id=created_by_user_id, actor_role=actor_role, event_type="created",
            visibility="patient" if patient_visible else "internal", to_status=task.status)
+    if priority != "routine":
+        _event(session, task, actor_user_id=created_by_user_id, actor_role=actor_role, event_type="priority_changed",
+               visibility="internal", priority=priority)
     if staff_note:
         _event(session, task, actor_user_id=created_by_user_id, actor_role=actor_role, event_type="staff_note",
                visibility="internal", message=staff_note)
@@ -100,11 +117,13 @@ def get_task(session: Session, task_id: str, organization_id: str) -> FollowUpTa
     return task
 
 
-def list_tasks(
-    session: Session, *, organization_id: str, patient_ids: frozenset[str] | None, patient_id: str | None = None,
-    status: str | None = None, assigned_to_user_id: str | None = None, overdue: bool | None = None,
-    patient_visible_only: bool = False, limit: int = 50, offset: int = 0,
-) -> tuple[int, list[FollowUpTask]]:
+def _task_stmt(
+    *, organization_id: str, patient_ids: frozenset[str] | None, patient_id: str | None = None,
+    status: str | None = None, assigned_to_user_id: str | None = None, unassigned: bool = False,
+    overdue: bool | None = None, active: bool | None = None, priority: str | None = None,
+    rule_ids: Iterable[str] | None = None, due_after: date | None = None, due_before: date | None = None,
+    patient_visible_only: bool = False,
+):
     stmt = select(FollowUpTask).where(FollowUpTask.organization_id == organization_id)
     if patient_ids is not None:
         stmt = stmt.where(FollowUpTask.patient_id.in_(sorted(patient_ids)))
@@ -114,15 +133,71 @@ def list_tasks(
         stmt = stmt.where(FollowUpTask.status == status)
     if assigned_to_user_id is not None:
         stmt = stmt.where(FollowUpTask.assigned_to_user_id == assigned_to_user_id)
+    if unassigned:
+        stmt = stmt.where(FollowUpTask.assigned_to_user_id.is_(None))
+    if priority is not None:
+        stmt = stmt.where(FollowUpTask.priority == priority)
+    if rule_ids is not None:
+        stmt = stmt.where(FollowUpTask.rule_id.in_(sorted(rule_ids)))
+    if due_after is not None:
+        stmt = stmt.where(FollowUpTask.due_date >= due_after)
+    if due_before is not None:
+        stmt = stmt.where(FollowUpTask.due_date <= due_before)
+    if active is not None:
+        terminal = FollowUpTask.status.in_(TASK_TERMINAL_STATUSES)
+        stmt = stmt.where(~terminal if active else terminal)
     if patient_visible_only:
         stmt = stmt.where(FollowUpTask.patient_visible)
     if overdue is not None:
         cond = (FollowUpTask.due_date < now().date()) & FollowUpTask.status.not_in(TASK_TERMINAL_STATUSES)
         stmt = stmt.where(cond if overdue else ~cond | FollowUpTask.due_date.is_(None))
+    return stmt
+
+
+def list_tasks(session: Session, *, limit: int = 50, offset: int = 0, **filters: Any) -> tuple[int, list[FollowUpTask]]:
+    stmt = _task_stmt(**filters)
     total = int(session.scalar(select(func.count()).select_from(stmt.subquery())) or 0)
     rows = list(session.scalars(stmt.order_by(FollowUpTask.due_date.is_(None), FollowUpTask.due_date,
                                               FollowUpTask.created_at.desc()).limit(limit).offset(offset)))
     return total, rows
+
+
+def task_summary(session: Session, *, recent_limit: int = 12, **filters: Any) -> dict[str, Any]:
+    """Server-side workload counts over every task matching `filters` (no sampling, no estimates)."""
+    today = now().date()
+    tasks = list(session.scalars(_task_stmt(**filters)))
+    active = [t for t in tasks if t.status not in TASK_TERMINAL_STATUSES]
+    by_status = Counter(t.status for t in tasks)
+    workload: dict[str | None, dict[str, int]] = {}
+    for t in active:
+        w = workload.setdefault(t.assigned_to_user_id, {"active": 0, "overdue": 0, "due_soon": 0, "urgent": 0})
+        w["active"] += 1
+        w["overdue"] += is_overdue(t, today)
+        w["due_soon"] += is_due_soon(t, today)
+        w["urgent"] += t.priority == "urgent"
+    ids = [t.task_id for t in tasks]
+    recent = list(session.scalars(
+        select(FollowUpTaskEvent).where(FollowUpTaskEvent.organization_id == filters["organization_id"],
+                                        FollowUpTaskEvent.task_id.in_(ids))
+        .order_by(FollowUpTaskEvent.created_at.desc(), FollowUpTaskEvent.event_id.desc()).limit(recent_limit)
+    )) if ids else []
+    return {
+        "as_of": today,
+        "due_soon_days": DUE_SOON_DAYS,
+        "total": len(tasks),
+        "active": len(active),
+        "overdue": sum(is_overdue(t, today) for t in active),
+        "due_soon": sum(is_due_soon(t, today) for t in active),
+        "completed": by_status.get("completed", 0),
+        "cancelled": by_status.get("cancelled", 0),
+        "unassigned_active": sum(1 for t in active if t.assigned_to_user_id is None),
+        "patient_reported_completion": sum(1 for t in active if t.patient_reported_completion),
+        "by_status": {st: by_status.get(st, 0) for st in TASK_STATUSES},
+        "active_by_priority": {p: sum(1 for t in active if t.priority == p) for p in TASK_PRIORITIES},
+        "workload": [{"assigned_to_user_id": uid, **w} for uid, w in
+                     sorted(workload.items(), key=lambda kv: (kv[0] is None, -kv[1]["active"], kv[0] or ""))],
+        "recent_events": recent,
+    }
 
 
 def task_events(session: Session, task_id: str, *, include_internal: bool) -> list[FollowUpTaskEvent]:
@@ -140,6 +215,7 @@ def _ensure_open(task: FollowUpTask) -> None:
 def update_task(
     session: Session, task: FollowUpTask, *, actor_user_id: str, actor_role: str, status: str | None = None,
     assigned_to_user_id: str | None = None, due_date: date | None = None, unset_due_date: bool = False,
+    priority: str | None = None,
 ) -> FollowUpTask:
     _ensure_open(task)
     ts = now()
@@ -159,8 +235,24 @@ def update_task(
         task.due_date = None if unset_due_date else due_date
         _event(session, task, actor_user_id=actor_user_id, actor_role=actor_role, event_type="due_date_changed",
                visibility="patient" if task.patient_visible else "internal")
+    if priority is not None and priority != task.priority:
+        task.priority = priority
+        _event(session, task, actor_user_id=actor_user_id, actor_role=actor_role, event_type="priority_changed",
+               visibility="internal", priority=priority)
     task.updated_at = ts
     return task
+
+
+def record_contact_attempt(
+    session: Session, task: FollowUpTask, *, actor_user_id: str, actor_role: str, channel: str, outcome: str,
+    note: str | None,
+) -> FollowUpTaskEvent:
+    """Documents a contact attempt a staff member made outside PulseReach (internal only).
+    Consent is checked by the caller; nothing is sent and the task status is not changed."""
+    _ensure_open(task)
+    task.updated_at = now()
+    return _event(session, task, actor_user_id=actor_user_id, actor_role=actor_role, event_type="contact_attempt",
+                  visibility="internal", response_code=outcome, contact_channel=channel, message=note)
 
 
 def add_staff_entry(

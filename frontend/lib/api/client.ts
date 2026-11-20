@@ -1,4 +1,32 @@
 import type {
+  AppointmentCreateIn,
+  AppointmentOut,
+  AppointmentPatchIn,
+  AppointmentQuery,
+  CareGapDetailOut,
+  CareTeamMemberOut,
+  ContactChannel,
+  ContactOutcome,
+  FollowUpCreateIn,
+  FollowUpEventOut,
+  OutreachDraftIn,
+  OutreachDraftOut,
+  OutreachReviewIn,
+  OutreachReviewOut,
+  PatientActivityOut,
+  ReferralOut,
+  ReferralPatchIn,
+  RequestQuery,
+  RequestUpdateIn,
+  ServiceProfilesOut,
+  StaffPatientRequestOut,
+  TaskCreateIn,
+  TaskDetailOut,
+  TaskOut,
+  TaskQuery,
+  TaskSummaryOut,
+  TaskUpdateIn,
+  WorkflowHistoryOut,
   CareGapOut,
   CareGapQuery,
   DashboardSummaryOut,
@@ -65,6 +93,21 @@ async function apiPost<T>(path: string, body: unknown, signal?: AbortSignal): Pr
     headers: { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+}
+
+async function apiPatch<T>(path: string, body: unknown): Promise<T> {
+  return apiRequest<T>(path, path, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+/** The backend's localized reason for a refused write (e.g. an invalid transition), else the generic message. */
+export function apiErrorMessage(err: unknown, fallback = "The request failed."): string {
+  if (!(err instanceof ApiError)) return fallback;
+  if (err.status === 401 || err.status === 403 || err.status === null) return err.message;
+  return err.serverMessage ?? err.message;
 }
 
 async function toApiError(res: Response, path: string): Promise<ApiError> {
@@ -246,6 +289,52 @@ export const api = {
     apiGet<ProgrammeSummaryOut>(`/programmes/${pathway}/summary`, { ...query }, signal),
   explanation: (patientId: string, ruleId: string, signal?: AbortSignal) =>
     apiPost<ExplanationOut>("/explanations", { patient_id: patientId, rule_id: ruleId }, signal),
+
+  /* Coordination: follow-up tasks (`followups.*`), patient requests, appointments, referrals, outreach. */
+  taskSummary: (query: TaskQuery, signal?: AbortSignal) =>
+    apiGet<TaskSummaryOut>("/follow-up-tasks/summary", { ...query }, signal),
+  tasks: (query: TaskQuery & { limit: number; offset: number }, signal?: AbortSignal) =>
+    apiGet<Paginated<TaskOut>>("/follow-up-tasks", { ...query }, signal),
+  task: (id: string, signal?: AbortSignal) =>
+    apiGet<TaskDetailOut>(`/follow-up-tasks/${encodeURIComponent(id)}`, {}, signal),
+  createTask: (body: TaskCreateIn) => apiPost<TaskDetailOut>("/follow-up-tasks", body),
+  updateTask: (id: string, body: TaskUpdateIn) => apiPatch<TaskDetailOut>(`/follow-up-tasks/${encodeURIComponent(id)}`, body),
+  addTaskNote: (id: string, text: string, patientVisible: boolean) =>
+    apiPost<TaskDetailOut>(`/follow-up-tasks/${encodeURIComponent(id)}/notes`, { text, patient_visible: patientVisible }),
+  escalateTask: (id: string, reason: string | null) =>
+    apiPost<TaskDetailOut>(`/follow-up-tasks/${encodeURIComponent(id)}/escalate`, { reason }),
+  recordContactAttempt: (id: string, body: { channel: ContactChannel; outcome: ContactOutcome; note?: string | null }) =>
+    apiPost<TaskDetailOut>(`/follow-up-tasks/${encodeURIComponent(id)}/contact-attempts`, body),
+  completeTask: (id: string, completionFollowUpId: string | null) =>
+    apiPost<TaskDetailOut>(`/follow-up-tasks/${encodeURIComponent(id)}/complete`, { completion_follow_up_id: completionFollowUpId }),
+  careTeam: (patientId?: string, signal?: AbortSignal) =>
+    apiGet<{ items: CareTeamMemberOut[] }>("/care-team", { patient_id: patientId }, signal).then((r) => r.items),
+  careGap: (id: string, signal?: AbortSignal) => apiGet<CareGapDetailOut>(`/care-gaps/${encodeURIComponent(id)}`, {}, signal),
+  createCareGapFollowUp: (gapId: string, body: FollowUpCreateIn) =>
+    apiPost<FollowUpEventOut>(`/care-gaps/${encodeURIComponent(gapId)}/follow-ups`, body),
+  patientActivity: (id: string, signal?: AbortSignal) =>
+    apiGet<PatientActivityOut>(`/patients/${encodeURIComponent(id)}/activity`, {}, signal),
+  patientRequests: (query: RequestQuery & { limit: number; offset: number }, signal?: AbortSignal) =>
+    apiGet<Paginated<StaffPatientRequestOut>>("/patient-requests", { ...query }, signal),
+  updatePatientRequest: (id: string, body: RequestUpdateIn) =>
+    apiPatch<StaffPatientRequestOut>(`/patient-requests/${encodeURIComponent(id)}`, body),
+  appointments: (query: AppointmentQuery & { limit: number; offset: number }, signal?: AbortSignal) =>
+    apiGet<Paginated<AppointmentOut>>("/appointments", { ...query }, signal),
+  appointmentsTotal: (query: AppointmentQuery, signal?: AbortSignal) =>
+    apiGet<Paginated<AppointmentOut>>("/appointments", { ...query, limit: 1, offset: 0 }, signal).then((p) => p.total),
+  createAppointment: (body: AppointmentCreateIn) => apiPost<AppointmentOut>("/appointments", body),
+  updateAppointment: (id: string, body: AppointmentPatchIn) =>
+    apiPatch<AppointmentOut>(`/appointments/${encodeURIComponent(id)}`, body),
+  appointmentHistory: (id: string, signal?: AbortSignal) =>
+    apiGet<WorkflowHistoryOut>(`/appointments/${encodeURIComponent(id)}/history`, {}, signal),
+  serviceProfiles: (signal?: AbortSignal) => apiGet<ServiceProfilesOut>("/facility-service-profiles", {}, signal),
+  referrals: (query: { patient_id?: string; status?: string; limit: number; offset: number }, signal?: AbortSignal) =>
+    apiGet<Paginated<ReferralOut>>("/referrals", { ...query }, signal),
+  updateReferral: (id: string, body: ReferralPatchIn) => apiPatch<ReferralOut>(`/referrals/${encodeURIComponent(id)}`, body),
+  referralHistory: (id: string, signal?: AbortSignal) =>
+    apiGet<WorkflowHistoryOut>(`/referrals/${encodeURIComponent(id)}/history`, {}, signal),
+  outreachDraft: (body: OutreachDraftIn) => apiPost<OutreachDraftOut>("/outreach/draft", body),
+  outreachReview: (body: OutreachReviewIn) => apiPost<OutreachReviewOut>("/outreach/draft/review", body),
 
   /* Identity (`AUTH_MODE=users`; 404 in legacy mode). */
   login: (email: string, password: string) => apiPost<TokenOut>("/auth/login", { email, password }),

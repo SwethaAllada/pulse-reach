@@ -86,7 +86,7 @@ def test_migration_matches_models(pg):
         idx = {i["name"] for i in insp.get_indexes(table.name, schema=table.schema)}
         assert {i.name for i in table.indexes} <= idx, table.fullname
     with eng.connect() as c:
-        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0012"
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0013"
 
 
 def test_condition_records_are_seeded_and_reconciled(pg):

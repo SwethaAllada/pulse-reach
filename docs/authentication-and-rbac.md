@@ -151,6 +151,11 @@ organization-wide, small-cell-suppressed aggregate data: managers and clinicians
 managers change alert status; administrators can trigger aggregation and edit thresholds but cannot
 read the aggregates; coordinators keep only the existing assigned-patient `insights.read` views.
 
+Coordination (Phase 5) adds no permissions: task priority and contact attempts are
+`followups.update`; `GET /follow-up-tasks/summary` and `GET /care-team` (names and roles of the
+organization's active staff, no e-mail) are `followups.read`; `GET /facility-service-profiles` is
+`facilities.read`. All of them stay within the caller's organization and patient scope.
+
 Status codes: `401` unauthenticated · `403` authenticated without the permission (audited as
 `authz.denied`) · `404` for patient-owned resources outside the caller's scope, with exactly the
 same body as a missing record (audited as `authz.scope_denied`).
@@ -262,7 +267,8 @@ Creates `demo-org-a` (region 1) and `demo-org-b` (regions 2 and 3), and in each:
 organization-wide), `coordinator.*` (CARE_COORDINATOR, 20 assigned patients), `clinician.*`
 (CLINICIAN, 10 assigned patients) and `patient.*` (PATIENT, linked to one patient through the
 invitation + date-of-birth workflow). All names are marked synthetic; addresses use the reserved
-`.invalid` TLD. Idempotent; existing passwords are never changed.
+`.invalid` TLD. Idempotent; existing passwords are never changed. Account list, what each role can
+try and the local QA start commands: `demo-users.md`.
 
 ## 10. Testing each role
 

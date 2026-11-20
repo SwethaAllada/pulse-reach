@@ -23,6 +23,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.models.clinical import Rule
+from app.models.official import Facility
 from app.models.synthetic import (
     Appointment,
     Assessment,
@@ -65,6 +66,7 @@ from app.schemas.v1 import (
     ReferralCreateIn,
     ReferralOut,
     ReferralPatchIn,
+    ServiceProfileOut,
     WorkflowHistoryOut,
     WorkflowStatusEventOut,
 )
@@ -180,6 +182,18 @@ def _transition_note(entity: str, entity_id: str, old: str | None, new: str, not
 OnRecorded = Callable[[FollowUpEventOut, "Session | None"], None]
 
 
+def _profile_offers(f: dict[str, Any], pathway: str | None) -> bool:
+    return pathway is None or bool(f["offers_ifhas"] if pathway == "ifhas" else f["offers_wcv"])
+
+
+def _to_service_profile_out(f: dict[str, Any], facility_name: str | None = None) -> ServiceProfileOut:
+    return ServiceProfileOut(
+        profile_id=f["profile_id"], facility_id=f["facility_id"], facility_name=facility_name,
+        offers_ifhas=f["offers_ifhas"], offers_wcv=f["offers_wcv"], evening_hours=f["evening_hours"],
+        weekend_hours=f["weekend_hours"], capability_basis=f["capability_basis"],
+    )
+
+
 class FollowUpRepository(Protocol):
     def create_follow_up(
         self, gap_id: str, req: FollowUpCreateIn, *, on_recorded: OnRecorded | None = None
@@ -187,8 +201,11 @@ class FollowUpRepository(Protocol):
     def list_follow_ups(self, gap_id: str, limit: int, offset: int) -> PaginatedFollowUpEventsOut: ...
     def list_appointments(
         self, patient_id: str | None, care_gap_id: str | None, status: str | None, limit: int, offset: int,
-        patient_ids: frozenset[str] | None = None,
+        patient_ids: frozenset[str] | None = None, *, statuses: frozenset[str] | None = None,
+        profile_id: str | None = None, scheduled_from: datetime | None = None,
+        scheduled_to: datetime | None = None, ascending: bool = False,
     ) -> PaginatedAppointmentsOut: ...
+    def list_service_profiles(self, pathway: str | None = None) -> list[ServiceProfileOut]: ...
     def get_appointment_patient_id(self, appointment_id: str) -> str | None: ...
     def get_referral_patient_id(self, referral_id: str) -> str | None: ...
     def create_appointment(self, req: AppointmentCreateIn) -> AppointmentOut: ...
@@ -576,6 +593,12 @@ class MemoryFollowUpRepository:
         limit: int,
         offset: int,
         patient_ids: frozenset[str] | None = None,
+        *,
+        statuses: frozenset[str] | None = None,
+        profile_id: str | None = None,
+        scheduled_from: datetime | None = None,
+        scheduled_to: datetime | None = None,
+        ascending: bool = False,
     ) -> PaginatedAppointmentsOut:
         apts = get_cached_dataset().appointments
         if patient_ids is not None:
@@ -586,6 +609,17 @@ class MemoryFollowUpRepository:
             apts = [a for a in apts if a.get("care_gap_id") == care_gap_id]
         if status is not None:
             apts = [a for a in apts if a["status"] == status]
+        if statuses is not None:
+            apts = [a for a in apts if a["status"] in statuses]
+        if profile_id is not None:
+            apts = [a for a in apts if a["profile_id"] == profile_id]
+        if scheduled_from is not None:
+            apts = [a for a in apts if a["scheduled_datetime"] >= scheduled_from]
+        if scheduled_to is not None:
+            apts = [a for a in apts if a["scheduled_datetime"] < scheduled_to]
+        # Same order as PostgreSQL: scheduled time (desc by default), then appointment id.
+        apts = sorted(apts, key=lambda a: a["appointment_id"])
+        apts = sorted(apts, key=lambda a: a["scheduled_datetime"], reverse=not ascending)
         page = apts[offset : offset + limit]
         return PaginatedAppointmentsOut(
             is_synthetic=True,
@@ -594,6 +628,11 @@ class MemoryFollowUpRepository:
             offset=offset,
             items=[_to_appointment_out(a) for a in page],
         )
+
+    def list_service_profiles(self, pathway: str | None = None) -> list[ServiceProfileOut]:
+        return [_to_service_profile_out(f) for f in sorted(get_cached_dataset().facility_service_profiles,
+                                                            key=lambda f: f["profile_id"])
+                if _profile_offers(f, pathway)]
 
     def get_appointment_patient_id(self, appointment_id: str) -> str | None:
         return next(
@@ -1277,6 +1316,12 @@ class PostgresFollowUpRepository:
         limit: int,
         offset: int,
         patient_ids: frozenset[str] | None = None,
+        *,
+        statuses: frozenset[str] | None = None,
+        profile_id: str | None = None,
+        scheduled_from: datetime | None = None,
+        scheduled_to: datetime | None = None,
+        ascending: bool = False,
     ) -> PaginatedAppointmentsOut:
         with self._read():
             gr, _ = self._latest_runs()
@@ -1289,11 +1334,20 @@ class PostgresFollowUpRepository:
                 stmt = stmt.where(Appointment.care_gap_id == care_gap_id)
             if status is not None:
                 stmt = stmt.where(Appointment.status == status)
+            if statuses is not None:
+                stmt = stmt.where(Appointment.status.in_(sorted(statuses)))
+            if profile_id is not None:
+                stmt = stmt.where(Appointment.profile_id == profile_id)
+            if scheduled_from is not None:
+                stmt = stmt.where(Appointment.scheduled_datetime >= scheduled_from)
+            if scheduled_to is not None:
+                stmt = stmt.where(Appointment.scheduled_datetime < scheduled_to)
             total = int(
                 self._session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
             )
+            when = Appointment.scheduled_datetime.asc() if ascending else Appointment.scheduled_datetime.desc()
             page = self._session.scalars(
-                stmt.order_by(Appointment.scheduled_datetime.desc(), Appointment.appointment_id)
+                stmt.order_by(when, Appointment.appointment_id)
                 .limit(limit)
                 .offset(offset)
             ).all()
@@ -1301,6 +1355,18 @@ class PostgresFollowUpRepository:
         return PaginatedAppointmentsOut(
             is_synthetic=True, total=total, limit=limit, offset=offset, items=items
         )
+
+    def list_service_profiles(self, pathway: str | None = None) -> list[ServiceProfileOut]:
+        with self._read():
+            gr, _ = self._latest_runs()
+            rows = self._session.execute(
+                select(FacilityServiceProfile, Facility.facility_name_en)
+                .outerjoin(Facility, Facility.facility_id == FacilityServiceProfile.facility_id)
+                .where(FacilityServiceProfile.run_id == gr.run_id)
+                .order_by(FacilityServiceProfile.profile_id)
+            ).all()
+            return [_to_service_profile_out(self._row_dict(f), facility_name=name) for f, name in rows
+                    if _profile_offers(self._row_dict(f), pathway)]
 
     def get_appointment_patient_id(self, appointment_id: str) -> str | None:
         with self._read():

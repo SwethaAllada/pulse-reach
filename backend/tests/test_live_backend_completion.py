@@ -9,6 +9,7 @@ synthetic seed (twice, for idempotency). Nothing is mocked except the absent LLM
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -24,7 +25,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings, settings
 from app.db.session import get_engine
 from app.main import app
-from app.repositories.followup_repo import PostgresFollowUpRepository
+from app.repositories.followup_repo import MemoryFollowUpRepository, PostgresFollowUpRepository
 from app.repositories.read_repo import MemoryReadRepository, PostgresReadRepository
 from app.schemas.v1 import AppointmentCreateIn, AppointmentPatchIn, FollowUpCreateIn
 from app.services.ai import build_ai_service, get_ai_service
@@ -128,6 +129,30 @@ def test_dashboard_insights_and_evaluations_match_memory_mode(db):
                       "OR reason_detail IS NULL AND reason_code IS NOT NULL") == 0
     adhoc = client.post("/api/v1/evaluations", json={"patient_id": PID, "look_ahead_days": 90}).json()
     assert adhoc["is_persisted"] is False and adhoc["evaluations"][0]["evaluation_id"].startswith("EPHEMERAL-")
+
+
+@pytest.mark.parametrize("qs,kwargs", [
+    ({}, {}),
+    ({"order": "asc"}, {"ascending": True}),
+    ({"status_group": "active"}, {"statuses": frozenset({"scheduled", "rescheduled"})}),
+    ({"profile_id": "SYNTH-FSP-000001"}, {"profile_id": "SYNTH-FSP-000001"}),
+    ({"scheduled_from": "2026-11-20T00:00:00Z", "order": "asc"},
+     {"scheduled_from": datetime(2026, 11, 20, tzinfo=timezone.utc), "ascending": True}),
+])
+def test_appointment_filters_match_memory_mode(db, qs, kwargs):
+    """Phase 5 filters (status group, facility profile, date window, order) on both repositories."""
+    api = client.get("/api/v1/appointments", params={"limit": 200, **qs}).json()
+    mem = MemoryFollowUpRepository().list_appointments(None, None, None, 200, 0, **kwargs)
+    assert api == mem.model_dump(mode="json")
+
+
+def test_service_profiles_match_memory_mode(db):
+    api = client.get("/api/v1/facility-service-profiles").json()
+    mem = MemoryFollowUpRepository().list_service_profiles()
+    strip = lambda items: [{k: v for k, v in i.items() if k != "facility_name"} for i in items]  # noqa: E731
+    assert strip(api["items"]) == strip([m.model_dump(mode="json") for m in mem])
+    assert all(p["capability_basis"] == "simulated" for p in api["items"])
+    assert any(p["facility_name"] for p in api["items"])  # joined from the official register in DB mode
 
 
 def test_explanation_in_db_mode_is_audited_durably(db):
@@ -372,8 +397,10 @@ def test_migration_chain_upgrade_downgrade_safeguard_and_legacy_rows():
             for target in ("0009", "0008"):
                 with pytest.raises(RuntimeError, match="Refusing to downgrade"):
                     command.downgrade(_alembic_cfg(), target)
+            # env.py runs a downgrade in one transaction: the refused run is rolled back entirely
+            # (including the 0013..0011 steps that succeeded before 0010 refused), so we stay at head.
             with eng.connect() as c:
-                assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0010"
+                assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0013"
 
             # Explicitly allowed: back to the previous supported schema (0009).
             command.downgrade(_alembic_cfg(allow_data_loss=True), "0009")

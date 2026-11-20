@@ -49,8 +49,8 @@ export function AssessmentSection({ assessment, openGaps }: { assessment: Progra
     },
     {
       label: "Operational follow-up",
-      value: "Not available",
-      note: "Follow-up, outreach and referral tracking are not part of this phase.",
+      value: "See Care Coordination",
+      note: "Follow-ups, outreach reviews, appointments and referrals are coordination records, not part of this assessment.",
     },
   ];
 

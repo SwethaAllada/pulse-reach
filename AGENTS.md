@@ -62,3 +62,16 @@ Docker builds through the forwarded socket also wedge `gvproxy` (build context u
 Build inside the VM instead, then start Compose without building:
 `/opt/podman/bin/podman machine ssh "cd $PWD && podman build -f backend/Dockerfile -t prdeploy-backend:latest . && podman tag prdeploy-backend:latest prdeploy-db-init:latest"`,
 then `docker compose -p prdeploy --env-file <env> -f infrastructure/docker-compose.yml up -d --no-build`.
+
+## Coordination (Phase 5, migration 0013)
+
+- Backend: task `priority`, `contact_attempt` events, `GET /follow-up-tasks/summary`, `GET /care-team`,
+  `GET /facility-service-profiles`, appointment filters. Tests: `tests/test_coordination.py` (memory, users mode);
+  live PG: `test_identity_live_pg.py::test_task_priority_contact_attempts_and_summary_in_db_mode`,
+  `test_live_backend_completion.py` appointment/service-profile parity. Head revision is now `0013`.
+- FastAPI dependency classes cannot resolve `from __future__` string annotations (classes have no `__globals__`):
+  use a function dependency (see `task_filters` in `app/api/engagement.py`).
+- Frontend: `lib/coordination/` (model + hooks; writes call `invalidateCoordination()` so every coordination read
+  refetches), `components/coordination/`, profile section `coordination-section.tsx`. Tests:
+  `components/coordination/coordination.test.tsx`, `lib/coordination/*.test.ts*`; fixtures in `test/fixtures.ts`
+  (`resetCoordinationFixtures()`). Lint forbids sync setState in effects and `Date.now()` in render.

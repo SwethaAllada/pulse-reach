@@ -134,6 +134,41 @@ def test_portal_follow_up_and_actor_attribution_in_db_mode(pg):
     assert stored == cc_id and msg == "مساعدة من فضلك"
 
 
+def test_task_priority_contact_attempts_and_summary_in_db_mode(pg):
+    """Migration 0013 columns and event types round-trip through PostgreSQL."""
+    eng, accounts = pg
+    patient = accounts[("demo-org-a", "PATIENT")]
+    ph, cc = _h(accounts, "demo-org-a", "PATIENT"), _h(accounts, "demo-org-a", "CARE_COORDINATOR")
+    mgr_a, mgr_b = (_h(accounts, "demo-org-a", "POPULATION_HEALTH_MANAGER"),
+                    _h(accounts, "demo-org-b", "POPULATION_HEALTH_MANAGER"))
+    rec = client.get("/api/v1/portal/recommendations", headers=ph).json()["items"][0]
+    task = client.post("/api/v1/follow-up-tasks", headers=cc, json={
+        "patient_id": patient.patient_id, "care_gap_id": rec["recommendation_id"], "priority": "urgent"})
+    assert task.status_code == 201, task.text
+    tid = task.json()["task_id"]
+    assert client.patch(f"/api/v1/follow-up-tasks/{tid}", headers=cc, json={"priority": "high"}).json()["priority"] == "high"
+    attempt = client.post(f"/api/v1/follow-up-tasks/{tid}/contact-attempts", headers=cc,
+                          json={"channel": "phone", "outcome": "left_message", "note": "INTERNAL"})
+    assert attempt.status_code in (200, 422), attempt.text
+    with eng.connect() as c:
+        assert c.execute(text("SELECT priority FROM engagement.follow_up_task WHERE task_id = :t"),
+                         {"t": tid}).scalar_one() == "high"
+        rows = c.execute(text("SELECT event_type, priority, contact_channel, response_code FROM "
+                              "engagement.follow_up_task_event WHERE task_id = :t AND event_type IN "
+                              "('priority_changed', 'contact_attempt') ORDER BY created_at"), {"t": tid}).all()
+    expected = [("priority_changed", "urgent", None, None), ("priority_changed", "high", None, None)]
+    if attempt.status_code == 200:
+        expected.append(("contact_attempt", None, "phone", "left_message"))
+    assert [tuple(r) for r in rows] == expected
+    history = client.get(f"/api/v1/portal/follow-ups/{tid}/history", headers=ph).json()["items"]
+    assert {e["event_type"] for e in history}.isdisjoint({"priority_changed", "contact_attempt"})
+    summary = client.get("/api/v1/follow-up-tasks/summary", headers=mgr_a).json()
+    assert summary["active_by_priority"]["high"] >= 1 and summary["total"] >= 1
+    assert client.get("/api/v1/follow-up-tasks/summary", headers=mgr_b).json()["active_by_priority"]["high"] == 0
+    team = client.get(f"/api/v1/care-team?patient_id={patient.patient_id}", headers=mgr_a).json()["items"]
+    assert team and all(m["role"] != "SYSTEM_ADMIN" for m in team)
+
+
 def test_durable_ai_audit_is_filtered_by_organization(pg):
     _, accounts = pg
     mgr_a = _h(accounts, "demo-org-a", "POPULATION_HEALTH_MANAGER")
@@ -157,10 +192,10 @@ def test_reseed_keeps_identity_data_working(pg):
 
 def test_zz_downgrade_refused_while_identity_data_exists(pg):
     eng, _ = pg
-    with pytest.raises(RuntimeError, match="Refusing to downgrade 0011"):
+    with pytest.raises(RuntimeError, match="Refusing to downgrade 001[13]"):
         command.downgrade(_cfg(), "0010")
-    with eng.connect() as c:  # one transaction: the 0012 step is rolled back too
-        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0012"
+    with eng.connect() as c:  # one transaction: the 0013/0012 steps are rolled back too
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0013"
     command.downgrade(_cfg(allow_data_loss=True), "0010")
     with eng.connect() as c:
         assert c.execute(text("SELECT to_regclass('identity.user_account')")).scalar_one() is None

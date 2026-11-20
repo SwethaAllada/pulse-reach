@@ -7,6 +7,7 @@ Supports both `DATA_SOURCE=memory` (default deterministic demo mode) and `DATA_S
 from __future__ import annotations
 
 from collections.abc import Iterator
+from datetime import datetime, timezone
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -53,6 +54,7 @@ from app.schemas.v1 import (
     OutreachPreviewOut,
     OutreachPreviewRequestIn,
     PaginatedAppointmentsOut,
+    ServiceProfilesOut,
     PaginatedCareGapsOut,
     FacilityDetailOut,
     OpenQuestionOut,
@@ -1076,6 +1078,13 @@ def list_appointments(
         "rescheduled",
     ]
     | None = Query(default=None),
+    status_group: Literal["active", "cancelled"] | None = Query(
+        default=None, description="active = scheduled|rescheduled; cancelled = by patient or facility."
+    ),
+    profile_id: str | None = Query(default=None, description="Facility service profile."),
+    scheduled_from: datetime | None = Query(default=None, description="Inclusive."),
+    scheduled_to: datetime | None = Query(default=None, description="Exclusive."),
+    order: Literal["desc", "asc"] = Query(default="desc", description="By scheduled time."),
     limit: int = Query(default=25, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     repo: FollowUpRepository = Depends(get_followup_repository),
@@ -1088,7 +1097,39 @@ def list_appointments(
         limit=limit,
         offset=offset,
         patient_ids=p.patient_scope(),
+        statuses=_APPOINTMENT_STATUS_GROUPS.get(status_group or ""),
+        profile_id=profile_id,
+        scheduled_from=_aware(scheduled_from),
+        scheduled_to=_aware(scheduled_to),
+        ascending=order == "asc",
     )
+
+
+_APPOINTMENT_STATUS_GROUPS = {
+    "active": frozenset({"scheduled", "rescheduled"}),
+    "cancelled": frozenset({"cancelled_by_patient", "cancelled_by_facility"}),
+}
+
+
+def _aware(value: datetime | None) -> datetime | None:
+    return value.replace(tzinfo=timezone.utc) if value is not None and value.tzinfo is None else value
+
+
+@router.get("/facility-service-profiles", response_model=ServiceProfilesOut)
+def list_service_profiles(
+    pathway: Literal["ifhas", "well_child"] | None = Query(default=None),
+    repo: FollowUpRepository = Depends(get_followup_repository),
+    _p: Principal = Depends(require("facilities.read")),
+) -> ServiceProfilesOut:
+    """Simulated service profiles appointments are recorded against. There is no availability or
+    booking engine: an appointment recorded here is coordinated, not confirmed by a provider."""
+    return ServiceProfilesOut(notice=_SERVICE_PROFILE_NOTICE, items=repo.list_service_profiles(pathway))
+
+
+_SERVICE_PROFILE_NOTICE = (
+    "Simulated service profiles (capability_basis='simulated'). PulseReach has no facility availability "
+    "or booking integration: appointments are recorded for coordination, not confirmed with a provider."
+)
 
 
 @router.post("/appointments", response_model=AppointmentOut, status_code=201)

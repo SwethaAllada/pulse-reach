@@ -224,7 +224,7 @@ export function PathwaySection({
         )}
 
         <p className="text-xs text-faint">
-          Outreach, appointment booking and referral creation are not available in this phase. Evaluation run{" "}
+          Follow-ups, simulated outreach and appointment records for these gaps are under Care Coordination; referral creation is not available. Evaluation run{" "}
           {data.evaluations.evaluation_run_id}.
         </p>
       </div>
@@ -266,7 +266,13 @@ function PathwayCard({ entry }: { entry: PathwayEntry }) {
             </div>
             <div>
               <dt className="text-xs text-faint">Available next step</dt>
-              <dd className="text-muted">None in this phase — follow-up workflows are not yet available.</dd>
+              <dd className="text-muted">
+                Create a follow-up under{" "}
+                <a href="#coordination" className="text-accent underline-offset-4 hover:underline">
+                  Care Coordination
+                </a>
+                ; the rule’s documented step is shown on the follow-up.
+              </dd>
             </div>
             <div>
               <dt className="text-xs text-faint">Information still required</dt>

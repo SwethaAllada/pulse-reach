@@ -78,6 +78,7 @@ MESSAGES: dict[str, dict[str, str]] = {
     "workflow.task_closed": {"en": "This follow-up is closed.", "ar": "تم إغلاق هذه المتابعة."},
     "workflow.invalid_transition": {"en": "The status cannot change from {from_status} to {to_status}.", "ar": "لا يمكن تغيير الحالة من {from_status} إلى {to_status}."},
     "workflow.completion_evidence_required": {"en": "Completing this follow-up requires a documented completion with verified evidence on its care gap.", "ar": "يتطلب إكمال هذه المتابعة توثيق الإنجاز بدليل موثّق على فجوة الرعاية المرتبطة بها."},
+    "workflow.contact_not_permitted": {"en": "A contact attempt cannot be recorded: the patient's contact consent does not permit contact ({reason}).", "ar": "لا يمكن تسجيل محاولة تواصل: موافقة المريض على التواصل لا تسمح بذلك ({reason})."},
     "workflow.care_gap_not_open": {"en": "The care gap is not open for this patient.", "ar": "فجوة الرعاية غير مفتوحة لهذا المريض."},
     "workflow.appointment_change_not_allowed": {"en": "This appointment can no longer be changed online. Please contact your care team.", "ar": "لم يعد بالإمكان تغيير هذا الموعد عبر الإنترنت. يُرجى التواصل مع فريق الرعاية."},
     "workflow.request_submitted": {"en": "Your request has been sent to your care team.", "ar": "تم إرسال طلبك إلى فريق الرعاية."},
