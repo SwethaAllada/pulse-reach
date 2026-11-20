@@ -247,7 +247,7 @@ export function ConstellationVisualization({ model, selectedId, onSelect }: Prop
                   height={50}
                   rx={6}
                   fill="none"
-                  stroke="var(--focus)"
+                  stroke="var(--ink-accent)"
                   strokeWidth={2}
                 />
                 <text
@@ -306,7 +306,7 @@ export function ConstellationVisualization({ model, selectedId, onSelect }: Prop
                 cy={slot.cy}
                 r={R + 10}
                 fill="none"
-                stroke="var(--focus)"
+                stroke="var(--ink-accent)"
                 strokeWidth={2}
               />
               {marks.map((m, i) => (

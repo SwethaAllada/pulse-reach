@@ -33,7 +33,8 @@ vi.mock("next/navigation", async () => {
 });
 
 vi.mock("next/link", () => ({
-  default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  default: ({ href, children, transitionTypes, ...rest }: { href: string; children: React.ReactNode; transitionTypes?: string[] }) => (
     <a href={href} {...rest}>
       {children}
     </a>
@@ -119,7 +120,9 @@ describe("PopulationWorkspace", () => {
     const panel = screen.getByRole("complementary", { name: "Cohort details" });
     expect(within(panel).getByRole("heading", { name: /Open documented care gap/ })).toBeTruthy();
     expect(within(panel).getByText("Oral Health Package")).toBeTruthy();
-    expect(within(panel).getByText(/Exploring only this segment is unavailable/)).toBeTruthy();
+    expect(within(panel).getByRole("link", { name: /Open this segment in its programme/ }).getAttribute("href")).toBe(
+      "/programmes/ifhas?segment=open_gap"
+    );
     expect(mark.getAttribute("aria-pressed")).toBe("true");
 
     // Keyboard: select another cohort with Enter, clear with Escape.
@@ -154,21 +157,29 @@ describe("PopulationWorkspace", () => {
     expect(screen.getByText("Showing the whole synthetic population.")).toBeTruthy();
   });
 
-  it("Explore People preserves supported filters", async () => {
+  it("programme cohorts link to their programme and People, preserving supported filters", async () => {
     nav.set("region_id=1&sex=female&cohort=ifhas");
     render(<PopulationWorkspace />);
     await overview();
-    const link = screen.getByRole("link", { name: /Explore 1 person/ });
-    expect(link.getAttribute("href")).toBe("/people?pathway=ifhas&region_id=1&sex=female");
+    expect(screen.getByRole("link", { name: /Explore 1 person/ }).getAttribute("href")).toBe(
+      "/people?pathway=ifhas&region_id=1&sex=female&sort=open_gaps"
+    );
+    expect(screen.getByRole("link", { name: /Open the IFHAS programme/ }).getAttribute("href")).toBe(
+      "/programmes/ifhas?region_id=1&sex=female"
+    );
   });
 
-  it("segment cohorts link to the programme only, with the limitation explained", async () => {
+  it("segment cohorts drill into the programme segment and backend-filtered People, disclosing semantics", async () => {
     nav.set("cohort=well_child:open_gap");
     render(<PopulationWorkspace />);
     await overview();
-    expect(screen.getByRole("link", { name: /Explore all 2 Well-Child people/ }).getAttribute("href")).toBe(
-      "/people?pathway=well_child"
+    expect(screen.getByRole("link", { name: /Open this segment in its programme/ }).getAttribute("href")).toBe(
+      "/programmes/well-child?segment=open_gap"
     );
+    expect(screen.getByRole("link", { name: /Explore 1 person/ }).getAttribute("href")).toBe(
+      "/people?pathway=well_child&has_open_care_gaps=true&sort=open_gaps"
+    );
+    expect(screen.getByText(/filters open gaps and history across all programmes/)).toBeTruthy();
   });
 
   it.each(["light", "dark"])("renders in the %s theme using semantic tokens only", async (theme) => {

@@ -4,7 +4,9 @@ import { useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Info, RotateCcw } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { buttonClass } from "@/components/ui/button-styles";
 import { PopulationFilterBar } from "@/components/population/population-filters";
+import { scopeLabel, useAuth } from "@/lib/auth/auth-context";
 import {
   activeFilterCount,
   hasAnyCriteria,
@@ -16,11 +18,13 @@ import {
 import { usePeopleList } from "@/lib/people/use-people-data";
 import { PeopleIdSearch } from "./people-id-search";
 import { PeopleResults } from "./people-results";
+import { PeopleCareFilters } from "./people-care-filters";
 
 export function PeopleWorkspace() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const { scope, state: auth } = useAuth();
   const state = useMemo(() => parsePeopleState(searchParams), [searchParams]);
   const { page, reference, retry } = usePeopleList(state);
 
@@ -37,18 +41,19 @@ export function PeopleWorkspace() {
   const ref = reference.status === "ready" ? reference.data : null;
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-4 pb-16 pt-8 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1200px] px-4 pb-20 pt-8 sm:px-6 lg:px-8">
       <PageHeader
+        index="03"
         eyebrow="Find"
         title="People"
-        subtitle="The synthetic people represented in the population dataset, with their programme membership, history availability and documented preventive-care gaps."
+        subtitle="The synthetic people in your scope, with their programme membership, history availability and documented preventive-care gaps."
         breadcrumbs={[{ label: "Population", href: populationHref(state.filters) }, { label: "People" }]}
         actions={
           hasAnyCriteria(state) ? (
             <button
               type="button"
-              onClick={() => navigate({ filters: {}, page: 1, id: null })}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border-strong px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-accent"
+              onClick={() => navigate({ filters: {}, page: 1, id: null, sort: null })}
+              className={buttonClass("secondary")}
             >
               <RotateCcw size={14} aria-hidden="true" /> Clear filters
             </button>
@@ -57,10 +62,10 @@ export function PeopleWorkspace() {
         className="mb-6"
       />
 
-      <dl aria-label="Result context" className="mb-6 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+      <dl aria-label="Result context" className="mb-6 flex flex-wrap items-baseline gap-x-8 gap-y-2 text-sm">
         <div className="flex items-baseline gap-2">
           <dt className="text-faint">Matching people</dt>
-          <dd className="font-display text-lg font-semibold tabular-nums text-foreground" aria-live="polite">
+          <dd className="figure text-3xl text-foreground" aria-live="polite">
             {data ? data.total : "…"}
           </dd>
         </div>
@@ -76,9 +81,15 @@ export function PeopleWorkspace() {
             </dd>
           </div>
         )}
+        {auth.status === "signed_in" && (
+          <div className="flex items-baseline gap-2">
+            <dt className="text-faint">Scope</dt>
+            <dd className="text-muted">{scopeLabel(scope)}</dd>
+          </div>
+        )}
       </dl>
 
-      <section aria-label="Search and filters" className="mb-6 rounded-lg border border-border bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
+      <section aria-label="Search and filters" className="reveal mb-8 border-y border-border py-5">
         <div className="flex flex-col gap-5">
           <PeopleIdSearch
             value={state.id}
@@ -89,15 +100,21 @@ export function PeopleWorkspace() {
             tone="paper"
             label="People filters"
             filters={state.filters}
+            onChange={(filters) => navigate({ ...state, filters: { ...state.filters, ...filtersOnly(filters) }, page: 1 })}
+            emptyText="No programme, region or sex filter."
+          />
+          <PeopleCareFilters
+            filters={state.filters}
+            sort={state.sort ?? null}
             onChange={(filters) => navigate({ ...state, filters, page: 1 })}
-            emptyText="No filters — showing every synthetic person."
+            onSort={(sort) => navigate({ ...state, sort, page: 1 })}
           />
           <p className="flex gap-2 text-xs leading-relaxed text-faint">
             <Info size={14} aria-hidden="true" className="mt-0.5 shrink-0" />
             <span>
-              Filters by age group, care-gap status, history availability and evaluation status are not offered:
-              <code className="mx-1 font-mono">GET /patients</code>does not support them yet (backend task T-06). Sorting is
-              not supported either; people are listed in API order.
+              Every filter is applied by <code className="font-mono">GET /patients</code>. Open-care-gap and history filters
+              match any programme; age groups are computed by the backend from date of birth at the reference date (people
+              without a recorded date of birth are excluded from every age group).
             </span>
           </p>
         </div>
@@ -112,4 +129,9 @@ export function PeopleWorkspace() {
       />
     </div>
   );
+}
+
+/** The population bar reports only programme/region/sex; keep care filters intact, honour removals. */
+function filtersOnly(f: PeopleState["filters"]): PeopleState["filters"] {
+  return { pathway: f.pathway, region_id: f.region_id, sex: f.sex };
 }

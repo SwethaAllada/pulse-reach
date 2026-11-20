@@ -2,7 +2,10 @@ import type {
   CareGapOut,
   DashboardSummaryOut,
   EvaluationItemOut,
+  MeOut,
+  OpenQuestionOut,
   PatientSummaryOut,
+  PopulationSummaryOut,
   RuleDetailOut,
   RuleSummaryOut,
 } from "@/lib/api/types";
@@ -192,7 +195,99 @@ export const SUMMARY: DashboardSummaryOut = {
     clinical_review_status: "not_reviewed",
   },
   governance_disclaimer: "synthetic",
+  pathway_breakdown: {
+    ifhas: {
+      patients_with_history: 3,
+      programme_eligible_patients: 4,
+      due_or_upcoming_patients: 2,
+      unknown_history_patients: 1,
+      review_flagged_patients: 0,
+      rule_review_patients: 4,
+      open_care_gaps_count: 2,
+    },
+    well_child: {
+      patients_with_history: 1,
+      programme_eligible_patients: 2,
+      due_or_upcoming_patients: 1,
+      unknown_history_patients: 1,
+      review_flagged_patients: 0,
+      rule_review_patients: 0,
+      open_care_gaps_count: 1,
+    },
+  },
 };
+
+export const OPEN_QUESTIONS: OpenQuestionOut[] = [
+  {
+    oq_id: "OQ-LUNG",
+    category: "interpretation",
+    status: "open",
+    title: "Lung screening high-risk criteria",
+    detail: "The standard does not define high risk.",
+    affects: [],
+    resolve_via: "DoH clarification",
+    resolution: null,
+    resolved_on: null,
+    rule_ids: ["IFHAS-PKG-LUNG"],
+  },
+];
+
+export const POPULATION_SUMMARY: PopulationSummaryOut = {
+  is_synthetic: true,
+  as_of: "2026-11-16",
+  complete_through: "2026-11-02",
+  disclaimer: "Aggregates of synthetic records.",
+  total_population: 6,
+  latest_aggregation_at: null,
+  preventive_care: {
+    in_scope_patients: 6,
+    patients_with_open_gap: 2,
+    in_scope_patients_with_open_gap: 2,
+    open_care_gaps: 3,
+    preventive_coverage: 0.666667,
+    preventive_coverage_definition: "in-scope patients without an open preventive-care gap / in-scope patients",
+    care_gap_history_start: "2026-09-15",
+    period: "90d",
+    period_metrics: {
+      period_days: 90,
+      current_start: "2026-08-19",
+      current_end: "2026-11-16",
+      previous_start: "2026-05-21",
+      previous_end: "2026-08-18",
+      screening_completions: 5,
+      previous_screening_completions: 3,
+      care_gaps_identified: 4,
+      previous_care_gaps_identified: 0,
+      care_gap_trend: { direction: "INSUFFICIENT_DATA", reason_codes: ["history_incomplete"], absolute_change: 4, percentage_change: null },
+      follow_up_completion_rate: null,
+      suppressed: ["follow_up_completed"],
+    },
+    suppressed: [],
+  },
+};
+
+export function me(role: string, permissions: string[], patient_access = "organization"): MeOut {
+  return {
+    user: { user_id: `U-${role}`, email: `${role.toLowerCase()}@demo.invalid`, full_name: `Demo ${role} (synthetic)`, preferred_language: "en" },
+    organization_id: "ORG-A",
+    role,
+    permissions,
+    patient_linked: role === "PATIENT",
+    memberships: [{ organization_id: "ORG-A", organization_name: "Demo Org A", role, patient_access, is_active: true }],
+    locale: "en",
+    direction: "ltr",
+  };
+}
+
+export const MANAGER_PERMISSIONS = [
+  "care_gaps.read",
+  "evaluations.read",
+  "insights.read",
+  "patients.read",
+  "patients.read_assigned",
+  "population.read",
+  "rules.read",
+];
 
 export class FakeHttpError extends Error {
   constructor(readonly status: number) {
@@ -209,7 +304,12 @@ export function fakeBackend(url: string, init?: RequestInit): unknown {
   const page = <T,>(items: T[]) => ({ total: items.length, limit, offset, items: items.slice(offset, offset + limit) });
   if (path === "/dashboard/summary") return SUMMARY;
   if (path === "/rules") return { total: RULES.length, items: RULES };
-  if (path === "/care-gaps") return page(CARE_GAPS);
+  if (path === "/care-gaps") {
+    const rule = u.searchParams.get("rule_id");
+    return page(CARE_GAPS.filter((g) => !rule || g.rule_id === rule));
+  }
+  if (path === "/open-questions") return { total: OPEN_QUESTIONS.length, items: OPEN_QUESTIONS };
+  if (path === "/population/summary") return POPULATION_SUMMARY;
   if (path === "/explanations") {
     const body = JSON.parse(String(init?.body ?? "{}")) as { patient_id: string; rule_id: string };
     return {
@@ -248,17 +348,33 @@ export function fakeBackend(url: string, init?: RequestInit): unknown {
     };
   }
   if (path === "/patients") {
-    const pathway = u.searchParams.get("pathway");
-    const region = u.searchParams.get("region_id");
-    const sex = u.searchParams.get("sex");
-    return page(
-      PATIENTS.filter(
-        (p) =>
-          (!pathway || pathway in p.history_by_pathway) &&
-          (!region || p.region_id === Number(region)) &&
-          (!sex || p.sex === sex)
-      )
+    const q = u.searchParams;
+    const pathway = q.get("pathway");
+    const region = q.get("region_id");
+    const sex = q.get("sex");
+    const gaps = q.get("has_open_care_gaps");
+    const history = q.get("history_status");
+    const band = q.get("age_band");
+    const text = q.get("q");
+    const openCount = (id: string) => CARE_GAPS.filter((g) => g.patient_id === id && g.status === "open").length;
+    const years = (dob: string | null) => (dob ? 2026 - Number(dob.slice(0, 4)) - (dob.slice(5) > "11-16" ? 1 : 0) : null);
+    const inBand = (dob: string | null) => {
+      const y = years(dob);
+      if (y === null) return false;
+      return band === "child" ? y < 18 : band === "adult_18_39" ? y >= 18 && y < 40 : band === "adult_40_59" ? y >= 40 && y < 60 : y >= 60;
+    };
+    let rows = PATIENTS.filter(
+      (p) =>
+        (!pathway || pathway in p.history_by_pathway) &&
+        (!region || p.region_id === Number(region)) &&
+        (!sex || p.sex === sex) &&
+        (gaps === null || openCount(p.patient_id) > 0 === (gaps === "true")) &&
+        (!history || Object.values(p.history_by_pathway).includes(history as "available")) &&
+        (!band || inBand(p.date_of_birth)) &&
+        (!text || p.patient_id.toLowerCase().includes(text.toLowerCase()))
     );
+    if (q.get("sort_by") === "open_gaps") rows = [...rows].sort((a, b) => openCount(b.patient_id) - openCount(a.patient_id));
+    return page(rows);
   }
   throw new Error(`unexpected ${url}`);
 }

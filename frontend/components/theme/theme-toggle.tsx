@@ -14,10 +14,12 @@ export function ThemeToggle() {
         mounted ? `Switch to ${theme === "dark" ? "light" : "dark"} theme` : "Toggle theme"
       }
       title={mounted ? `Switch to ${theme === "dark" ? "light" : "dark"} theme` : "Toggle theme"}
-      className="flex size-9 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-sunken hover:text-foreground"
+      className="group flex size-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-sunken hover:text-foreground"
     >
       {/* Render the sun glyph until mounted to avoid a hydration-dependent icon flip. */}
-      {mounted && theme === "dark" ? <Moon size={18} /> : <Sun size={18} />}
+      <span key={mounted ? theme : "ssr"} className="reveal-fade transition-transform duration-500 group-hover:rotate-[20deg]">
+        {mounted && theme === "dark" ? <Moon size={18} /> : <Sun size={18} />}
+      </span>
     </button>
   );
 }

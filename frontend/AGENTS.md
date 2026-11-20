@@ -14,3 +14,26 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Default Node here is 22.5.1 (npm 8): keep Vitest 3.x / Vite 6.x — Vitest 5 / Vite 8 need Node ≥ 22.12.
 - `cacheComponents` is on: any `usePathname`/`useSearchParams`/`useParams` read must sit inside `<Suspense>` or dynamic routes (e.g. `/people/[personId]`) fail `next build` prerendering.
 - The Population workspace reads the live API (`NEXT_PUBLIC_API_URL`, default `http://localhost:8000`); backend CORS allows `http://localhost:3000` by default (`CORS_ORIGINS`).
+
+## Auth (bearer tokens, `lib/auth/`, `lib/api/client.ts`)
+
+- `AuthProvider` resolves the session via `GET /me`: 401 → sign-in screen, 404 → legacy backend (no sign-in), else roles/permissions.
+  Tokens live in `sessionStorage` (`lib/auth/session.ts`); the client attaches `Authorization`, rotates once on 401 (single-flight refresh).
+- The API client *holds* data requests (`holdRequests`/`releaseRequests`) until a staff session exists — `AppShell` keeps the
+  workspace tree rendered (`inert`) so segments stay prerenderable. Don't gate children with a hidden `<Activity>` (drops the segment
+  from instant-navigation validation) or by not rendering them.
+- `can(...)` only shapes nav/empty states; 403 → `forbidden` resource state (`lib/programmes/use-programmes-data.ts`), never fake zeros.
+- Tests without `AuthProvider` behave as legacy (all permissions); use `test/fixtures.ts` `me(role, perms)` for role tests.
+
+## Design system ("Prevention Atlas")
+
+- Tokens in `app/globals.css` per `[data-theme]`, including the `--ink-*` plate (teal in light, midnight in dark). Components use
+  semantic tokens only (theme tests reject hex/rgba in inline styles). Motion: `.reveal`, `.grow-x/.grow-y`, `.skeleton(-ink)`,
+  `<PageTransition>` + `Link transitionTypes={FORWARD|BACK}`; all disabled under `prefers-reduced-motion`.
+- Shared primitives: `components/ui/{plate,figure,button-styles,segmented,permission-notice,page-header}`.
+
+## Visual QA
+
+- Disposable backend: from `backend/`, `DATA_SOURCE=memory DEMO_IDENTITY_SEED=true DEMO_IDENTITY_PASSWORD=<passphrase>
+  CORS_ORIGINS=http://localhost:3100 .venv/bin/python -m uvicorn app.main:app --port 8001`, then
+  `NEXT_PUBLIC_API_URL=http://localhost:8001 npx next dev -p 3100`; demo users `{manager,clinician,coordinator,admin,patient}.a@demo.pulsereach.invalid`.

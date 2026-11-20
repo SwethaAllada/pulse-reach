@@ -1,133 +1,187 @@
 @import "tailwindcss";
 
 /*
- * PulseReach — "Population Constellation" design tokens.
- * Two complete themes selected by [data-theme] on <html>.
+ * PulseReach — "Prevention Atlas" design tokens.
+ * Two complete, separately composed themes selected by [data-theme] on <html>.
  * Components reference semantic tokens only — never theme-specific colours.
+ *
+ *  light  "Paper atlas"     warm ivory paper, deep teal ink, coral for human emphasis
+ *  dark   "Night survey"    midnight teal, pearl text, neon lime reserved for selection
+ *
+ * The "plate" (--ink-*) is the deep editorial band used for workspace heroes;
+ * it is re-composed per theme instead of being one fixed dark block.
  */
 
 :root,
 [data-theme="light"] {
-  --bg: #f6f8f9;
-  --bg-elevated: #ffffff;
-  --surface: #ffffff;
-  --surface-raised: #ffffff;
-  --surface-sunken: #edf1f3;
-  --border: #dce3e8;
-  --border-strong: #c3cfd6;
-  --text: #12232e;
-  --text-muted: #52636f;
-  --text-faint: #7c8b94;
-  --accent: #0e7c6b;
-  --accent-strong: #0b6e5b;
-  --accent-2: #1d6fa8;
-  --accent-soft: rgba(14, 124, 107, 0.1);
-  --on-accent: #ffffff;
-  --focus: #0e7c6b;
-  --nav-active-bg: rgba(14, 124, 107, 0.1);
-  --shadow-popover: 0 8px 24px rgba(14, 26, 31, 0.12);
-  --shadow-card: 0 1px 2px rgba(14, 26, 31, 0.06);
+  --bg: #f5f0e6;
+  --bg-elevated: #faf6ee;
+  --surface: #fbf8f1;
+  --surface-raised: #fffdf8;
+  --surface-sunken: #ece5d7;
+  --highlight: #d9e4da;
+  --border: #e2d9c7;
+  --border-strong: #c8bca5;
+  --rule: #263d3a;
+  --text: #263d3a;
+  --text-muted: #4d605c;
+  --text-faint: #56665f;
+  --accent: #0d4945;
+  --accent-strong: #08332f;
+  --accent-2: #2e6f8e;
+  --accent-soft: rgba(13, 73, 69, 0.08);
+  --on-accent: #f5f0e6;
+  /* Human emphasis / primary action. Text uses --action-text for contrast. */
+  --action: #f0785b;
+  --action-strong: #e2603f;
+  --on-action: #2a1510;
+  --action-text: #b2432a;
+  --action-soft: rgba(240, 120, 91, 0.14);
+  --focus: #0d4945;
+  --nav-active-bg: #d9e4da;
+  --shadow-popover: 0 18px 40px -18px rgba(38, 61, 58, 0.35), 0 2px 6px rgba(38, 61, 58, 0.08);
+  --shadow-card: none;
 
   --status-due: #c4532f;
-  --status-upcoming: #2f6e95;
-  --status-eligible: #55605c;
-  --status-completed: #276b43;
-  --status-not-eligible: #8a8f8b;
-  --status-unknown: #646c69;
-  --status-insufficient: #946200;
-  --status-review: #7b4bb7;
+  --status-upcoming: #2e6f8e;
+  --status-eligible: #55625d;
+  --status-completed: #2c7a4d;
+  --status-not-eligible: #767d76;
+  --status-unknown: #69716c;
+  --status-insufficient: #946300;
+  --status-review: #7a4e9e;
   --status-info: #2b5e78;
-  --status-error: #b42318;
+  --status-error: #b3261e;
 
-  /* Cohort / chart palette (muted for paper surfaces) */
-  --cohort-1: #0e7c6b;
-  --cohort-2: #2f6e95;
-  --cohort-3: #946200;
-  --cohort-4: #7b4bb7;
-  --cohort-5: #8a8f8b;
+  --cohort-1: #0d4945;
+  --cohort-2: #3d5a99;
+  --cohort-3: #946300;
+  --cohort-4: #7a4e9e;
+  --cohort-5: #767d76;
 
-  /* Constellation field behind content — muted, low contrast */
-  --field-star: rgba(18, 35, 46, 0.16);
-  --field-line: rgba(18, 35, 46, 0.07);
+  --segment-gap: #d4603f;
+  --segment-available: #3f7f62;
+  --segment-partial: #a87100;
+  --segment-unavailable: #7a827d;
+  --programme-ifhas: #0f5f59;
+  --programme-well-child: #3d5a99;
+
+  --field-star: rgba(38, 61, 58, 0.16);
+  --field-line: rgba(38, 61, 58, 0.07);
+  --grain: rgba(38, 61, 58, 0.035);
   --glow: none;
+
+  /* Plate: deep teal editorial band on paper. */
+  --ink: #0d4945;
+  --ink-raised: #115550;
+  --ink-line: #2b6b64;
+  --ink-text: #f5f0e6;
+  --ink-muted: #c9dad2;
+  --ink-faint: #a3c1b8;
+  --ink-accent: #f59a82;
+  --ink-accent-2: #d9e4da;
+  --ink-on-accent: #2a1510;
+  --ink-due: #f59a82;
+  --ink-completed: #a6dcb2;
+  --ink-review: #d4bdf2;
+  --ink-insufficient: #f2c86e;
+  --ink-unknown: #b9c8c2;
+  --ink-segment-gap: #f59a82;
+  --ink-segment-available: #a6dcb2;
+  --ink-segment-partial: #f2c86e;
+  --ink-segment-unavailable: #b9c8c2;
+  --ink-programme-ifhas: #d9e4da;
+  --ink-programme-well-child: #c3cff5;
 }
 
 [data-theme="dark"] {
-  --bg: #070d1b;
-  --bg-elevated: #0c1730;
-  --surface: #0c1730;
-  --surface-raised: #11203e;
-  --surface-sunken: #081122;
-  --border: #1d3050;
-  --border-strong: #2a3f63;
-  --text: #e4f0f6;
-  --text-muted: #8da3b8;
-  --text-faint: #5e748a;
-  --accent: #2dd4bf;
-  --accent-strong: #14b8a6;
-  --accent-2: #38bdf8;
-  --accent-soft: rgba(45, 212, 191, 0.12);
-  --on-accent: #04241f;
-  --focus: #5ed1b0;
-  --nav-active-bg: rgba(45, 212, 191, 0.12);
-  --shadow-popover: 0 8px 28px rgba(0, 0, 0, 0.45);
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --bg: #092b2b;
+  --bg-elevated: #0c3232;
+  --surface: #0d3434;
+  --surface-raised: #174746;
+  --surface-sunken: #072424;
+  --highlight: #174746;
+  --border: #1c4a48;
+  --border-strong: #2b605d;
+  --rule: #e8ede7;
+  --text: #e8ede7;
+  --text-muted: #a7c1b9;
+  --text-faint: #86a49c;
+  --accent: #c5f36a;
+  --accent-strong: #b2e651;
+  --accent-2: #7fc6df;
+  --accent-soft: rgba(197, 243, 106, 0.1);
+  --on-accent: #0b2a1c;
+  --action: #c5f36a;
+  --action-strong: #d4f78b;
+  --on-action: #0b2a1c;
+  --action-text: #c5f36a;
+  --action-soft: rgba(197, 243, 106, 0.12);
+  --focus: #c5f36a;
+  --nav-active-bg: rgba(197, 243, 106, 0.08);
+  --shadow-popover: 0 24px 48px -16px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(197, 243, 106, 0.04);
+  --shadow-card: none;
 
-  --status-due: #f08a6c;
-  --status-upcoming: #7db8e0;
-  --status-eligible: #a9b7b2;
-  --status-completed: #6ccb8f;
-  --status-not-eligible: #6b7a75;
-  --status-unknown: #9aa4a0;
-  --status-insufficient: #e0b04f;
-  --status-review: #b89af0;
-  --status-info: #9cc7d9;
-  --status-error: #f97066;
+  --status-due: #ff9b7d;
+  --status-upcoming: #86c3e6;
+  --status-eligible: #a9bdb6;
+  --status-completed: #8bdb9c;
+  --status-not-eligible: #6f8b85;
+  --status-unknown: #9eaea9;
+  --status-insufficient: #f2c14e;
+  --status-review: #c7aaf6;
+  --status-info: #a6cfe0;
+  --status-error: #ff8a7a;
 
-  --cohort-1: #5ed1b0;
-  --cohort-2: #7db8e0;
-  --cohort-3: #e0b04f;
-  --cohort-4: #b89af0;
-  --cohort-5: #9aa4a0;
+  --cohort-1: #6fd1c1;
+  --cohort-2: #a9b8f5;
+  --cohort-3: #f2c14e;
+  --cohort-4: #c7aaf6;
+  --cohort-5: #9eaea9;
 
-  --field-star: rgba(125, 184, 224, 0.28);
-  --field-line: rgba(125, 184, 224, 0.08);
-  --glow: 0 0 18px rgba(45, 212, 191, 0.25);
+  --segment-gap: #ff9b7d;
+  --segment-available: #74d3a8;
+  --segment-partial: #f2c14e;
+  --segment-unavailable: #8ea19b;
+  --programme-ifhas: #6fd1c1;
+  --programme-well-child: #a9b8f5;
+
+  --field-star: rgba(156, 184, 176, 0.3);
+  --field-line: rgba(156, 184, 176, 0.08);
+  --grain: rgba(232, 237, 231, 0.025);
+  --glow: 0 0 22px rgba(197, 243, 106, 0.22);
+
+  /* Plate: a deeper survey sheet than the canvas, lime reserved for selection. */
+  --ink: #051f1f;
+  --ink-raised: #0a2b2b;
+  --ink-line: #1a4442;
+  --ink-text: #e8ede7;
+  --ink-muted: #a7c1b9;
+  --ink-faint: #86a49c;
+  --ink-accent: #c5f36a;
+  --ink-accent-2: #6fd1c1;
+  --ink-on-accent: #0b2a1c;
+  --ink-due: #ff9b7d;
+  --ink-completed: #8bdb9c;
+  --ink-review: #c7aaf6;
+  --ink-insufficient: #f2c14e;
+  --ink-unknown: #9eaea9;
+  --ink-segment-gap: #ff9b7d;
+  --ink-segment-available: #74d3a8;
+  --ink-segment-partial: #f2c14e;
+  --ink-segment-unavailable: #8ea19b;
+  --ink-programme-ifhas: #6fd1c1;
+  --ink-programme-well-child: #a9b8f5;
 }
 
-/* Ink band: the deep observatory surface used for the hero in BOTH themes. */
 :root {
-  --ink: #081423;
-  --ink-raised: #0e2032;
-  --ink-line: #1c3547;
-  --ink-text: #e6f2ef;
-  --ink-muted: #9ab4ad;
-  --ink-faint: #5f7a75;
-  --ink-accent: #5ed1b0;
-  --ink-accent-2: #7db8e0;
-  --ink-due: #f08a6c;
-  --ink-completed: #6ccb8f;
-  --ink-review: #b89af0;
-  --ink-insufficient: #e0b04f;
-  --ink-unknown: #9aa4a0;
-
-  /* Population segments (evidence state of a person within a programme). */
-  --ink-segment-gap: var(--ink-due);
-  --ink-segment-available: var(--ink-accent-2);
-  --ink-segment-partial: var(--ink-insufficient);
-  --ink-segment-unavailable: var(--ink-unknown);
-  --ink-programme-ifhas: var(--ink-accent);
-  --ink-programme-well-child: var(--ink-review);
-}
-
-/* Theme-aware segment / programme colours for paper surfaces (resolve per [data-theme]). */
-:root {
-  --segment-gap: var(--status-due);
-  --segment-available: var(--status-upcoming);
-  --segment-partial: var(--status-insufficient);
-  --segment-unavailable: var(--status-unknown);
-  --programme-ifhas: var(--cohort-1);
-  --programme-well-child: var(--cohort-4);
+  /* Motion system — one vocabulary for every reveal and transition. */
+  --ease-out: cubic-bezier(0.22, 0.7, 0.18, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 140ms;
+  --dur-base: 240ms;
+  --dur-slow: 520ms;
+  --stagger: 55ms;
 }
 
 @theme inline {
@@ -136,8 +190,10 @@
   --color-surface: var(--surface);
   --color-surface-raised: var(--surface-raised);
   --color-surface-sunken: var(--surface-sunken);
+  --color-highlight: var(--highlight);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
+  --color-rule: var(--rule);
   --color-foreground: var(--text);
   --color-muted: var(--text-muted);
   --color-faint: var(--text-faint);
@@ -146,7 +202,13 @@
   --color-accent-2: var(--accent-2);
   --color-accent-soft: var(--accent-soft);
   --color-on-accent: var(--on-accent);
+  --color-action: var(--action);
+  --color-action-strong: var(--action-strong);
+  --color-on-action: var(--on-action);
+  --color-action-text: var(--action-text);
+  --color-action-soft: var(--action-soft);
   --color-focus: var(--focus);
+  --color-nav-active-bg: var(--nav-active-bg);
   --color-status-due: var(--status-due);
   --color-status-upcoming: var(--status-upcoming);
   --color-status-eligible: var(--status-eligible);
@@ -172,6 +234,7 @@
   --color-ink-faint: var(--ink-faint);
   --color-ink-accent: var(--ink-accent);
   --color-ink-accent-2: var(--ink-accent-2);
+  --color-ink-on-accent: var(--ink-on-accent);
   --color-ink-due: var(--ink-due);
   --color-ink-completed: var(--ink-completed);
   --color-ink-review: var(--ink-review);
@@ -184,16 +247,24 @@
   --color-programme-ifhas: var(--programme-ifhas);
   --color-programme-well-child: var(--programme-well-child);
   --font-sans: var(--font-geist-sans);
-  --font-display: var(--font-space-grotesk);
+  --font-display: var(--font-fraunces);
   --font-mono: var(--font-geist-mono);
+}
+
+html {
+  scrollbar-gutter: stable;
 }
 
 body {
   background: var(--bg);
   color: var(--text);
+  font-feature-settings: "ss01", "cv11";
+  transition:
+    background-color var(--dur-base) var(--ease-out),
+    color var(--dur-base) var(--ease-out);
 }
 
-/* Subtle constellation field behind the app content. */
+/* Survey grid + paper grain behind the app: quiet structure, never data. */
 body::before {
   content: "";
   position: fixed;
@@ -201,28 +272,39 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background-image:
-    radial-gradient(1.5px 1.5px at 8% 12%, var(--field-star) 50%, transparent 51%),
-    radial-gradient(1px 1px at 22% 68%, var(--field-star) 50%, transparent 51%),
-    radial-gradient(1.2px 1.2px at 45% 22%, var(--field-star) 50%, transparent 51%),
-    radial-gradient(1px 1px at 61% 82%, var(--field-star) 50%, transparent 51%),
-    radial-gradient(1.4px 1.4px at 78% 38%, var(--field-star) 50%, transparent 51%),
-    radial-gradient(1px 1px at 90% 66%, var(--field-star) 50%, transparent 51%),
-    radial-gradient(1px 1px at 33% 45%, var(--field-star) 50%, transparent 51%),
-    radial-gradient(1.2px 1.2px at 70% 8%, var(--field-star) 50%, transparent 51%);
+    linear-gradient(var(--field-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--field-line) 1px, transparent 1px),
+    radial-gradient(var(--grain) 1px, transparent 1px);
+  background-size:
+    96px 96px,
+    96px 96px,
+    4px 4px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.25) 70%);
 }
 
 [data-theme="dark"] body::before {
   background-image:
-    radial-gradient(1.5px 1.5px at 8% 12%, var(--field-star) 50%, transparent 51%),
-    radial-gradient(1px 1px at 22% 68%, var(--field-star) 50%, transparent 51%),
-    radial-gradient(1.6px 1.6px at 45% 22%, rgba(94, 209, 176, 0.35) 50%, transparent 51%),
-    radial-gradient(1px 1px at 61% 82%, var(--field-star) 50%, transparent 51%),
-    radial-gradient(1.4px 1.4px at 78% 38%, var(--field-star) 50%, transparent 51%),
-    radial-gradient(1px 1px at 90% 66%, var(--field-star) 50%, transparent 51%),
-    radial-gradient(1px 1px at 33% 45%, var(--field-star) 50%, transparent 51%),
-    radial-gradient(1.4px 1.4px at 70% 8%, rgba(125, 184, 224, 0.4) 50%, transparent 51%),
-    radial-gradient(700px 420px at 85% -10%, rgba(45, 212, 191, 0.06), transparent 70%),
-    radial-gradient(600px 380px at -10% 100%, rgba(56, 189, 248, 0.05), transparent 70%);
+    radial-gradient(900px 520px at 88% -12%, rgba(197, 243, 106, 0.05), transparent 70%),
+    radial-gradient(700px 460px at -8% 105%, rgba(111, 209, 193, 0.06), transparent 70%),
+    linear-gradient(var(--field-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--field-line) 1px, transparent 1px);
+  background-size:
+    auto,
+    auto,
+    96px 96px,
+    96px 96px;
+}
+
+.font-display {
+  font-variation-settings: "SOFT" 30, "WONK" 0;
+  font-optical-sizing: auto;
+}
+
+.figure {
+  font-family: var(--font-fraunces);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-variation-settings: "SOFT" 0, "WONK" 0;
+  letter-spacing: -0.02em;
 }
 
 /* Focus visibility — never remove. */
@@ -231,8 +313,169 @@ body::before {
   outline-offset: 2px;
 }
 
+/* On the plate the paper focus colour can match the plate itself: switch to the plate accent. */
+.bg-ink :focus-visible {
+  outline-color: var(--ink-accent);
+}
+
 ::selection {
-  background: var(--accent-soft);
+  background: var(--highlight);
+  color: var(--text);
+}
+
+/* ── Motion primitives ─────────────────────────────────────────────────── */
+
+@keyframes atlas-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes atlas-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes atlas-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes atlas-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes atlas-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@keyframes atlas-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(260%);
+  }
+}
+
+/* Content arriving: rises in order. `--i` sets the order within a group. */
+.reveal {
+  animation: atlas-rise var(--dur-slow) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger));
+}
+.reveal-fade {
+  animation: atlas-fade var(--dur-slow) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger));
+}
+/* A quantity being measured out from its origin (bars, bands). */
+.grow-x {
+  transform-origin: left center;
+  animation: atlas-grow-x 700ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger) + 120ms);
+}
+.grow-y {
+  transform-origin: center bottom;
+  transform-box: fill-box;
+  animation: atlas-grow-y 600ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 18ms + 120ms);
+}
+
+/* Loading that keeps the final layout: a quiet sweep across the placeholder. */
+.skeleton {
+  background: linear-gradient(
+    100deg,
+    var(--surface-sunken) 30%,
+    color-mix(in srgb, var(--surface-sunken) 55%, var(--surface-raised)) 50%,
+    var(--surface-sunken) 70%
+  );
+  background-size: 200% 100%;
+  animation: atlas-shimmer 1.6s linear infinite;
+}
+.skeleton-ink {
+  background: linear-gradient(
+    100deg,
+    var(--ink-raised) 30%,
+    color-mix(in srgb, var(--ink-raised) 70%, var(--ink-line)) 50%,
+    var(--ink-raised) 70%
+  );
+  background-size: 200% 100%;
+  animation: atlas-shimmer 1.6s linear infinite;
+}
+.progress-track {
+  position: relative;
+  overflow: hidden;
+}
+.progress-track::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: currentColor;
+  border-radius: inherit;
+  animation: atlas-progress 1.3s var(--ease-in-out) infinite;
+}
+
+/* ── Route transitions (React <ViewTransition>) ───────────────────────── */
+
+::view-transition-old(.atlas-exit) {
+  animation: var(--dur-fast) var(--ease-out) both atlas-fade reverse;
+}
+::view-transition-new(.atlas-enter) {
+  animation: var(--dur-slow) var(--ease-out) 80ms both atlas-rise;
+}
+::view-transition-old(.nav-forward) {
+  --slide-offset: -36px;
+  animation:
+    var(--dur-fast) ease-in both atlas-fade reverse,
+    360ms var(--ease-in-out) both atlas-slide reverse;
+}
+::view-transition-new(.nav-forward) {
+  --slide-offset: 36px;
+  animation:
+    220ms var(--ease-out) var(--dur-fast) both atlas-fade,
+    360ms var(--ease-in-out) both atlas-slide;
+}
+::view-transition-old(.nav-back) {
+  --slide-offset: 36px;
+  animation:
+    var(--dur-fast) ease-in both atlas-fade reverse,
+    360ms var(--ease-in-out) both atlas-slide reverse;
+}
+::view-transition-new(.nav-back) {
+  --slide-offset: -36px;
+  animation:
+    220ms var(--ease-out) var(--dur-fast) both atlas-fade,
+    360ms var(--ease-in-out) both atlas-slide;
+}
+::view-transition-group(.atlas-morph) {
+  animation-duration: 420ms;
+  animation-timing-function: var(--ease-in-out);
+}
+@keyframes atlas-slide {
+  from {
+    translate: var(--slide-offset);
+  }
+  to {
+    translate: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -240,7 +483,14 @@ body::before {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 }

@@ -3,16 +3,14 @@ import { ChevronDown } from "lucide-react";
 /** Honest list of population capabilities the backend does not expose yet. */
 const MISSING: { capability: string; needs: string }[] = [
   {
-    capability: "People filter by open care gap or history status",
-    needs: "GET /api/v1/patients has no has_open_gap / history_status / evaluation_status parameters (audit T-06).",
+    capability: "Programme-scoped open-gap and history filters",
+    needs:
+      "GET /patients has has_open_care_gaps and history_status, but they match any programme. The programme views compare totals and disclose differences.",
   },
   {
-    capability: "Age-group filter and breakdown",
-    needs: "No age-band parameter on /patients and no age roll-up in /dashboard/summary (T-06, T-08).",
-  },
-  {
-    capability: "Programme coverage / completion rates",
-    needs: "No per-person outcome roll-up; summary counts are rule evaluations, not people (T-08).",
+    capability: "Per-programme coverage, completion rates and trends",
+    needs:
+      "No per-person outcome roll-up per programme. /population/summary gives organization-wide preventive coverage and 90-day comparisons only.",
   },
   {
     capability: "Server-side cohort aggregates",
@@ -27,12 +25,15 @@ const MISSING: { capability: string; needs: string }[] = [
 
 export function UnavailableCapabilities() {
   return (
-    <details className="group mt-10 rounded-lg border border-border bg-surface px-5 py-4">
+    <details className="group mt-16 border-y border-border py-4">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-foreground">
-        Not yet available from the API
-        <ChevronDown size={16} aria-hidden="true" className="text-faint transition-transform group-open:rotate-180" />
+        <span>
+          <span className="mr-3 font-mono text-[11px] font-normal text-faint">Limits</span>
+          Not yet available from the API
+        </span>
+        <ChevronDown size={16} aria-hidden="true" className="text-faint transition-transform duration-300 group-open:rotate-180" />
       </summary>
-      <ul className="mt-3 flex flex-col gap-2.5">
+      <ul className="mt-4 grid grid-cols-1 gap-x-10 gap-y-3 md:grid-cols-2">
         {MISSING.map((m) => (
           <li key={m.capability} className="text-sm">
             <span className="font-medium text-foreground">{m.capability}.</span>{" "}

@@ -46,7 +46,7 @@ export function SearchInput() {
             setNotice(true);
           }
         }}
-        className="h-9 w-full rounded-md border border-border bg-surface-sunken pl-9 pr-14 text-sm text-foreground placeholder:text-faint transition-colors focus:border-accent focus:bg-surface focus:outline-none"
+        className="h-9 w-full rounded-full border border-transparent bg-surface-sunken pl-9 pr-14 text-sm text-foreground placeholder:text-faint transition-colors hover:border-border focus:border-accent focus:bg-surface-raised focus:outline-none"
       />
       <kbd
         aria-hidden="true"
@@ -57,7 +57,7 @@ export function SearchInput() {
       {notice && (
         <p
           role="status"
-          className="absolute left-0 top-full z-50 mt-2 w-72 rounded-md border border-border bg-surface-raised px-3 py-2 text-xs text-muted shadow-[var(--shadow-popover)]"
+          className="reveal absolute left-0 top-full z-50 mt-2 w-72 rounded-xl border border-border bg-surface-raised px-3 py-2 text-xs text-muted shadow-[var(--shadow-popover)]"
         >
           Search isn&apos;t connected yet — it will query people, rules and programmes once the
           search API lands.

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   activeFilterCount,
+  careFilterChips,
+  peopleFiltersHref,
+  peopleQuery,
   listHrefFromProfile,
   normalizeIdQuery,
   parsePeopleState,
@@ -16,11 +19,13 @@ describe("people URL state", () => {
       filters: { pathway: "ifhas", region_id: 2, sex: "male" },
       page: 3,
       id: "SYNTH-PAT-000003",
+      sort: null,
     });
     expect(parse("pathway=dental&region_id=7&sex=x&page=-2&id=%3Cscript%3E&age=40")).toEqual({
       filters: {},
       page: 1,
       id: null,
+      sort: null,
     });
     expect(parse("page=1.5").page).toBe(1);
   });
@@ -49,5 +54,25 @@ describe("people URL state", () => {
     expect(listHrefFromProfile(from)).toBe("/people?pathway=ifhas&region_id=1&page=4");
     expect(listHrefFromProfile(null)).toBe("/people");
     expect(listHrefFromProfile("https://evil.example/?pathway=ifhas")).toBe("/people");
+  });
+
+  it("parses backend-supported care filters and sort, dropping unknown values", () => {
+    const s = parse("pathway=ifhas&has_open_care_gaps=true&history_status=partial&age_band=adult_40_59&sort=open_gaps");
+    expect(s.filters).toEqual({ pathway: "ifhas", has_open_care_gaps: true, history_status: "partial", age_band: "adult_40_59" });
+    expect(s.sort).toBe("open_gaps");
+    expect(peopleQuery(s)).toMatchObject({ has_open_care_gaps: true, sort_by: "open_gaps", sort_dir: "desc" });
+    expect(activeFilterCount(s)).toBe(4);
+    expect(careFilterChips(s.filters).map((c) => c.label)).toEqual(["With open care gaps", "History partial", "Age: 40–59"]);
+
+    const bad = parse("has_open_care_gaps=yes&history_status=none&age_band=40s&sort=age");
+    expect(bad.filters).toEqual({});
+    expect(bad.sort).toBeNull();
+    expect(parse("has_open_care_gaps=false").filters.has_open_care_gaps).toBe(false);
+  });
+
+  it("serialises drill-down links with backend parameter names", () => {
+    expect(peopleFiltersHref({ pathway: "well_child", has_open_care_gaps: false, history_status: "not_available" }, "open_gaps")).toBe(
+      "/people?pathway=well_child&has_open_care_gaps=false&history_status=not_available&sort=open_gaps"
+    );
   });
 });

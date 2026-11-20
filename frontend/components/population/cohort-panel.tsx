@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Info } from "lucide-react";
 import type { Cohort, CohortId, PopulationModel } from "@/lib/population/model";
-import { pathwayLabel, peopleHref, type PopulationFilters } from "@/lib/population/filters";
+import { filtersToSearchParams, pathwayLabel, type PopulationFilters } from "@/lib/population/filters";
+import { peopleFiltersHref } from "@/lib/people/params";
+import { programmeHref as programmeLink, segmentPeopleFilters } from "@/lib/programmes/model";
+import { buttonClass } from "@/components/ui/button-styles";
+import { FORWARD } from "@/components/ui/page-transition";
 import { PROGRAMME_COLOR, SegmentGlyph } from "./segment-glyph";
 import { cn } from "@/lib/cn";
 
@@ -20,7 +24,8 @@ export function CohortPanel({ model, selected, filters, onSelect }: Props) {
     <aside
       aria-label="Cohort details"
       aria-live="polite"
-      className="flex h-full flex-col rounded-lg border border-ink-line bg-ink-raised/60 p-5"
+      className="reveal flex h-full flex-col rounded-2xl border border-ink-line bg-ink-raised/60 p-5"
+      style={{ "--i": 4 } as React.CSSProperties}
     >
       {selected ? (
         <CohortDetail cohort={selected} model={model} filters={filters} onSelect={onSelect} />
@@ -97,10 +102,10 @@ function CohortDetail({
   const isProgramme = cohort.segment === null;
   const topRules = cohort.gapsByRule.slice(0, 5);
   const maxRule = topRules[0]?.count ?? 0;
-  const programmeHref = peopleHref({ ...filters, pathway: cohort.pathway });
+  const programmeHref = peopleFiltersHref(segmentPeopleFilters(cohort.pathway, cohort.segment, filters), "open_gaps");
 
   return (
-    <div className="flex h-full flex-col">
+    <div key={cohort.id} className="reveal-fade flex h-full flex-col">
       <button
         type="button"
         onClick={() => onSelect(null)}
@@ -113,7 +118,7 @@ function CohortDetail({
         {pathwayLabel(cohort.pathway)}
         {!isProgramme && <span className="text-ink-faint">· segment</span>}
       </p>
-      <h2 className="mt-1 flex items-center gap-2 text-lg font-semibold text-ink-text">
+      <h2 className="mt-1 flex items-center gap-2 font-display text-xl font-normal text-ink-text">
         {cohort.segment && <SegmentGlyph segment={cohort.segment} surface="ink" size={14} />}
         {isProgramme ? "Whole programme" : cohort.label}
       </h2>
@@ -122,14 +127,14 @@ function CohortDetail({
       <dl className="mt-4 grid grid-cols-2 gap-3 border-y border-ink-line py-3">
         <div>
           <dt className="text-[11px] text-ink-faint">People</dt>
-          <dd className="font-display text-2xl font-semibold tabular-nums text-ink-text">{cohort.people}</dd>
+          <dd className="figure text-3xl text-ink-text">{cohort.people}</dd>
           {!isProgramme && (
             <dd className="text-[11px] text-ink-faint">of {programme.people} in programme</dd>
           )}
         </div>
         <div>
           <dt className="text-[11px] text-ink-faint">Open documented gaps</dt>
-          <dd className="font-display text-2xl font-semibold tabular-nums text-ink-text">{cohort.openGaps}</dd>
+          <dd className="figure text-3xl text-ink-text">{cohort.openGaps}</dd>
           <dd className="text-[11px] text-ink-faint">gap records, not people</dd>
         </div>
       </dl>
@@ -150,7 +155,7 @@ function CohortDetail({
                 </div>
                 <div className="mt-1 h-1 rounded-full bg-ink-line">
                   <div
-                    className="h-1 rounded-full"
+                    className="grow-x h-1 rounded-full"
                     style={{ width: `${(r.count / maxRule) * 100}%`, backgroundColor: "var(--ink-segment-gap)" }}
                   />
                 </div>
@@ -177,47 +182,46 @@ function CohortDetail({
       </div>
 
       <div className="mt-auto pt-5">
-        {isProgramme ? (
-          <ExploreLink href={programmeHref} disabled={cohort.people === 0}>
-            Explore {cohort.people} {cohort.people === 1 ? "person" : "people"}
-          </ExploreLink>
-        ) : (
-          <>
-            <p className="flex gap-2 rounded-md border border-ink-line px-3 py-2 text-[12px] leading-relaxed text-ink-muted">
-              <Info size={14} aria-hidden="true" className="mt-0.5 shrink-0 text-ink-faint" />
-              <span>
-                <span className="font-medium text-ink-text">Exploring only this segment is unavailable.</span>{" "}
-                The People API cannot yet filter by open care gap or history status, so it would
-                return all {programme.people} programme members instead of these {cohort.people}.
-              </span>
-            </p>
-            <ExploreLink href={programmeHref} disabled={programme.people === 0} secondary>
-              Explore all {programme.people} {pathwayLabel(cohort.pathway, true)} people
-            </ExploreLink>
-          </>
+        <ExploreLink href={programmeDetailHref(cohort, filters)} disabled={cohort.people === 0} forward>
+          {isProgramme ? `Open the ${pathwayLabel(cohort.pathway, true)} programme` : "Open this segment in its programme"}
+        </ExploreLink>
+        <ExploreLink href={programmeHref} disabled={cohort.people === 0} secondary>
+          Explore {cohort.people} {cohort.people === 1 ? "person" : "people"}
+        </ExploreLink>
+        {!isProgramme && (
+          <p className="mt-3 flex gap-2 text-[11px] leading-relaxed text-ink-faint">
+            <Info size={13} aria-hidden="true" className="mt-px shrink-0" />
+            <span>
+              The People list filters open gaps and history across all programmes; the programme view keeps this
+              segment exact and says when the two differ.
+            </span>
+          </p>
         )}
       </div>
     </div>
   );
 }
 
+function programmeDetailHref(cohort: Cohort, filters: PopulationFilters): string {
+  const qs = filtersToSearchParams({ region_id: filters.region_id, sex: filters.sex });
+  if (cohort.segment) qs.set("segment", cohort.segment);
+  return programmeLink(cohort.pathway, qs);
+}
+
 function ExploreLink({
   href,
   disabled,
   secondary,
+  forward,
   children,
 }: {
   href: string;
   disabled?: boolean;
   secondary?: boolean;
+  forward?: boolean;
   children: React.ReactNode;
 }) {
-  const cls = cn(
-    "mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors",
-    secondary
-      ? "border border-ink-line text-ink-text hover:border-ink-accent"
-      : "bg-ink-accent text-ink hover:opacity-90"
-  );
+  const cls = buttonClass(secondary ? "plate" : "plate-primary", cn("w-full", secondary ? "mt-2" : "mt-3"));
   if (disabled) {
     return (
       <span aria-disabled="true" className={cn(cls, "cursor-not-allowed opacity-50")}>
@@ -226,7 +230,7 @@ function ExploreLink({
     );
   }
   return (
-    <Link href={href} className={cls}>
+    <Link href={href} className={cls} transitionTypes={forward ? FORWARD : undefined}>
       {children}
       <ArrowRight size={14} aria-hidden="true" />
     </Link>

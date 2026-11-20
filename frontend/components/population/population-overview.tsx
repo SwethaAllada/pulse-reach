@@ -1,5 +1,8 @@
+import Link from "next/link";
 import type { PopulationModel } from "@/lib/population/model";
 import { hasActiveFilters, type PopulationFilters } from "@/lib/population/filters";
+import { Figure } from "@/components/ui/figure";
+import { FORWARD } from "@/components/ui/page-transition";
 
 interface Props {
   model: PopulationModel;
@@ -8,7 +11,7 @@ interface Props {
   filters: PopulationFilters;
 }
 
-/** Inline metric band — every value is derived from API records in the current filter set. */
+/** Inline figure band — every value is derived from API records in the current filter set. */
 export function PopulationOverview({ model, populationTotal, filters }: Props) {
   const [ifhas, wcv] = model.programmes;
   const filtered = hasActiveFilters(filters);
@@ -42,21 +45,18 @@ export function PopulationOverview({ model, populationTotal, filters }: Props) {
 
   return (
     <section aria-label="Population overview">
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-6 lg:divide-x lg:divide-ink-line">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3 lg:grid-cols-6 lg:divide-x lg:divide-ink-line">
         {metrics.map((m, i) => (
-          <div key={m.label} className={i > 0 ? "lg:pl-5" : undefined}>
-            <dt className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-faint">{m.label}</dt>
-            <dd className="mt-1 font-display text-2xl font-semibold tabular-nums text-ink-text sm:text-[28px]">
-              {m.value}
-            </dd>
-            <dd className="text-[11px] leading-snug text-ink-muted">{m.note}</dd>
-          </div>
+          <Figure key={m.label} tone="plate" label={m.label} value={m.value} note={m.note} className={i > 0 ? "lg:pl-5" : undefined} i={i} />
         ))}
-        <div className="col-span-2 sm:col-span-1 lg:pl-5">
-          <dt className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-faint">Programme coverage</dt>
-          <dd className="mt-1 text-sm font-medium text-ink-muted">Not available</dd>
-          <dd className="text-[11px] leading-snug text-ink-faint">
-            Completion rates need per-person outcome roll-ups the API does not provide yet.
+        <div className="reveal col-span-2 sm:col-span-1 lg:pl-5" style={{ "--i": 5 } as React.CSSProperties}>
+          <dt className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink-faint">Programme coverage</dt>
+          <dd className="mt-2 text-sm font-medium text-ink-muted">Not available</dd>
+          <dd className="mt-1 text-[11px] leading-snug text-ink-faint">
+            No per-programme completion rate exists in the API.{" "}
+            <Link href="/programmes" transitionTypes={FORWARD} className="text-ink-accent underline-offset-4 hover:underline">
+              See documented completions
+            </Link>
           </dd>
         </div>
       </dl>

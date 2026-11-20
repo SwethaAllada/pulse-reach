@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { AlertTriangle, ArrowLeft, ShieldCheck, UserX } from "lucide-react";
@@ -22,31 +22,49 @@ import {
   sexLabel,
 } from "@/lib/people/person";
 import { usePersonProfile, type PersonProfileData } from "@/lib/people/use-people-data";
+import { pathwayFromSlug, PROGRAMME_META } from "@/lib/programmes/model";
+import { buttonClass } from "@/components/ui/button-styles";
+import { BACK } from "@/components/ui/page-transition";
 import { ProgrammeHistory } from "../programme-history";
 import { Field, PROFILE_SECTIONS, ProfileSection, UnavailableNote } from "./profile-section";
 import { AssessmentSection } from "./assessment-section";
 import { EvidenceTraceSection } from "./evidence-trace";
 import { CareGapsSection, PathwaySection } from "./care-gaps";
 
+/**
+ * `via` = the programme or rule page the profile was opened from. Only same-origin
+ * programme paths are accepted (never an arbitrary URL).
+ */
+function programmeVia(raw: string | null): { href: string; crumbs: { label: string; href: string }[] } | null {
+  const m = /^\/programmes\/([a-z-]+)(?:\/rules\/([A-Za-z0-9._%-]+))?(\?[^#]*)?$/.exec(raw ?? "");
+  const pathway = m ? pathwayFromSlug(m[1]) : null;
+  if (!m || !pathway) return null;
+  const programmePath = `/programmes/${m[1]}`;
+  const crumbs = [{ label: PROGRAMME_META[pathway].name, href: m[2] ? programmePath : `${programmePath}${m[3] ?? ""}` }];
+  if (m[2]) crumbs.push({ label: decodeURIComponent(m[2]), href: `${programmePath}/rules/${m[2]}` });
+  return { href: crumbs.at(-1)!.href, crumbs };
+}
+
 export function PersonProfile() {
   const params = useParams<{ personId: string }>();
   const personId = decodeURIComponent(params.personId ?? "");
-  const from = useSearchParams().get("from");
+  const search = useSearchParams();
+  const from = search.get("from");
+  const via = programmeVia(search.get("via"));
   const listHref = listHrefFromProfile(from);
   const listFilters = parsePeopleState(new URLSearchParams(from ?? "")).filters;
   const { state, retry } = usePersonProfile(personId);
 
-  const breadcrumbs = [
-    { label: "Population", href: populationHref(listFilters) },
-    { label: "People", href: listHref },
-    { label: personId },
-  ];
+  const breadcrumbs = via
+    ? [{ label: "Programmes", href: "/programmes" }, ...via.crumbs, { label: personId }]
+    : [
+        { label: "Population", href: populationHref(listFilters) },
+        { label: "People", href: listHref },
+        { label: personId },
+      ];
   const back = (
-    <Link
-      href={listHref}
-      className="inline-flex items-center gap-1.5 rounded-md border border-border-strong px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-accent"
-    >
-      <ArrowLeft size={14} aria-hidden="true" /> Back to People
+    <Link href={via?.href ?? listHref} transitionTypes={BACK} className={buttonClass("secondary")}>
+      <ArrowLeft size={14} aria-hidden="true" /> {via ? `Back to ${via.crumbs.at(-1)!.label}` : "Back to People"}
     </Link>
   );
 
@@ -61,7 +79,7 @@ export function PersonProfile() {
             <div aria-busy="true" aria-label="Loading person profile" className="flex flex-col gap-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-28 animate-pulse rounded-lg bg-surface-sunken" />
+                  <div key={i} className="skeleton h-24 rounded-xl" style={{ animationDelay: `${i * 100}ms` }} />
                 ))}
               </div>
               <LoadingState rows={6} />
@@ -79,7 +97,7 @@ export function PersonProfile() {
             </Surface>
           )}
           {state.status === "error" && (
-            <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-border bg-surface p-6">
+            <div role="alert" className="reveal flex flex-col items-start gap-3 rounded-xl border border-border bg-surface p-6">
               <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <AlertTriangle size={16} aria-hidden="true" className="text-status-error" />
                 This profile is unavailable
@@ -88,7 +106,7 @@ export function PersonProfile() {
               <button
                 type="button"
                 onClick={retry}
-                className="rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-on-accent transition-opacity hover:opacity-90"
+                className={buttonClass("primary")}
               >
                 Retry
               </button>
@@ -128,6 +146,12 @@ function ProfileBody({
       return next;
     });
   }, []);
+  // Deep links (e.g. `#evidence` from a programme rule) target sections that only exist once data loads.
+  useEffect(() => {
+    const target = window.location.hash.slice(1);
+    if (target) document.getElementById(target)?.scrollIntoView({ block: "start" });
+  }, []);
+
   const openTrace = useCallback((id: string) => {
     setExpanded((prev) => new Set(prev).add(id));
     requestAnimationFrame(() => document.getElementById(`trace-${id}`)?.scrollIntoView({ block: "start", behavior: "smooth" }));
@@ -136,6 +160,7 @@ function ProfileBody({
   return (
     <>
       <PageHeader
+        index="04"
         eyebrow="Person profile · synthetic record"
         title={patient.patient_id}
         subtitle={`Evaluation run ${ev.evaluation_run_id} · reference date ${refDate}. Every value below comes from the PulseReach API and its configured rules.`}
@@ -144,7 +169,7 @@ function ProfileBody({
         className="mb-6"
       />
 
-      <section aria-label="At a glance" className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section aria-label="At a glance" className="mb-8 grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-border">
         <Glance question="Who is this person?">
           <p className="text-sm text-foreground">
             {ageLabel(patient.date_of_birth, refDate)} · {sexLabel(patient.sex)} · {regionLabel(patient.region_id)}
@@ -187,14 +212,14 @@ function ProfileBody({
 
       <nav
         aria-label="Profile sections"
-        className="sticky top-16 z-20 -mx-4 mb-8 overflow-x-auto border-y border-border bg-background/95 px-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+        className="sticky top-16 z-20 -mx-4 mb-10 overflow-x-auto border-y border-border bg-[color-mix(in_srgb,var(--bg)_88%,transparent)] px-4 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
       >
         <ul className="flex min-w-max gap-1 py-2">
           {PROFILE_SECTIONS.map((s) => (
             <li key={s.id}>
               <a
                 href={`#${s.id}`}
-                className="inline-flex min-h-9 items-center rounded-md px-3 text-sm text-muted transition-colors hover:bg-nav-active-bg hover:text-foreground"
+                className="inline-flex min-h-9 items-center rounded-full px-3 text-sm text-muted transition-colors hover:bg-nav-active-bg hover:text-foreground"
               >
                 {s.label}
               </a>
@@ -282,10 +307,10 @@ function ProfileBody({
 
 function Glance({ question, children }: { question: string; children: React.ReactNode }) {
   return (
-    <Surface className="p-4">
-      <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-accent">{question}</h2>
+    <div className="reveal min-w-0 lg:px-6 lg:first:pl-0">
+      <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-action-text">{question}</h2>
       {children}
-    </Surface>
+    </div>
   );
 }
 

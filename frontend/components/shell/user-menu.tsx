@@ -1,10 +1,18 @@
 "use client";
 
-import { CircleUser, LogOut, Settings, UserRound } from "lucide-react";
+import { Building2, LogOut, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { roleLabel, scopeLabel, useAuth } from "@/lib/auth/auth-context";
+import { cn } from "@/lib/cn";
 
-/** Synthetic operator identity — auth isn't part of this milestone. */
+function initials(name: string): string {
+  const parts = name.replace(/\(.*?\)/g, "").trim().split(/\s+/).filter(Boolean);
+  return (parts[0]?.[0] ?? "?").concat(parts.length > 1 ? parts[parts.length - 1][0] : "").toUpperCase();
+}
+
+/** Signed-in identity, role, organization and patient scope — all from `GET /me`. */
 export function UserMenu() {
+  const { state, scope, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -24,6 +32,9 @@ export function UserMenu() {
     };
   }, [open]);
 
+  const me = state.status === "signed_in" ? state.me : null;
+  const org = me?.memberships.find((m) => m.organization_id === me.organization_id);
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -32,40 +43,73 @@ export function UserMenu() {
         aria-label="User menu"
         aria-expanded={open}
         aria-haspopup="menu"
-        className="flex size-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-sunken hover:text-foreground"
+        className="flex h-9 items-center gap-2 rounded-full pl-1 pr-1 text-muted transition-colors hover:bg-surface-sunken hover:text-foreground sm:pr-3"
       >
-        <CircleUser size={22} />
-      </button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 top-full z-50 mt-2 w-60 rounded-md border border-border bg-surface-raised py-1.5 shadow-[var(--shadow-popover)]"
+        <span
+          aria-hidden="true"
+          className="flex size-7 items-center justify-center rounded-full bg-ink text-[11px] font-semibold text-ink-text"
         >
-          <div className="border-b border-border px-4 py-3">
-            <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <UserRound size={15} aria-hidden="true" /> Demo Operator
+          {me ? initials(me.user.full_name) : "–"}
+        </span>
+        <span className="hidden max-w-36 truncate text-xs font-medium text-foreground sm:block">
+          {me ? roleLabel(me.role) : "Legacy access"}
+        </span>
+      </button>
+      <div
+        role="menu"
+        aria-hidden={!open}
+        className={cn(
+          "absolute right-0 top-full z-50 mt-2 w-72 origin-top-right rounded-xl border border-border bg-surface-raised py-1.5 shadow-[var(--shadow-popover)] transition-[opacity,transform] duration-200 ease-[var(--ease-out)]",
+          open ? "scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0"
+        )}
+      >
+        {me ? (
+          <>
+            <div className="border-b border-border px-4 py-3">
+              <p className="font-display text-base font-medium text-foreground">{me.user.full_name}</p>
+              <p className="truncate text-xs text-faint">{me.user.email}</p>
+              <dl className="mt-3 flex flex-col gap-1.5 text-xs">
+                <div className="flex items-start gap-2">
+                  <ShieldCheck size={13} aria-hidden="true" className="mt-px shrink-0 text-faint" />
+                  <dt className="sr-only">Role</dt>
+                  <dd className="text-foreground">{roleLabel(me.role)}</dd>
+                </div>
+                {org && (
+                  <div className="flex items-start gap-2">
+                    <Building2 size={13} aria-hidden="true" className="mt-px shrink-0 text-faint" />
+                    <dt className="sr-only">Organization</dt>
+                    <dd className="text-muted">{org.organization_name}</dd>
+                  </div>
+                )}
+                <div className="mt-1 rounded-md bg-surface-sunken px-2 py-1.5 text-muted">
+                  <dt className="inline text-faint">Patient scope: </dt>
+                  <dd className="inline">{scopeLabel(scope)}</dd>
+                </div>
+              </dl>
+            </div>
+            <button
+              type="button"
+              role="menuitem"
+              tabIndex={open ? 0 : -1}
+              onClick={() => {
+                setOpen(false);
+                void signOut();
+              }}
+              className="flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-muted hover:bg-surface-sunken hover:text-foreground"
+            >
+              <LogOut size={15} aria-hidden="true" /> Sign out
+            </button>
+          </>
+        ) : (
+          <div className="px-4 py-3">
+            <p className="text-sm font-semibold text-foreground">No sign-in on this backend</p>
+            <p className="mt-1 text-xs leading-relaxed text-faint">
+              The API runs in legacy mode (<code className="font-mono">AUTH_MODE=legacy</code>): reads are public and no roles
+              apply. Use <code className="font-mono">AUTH_MODE=users</code> for role-based access.
             </p>
-            <p className="mt-0.5 text-xs text-faint">synthetic session — no sign-in required</p>
           </div>
-          <button
-            type="button"
-            role="menuitem"
-            className="flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-muted hover:bg-surface-sunken hover:text-foreground"
-            onClick={() => setOpen(false)}
-          >
-            <Settings size={15} aria-hidden="true" /> Preferences
-            <span className="ml-auto text-[10px] uppercase tracking-wide text-faint">soon</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            disabled
-            className="flex w-full cursor-not-allowed items-center gap-2.5 px-4 py-2 text-left text-sm text-faint"
-          >
-            <LogOut size={15} aria-hidden="true" /> Sign out
-          </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

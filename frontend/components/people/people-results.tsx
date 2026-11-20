@@ -12,6 +12,7 @@ import type { PeoplePage, PeopleReference } from "@/lib/people/use-people-data";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusGlyph } from "@/components/ui/status-glyph";
 import { ProgrammeHistory } from "./programme-history";
+import { buttonClass } from "@/components/ui/button-styles";
 
 interface Props {
   state: PeopleState;
@@ -25,7 +26,7 @@ export function PeopleResults({ state, page, reference, onRetry, onNavigate }: P
   if (page.status === "loading") return <ResultsSkeleton />;
   if (page.status === "error")
     return (
-      <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-border bg-surface p-6">
+      <div role="alert" className="reveal flex flex-col items-start gap-3 rounded-xl border border-border bg-surface p-6">
         <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <AlertTriangle size={16} aria-hidden="true" className="text-status-error" />
           People are unavailable
@@ -34,7 +35,7 @@ export function PeopleResults({ state, page, reference, onRetry, onNavigate }: P
         <button
           type="button"
           onClick={onRetry}
-          className="rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-on-accent transition-opacity hover:opacity-90"
+          className={buttonClass("primary")}
         >
           Retry
         </button>
@@ -50,7 +51,7 @@ export function PeopleResults({ state, page, reference, onRetry, onNavigate }: P
       return (
         <EmptyStateWithAction
           title={`${excludedByFilters.patient_id} does not match the active filters`}
-          description="This synthetic person exists, but the programme, region or sex filters exclude them."
+          description="This synthetic person exists, but the active filters exclude them."
           action="Clear filters and show this person"
           onAction={() => onNavigate({ filters: {}, page: 1, id: state.id })}
         />
@@ -87,7 +88,7 @@ export function PeopleResults({ state, page, reference, onRetry, onNavigate }: P
   }
 
   const gapCell = (p: PatientSummaryOut) => {
-    if (reference.status === "loading") return <span className="inline-block h-4 w-8 animate-pulse rounded bg-surface-sunken" aria-label="Loading" />;
+    if (reference.status === "loading") return <span className="skeleton inline-block h-4 w-8 rounded" aria-label="Loading" />;
     if (!ref) return <span className="text-faint">Unavailable</span>;
     const n = ref.openGaps.get(p.patient_id) ?? 0;
     return n > 0 ? (
@@ -106,17 +107,17 @@ export function PeopleResults({ state, page, reference, onRetry, onNavigate }: P
   return (
     <section aria-label="People results">
       {reference.status === "error" && (
-        <p role="status" className="mb-3 rounded-md border border-border bg-surface-sunken px-3 py-2 text-xs text-muted">
+        <p role="status" className="mb-3 rounded-xl bg-surface-sunken px-3 py-2 text-xs text-muted">
           Open-gap counts and ages are unavailable: {reference.message}
         </p>
       )}
 
-      <div className="hidden overflow-hidden rounded-lg border border-border bg-surface shadow-[var(--shadow-card)] md:block">
+      <div className="reveal hidden overflow-hidden rounded-xl border border-border bg-surface md:block">
         <table className="w-full table-fixed text-left text-sm">
           <caption className="sr-only">
             Synthetic people, {mode === "id" ? "exact ID match" : `page ${state.page} of ${lastPage}`}
           </caption>
-          <thead className="border-b border-border bg-surface-sunken text-[11px] uppercase tracking-[0.08em] text-faint">
+          <thead className="border-b border-border-strong text-[11px] uppercase tracking-[0.12em] text-faint">
             <tr>
               <th scope="col" className="w-[22%] px-4 py-2.5 font-medium">Person</th>
               <th scope="col" className="w-[13%] px-4 py-2.5 font-medium">Age</th>
@@ -139,7 +140,7 @@ export function PeopleResults({ state, page, reference, onRetry, onNavigate }: P
           <li key={p.patient_id}>
             <Link
               href={profileHref(p.patient_id, state)}
-              className="block rounded-lg border border-border bg-surface p-4 shadow-[var(--shadow-card)] transition-colors hover:border-accent"
+              className="block rounded-xl border border-border bg-surface p-4 transition-colors hover:border-accent"
             >
               <span className="flex items-center justify-between gap-2">
                 <span className="font-mono text-sm font-semibold text-foreground">{p.patient_id}</span>
@@ -187,7 +188,7 @@ function PersonRow({ person: p, href, age, gaps }: { person: PatientSummaryOut; 
       onClick={(e) => {
         if (!(e.target as HTMLElement).closest("a")) router.push(href);
       }}
-      className="cursor-pointer align-top transition-colors hover:bg-accent-soft focus-within:bg-accent-soft"
+      className="reveal-fade cursor-pointer align-top transition-colors duration-150 hover:bg-highlight/60 focus-within:bg-highlight/60"
     >
       <td className="px-4 py-3">
         <Link href={href} className="font-mono text-[13px] font-semibold text-foreground underline-offset-4 hover:text-accent hover:underline">
@@ -224,8 +225,7 @@ function Pagination({
   onPage: (n: number) => void;
 }) {
   const start = (page - 1) * PAGE_SIZE + 1;
-  const btn =
-    "inline-flex h-9 items-center gap-1 rounded-md border border-border-strong px-3 text-sm font-medium text-foreground transition-colors hover:border-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border-strong";
+  const btn = buttonClass("secondary");
   return (
     <nav aria-label="Pagination" className="mt-4 flex flex-wrap items-center justify-between gap-3">
       <p className="text-sm text-muted">
@@ -268,7 +268,7 @@ function EmptyStateWithAction({
       <button
         type="button"
         onClick={onAction}
-        className="rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-on-accent transition-opacity hover:opacity-90"
+        className={buttonClass("primary")}
       >
         {action}
       </button>
@@ -278,14 +278,14 @@ function EmptyStateWithAction({
 
 function ResultsSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading people" className="overflow-hidden rounded-lg border border-border bg-surface">
-      <div className="h-9 border-b border-border bg-surface-sunken" />
+    <div aria-busy="true" aria-label="Loading people" className="overflow-hidden rounded-xl border border-border bg-surface">
+      <div className="h-9 border-b border-border-strong" />
       {Array.from({ length: 8 }).map((_, i) => (
         <div key={i} className="flex items-center gap-6 border-b border-border px-4 py-3.5 last:border-0">
-          <div className="h-4 w-36 animate-pulse rounded bg-surface-sunken" style={{ animationDelay: `${i * 80}ms` }} />
-          <div className="h-4 w-16 animate-pulse rounded bg-surface-sunken" />
-          <div className="hidden h-4 w-14 animate-pulse rounded bg-surface-sunken sm:block" />
-          <div className="hidden h-4 w-40 animate-pulse rounded bg-surface-sunken md:block" />
+          <div className="skeleton h-4 w-36 rounded" style={{ animationDelay: `${i * 80}ms` }} />
+          <div className="skeleton h-4 w-16 rounded" />
+          <div className="skeleton hidden h-4 w-14 rounded sm:block" />
+          <div className="skeleton hidden h-4 w-40 rounded md:block" />
         </div>
       ))}
     </div>

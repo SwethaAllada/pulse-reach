@@ -3,7 +3,6 @@ import type { DashboardSummaryOut, HistoryStatus } from "@/lib/api/types";
 import type { LoadState } from "@/lib/population/use-population-data";
 import type { PopulationModel, SegmentId } from "@/lib/population/model";
 import { PATHWAY_OPTIONS, pathwayLabel } from "@/lib/population/filters";
-import { Surface } from "@/components/ui/surface";
 import { SectionHeader } from "@/components/ui/section-header";
 import { LoadingState } from "@/components/ui/loading-state";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -21,16 +20,17 @@ const HISTORY_LABEL: Record<HistoryStatus, string> = {
   not_available: "Unavailable",
 };
 
+/** Editorial plate: a hairline rule opens the section; no boxed card. */
 function Card({ children, label }: { children: React.ReactNode; label: string }) {
   return (
-    <section aria-label={label}>
-      <Surface className="h-full p-5">{children}</Surface>
+    <section aria-label={label} className="reveal min-w-0 border-t border-border-strong pt-5">
+      {children}
     </section>
   );
 }
 
 function Footnote({ children }: { children: React.ReactNode }) {
-  return <p className="mt-4 border-t border-border pt-3 text-[11px] leading-relaxed text-faint">{children}</p>;
+  return <p className="mt-5 text-[11px] leading-relaxed text-faint">{children}</p>;
 }
 
 function ProgrammeDot({ pathway }: { pathway: "ifhas" | "well_child" }) {
@@ -70,7 +70,7 @@ export function GapsByRuleCard({ model }: { model: PopulationModel }) {
               </div>
               <div className="mt-1 h-1.5 rounded-full bg-surface-sunken">
                 <div
-                  className="h-1.5 rounded-full"
+                  className="grow-x h-1.5 rounded-full"
                   style={{ width: `${(r.count / max) * 100}%`, backgroundColor: "var(--segment-gap)" }}
                 />
               </div>
@@ -129,6 +129,7 @@ export function EvidenceCard({ model }: { model: PopulationModel }) {
                       prog.history[h] > 0 ? (
                         <div
                           key={h}
+                          className="grow-x"
                           style={{
                             width: `${(prog.history[h] / total) * 100}%`,
                             backgroundColor: SEGMENT_COLOR[HISTORY_SEGMENT[h]].paper,
@@ -185,7 +186,7 @@ export function SegmentationCard({ model }: { model: PopulationModel }) {
                 r.byPathway[o.value] > 0 ? (
                   <div
                     key={o.value}
-                    className="h-2 first:rounded-l-sm last:rounded-r-sm"
+                    className="grow-x h-2 first:rounded-l-sm last:rounded-r-sm"
                     style={{ width: `${(r.byPathway[o.value] / max) * 100}%`, backgroundColor: PROGRAMME_COLOR[o.value].paper }}
                   />
                 ) : null
@@ -212,7 +213,7 @@ export function SegmentationCard({ model }: { model: PopulationModel }) {
             {s.label} <span className="font-mono">{s.count}</span>
           </span>
         ))}
-        {model.bySex.length === 0 && "none"}. Age-band breakdowns are not exposed by the API.
+        {model.bySex.length === 0 && "none"}. Age groups per programme are on each programme page.
       </Footnote>
     </Card>
   );
@@ -264,7 +265,7 @@ function StatusSpectrum({ data }: { data: DashboardSummaryOut }) {
         aria-label={`Rule evaluation statuses: ${known.map((s) => `${statusLabel(s)} ${counts[s]}`).join(", ")}`}
       >
         {known.map((s) => (
-          <div key={s} style={{ width: `${(counts[s] / knownTotal) * 100}%`, backgroundColor: statusColor(s) }} />
+          <div key={s} className="grow-x" style={{ width: `${(counts[s] / knownTotal) * 100}%`, backgroundColor: statusColor(s) }} />
         ))}
       </div>
       <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">

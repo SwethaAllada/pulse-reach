@@ -32,14 +32,14 @@ export function NotificationMenu() {
         aria-label="Notifications"
         aria-expanded={open}
         aria-haspopup="menu"
-        className="flex size-9 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-sunken hover:text-foreground"
+        className="flex size-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-sunken hover:text-foreground"
       >
         <Bell size={18} />
       </button>
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-50 mt-2 w-80 rounded-md border border-border bg-surface-raised p-4 shadow-[var(--shadow-popover)]"
+          className="reveal absolute right-0 top-full z-50 mt-2 w-80 rounded-xl border border-border bg-surface-raised p-4 shadow-[var(--shadow-popover)]"
         >
           <p className="text-sm font-semibold text-foreground">Notifications</p>
           <div className="mt-3 flex flex-col items-center gap-2 rounded-md border border-dashed border-border-strong px-4 py-6 text-center">

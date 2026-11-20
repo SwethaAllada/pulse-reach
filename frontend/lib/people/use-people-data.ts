@@ -9,9 +9,17 @@ import type {
   RuleDetailOut,
   RuleSummaryOut,
 } from "@/lib/api/types";
+import { onCacheReset } from "@/lib/api/cache";
 import type { LoadState } from "@/lib/population/use-population-data";
 import type { PopulationFilters } from "@/lib/population/filters";
-import { PAGE_SIZE, parsePeopleState, peopleStateToSearchParams, type PeopleState } from "./params";
+import {
+  hasCareFilters,
+  PAGE_SIZE,
+  parsePeopleState,
+  peopleQuery,
+  peopleStateToSearchParams,
+  type PeopleState,
+} from "./params";
 import { openGapCountByPatient } from "./person";
 
 interface Settled<T> {
@@ -60,13 +68,23 @@ export function usePeopleList(state: PeopleState) {
 
   useEffect(() => {
     const ctrl = new AbortController();
-    const { filters, id, page: pageNo } = parsePeopleState(new URLSearchParams(key));
+    const parsed = parsePeopleState(new URLSearchParams(key));
+    const { filters, id, page: pageNo } = parsed;
+    /* Care-gap, history and age filters are evaluated by the backend: re-query with the ID as `q`. */
+    const inFilteredSet = (p: PatientSummaryOut) =>
+      hasCareFilters(filters)
+        ? api
+            .patientsPage({ ...filters, q: p.patient_id, limit: 200, offset: 0 }, ctrl.signal)
+            .then((r) => r.items.some((x) => x.patient_id === p.patient_id))
+        : Promise.resolve(matchesFilters(p, filters));
     const load: Promise<PeoplePage> = id
       ? api.patient(id, ctrl.signal).then(
           (p) =>
-            matchesFilters(p, filters)
-              ? { mode: "id", total: 1, rows: [p], excludedByFilters: null }
-              : { mode: "id", total: 0, rows: [], excludedByFilters: p },
+            inFilteredSet(p).then((match) =>
+              match
+                ? { mode: "id" as const, total: 1, rows: [p], excludedByFilters: null }
+                : { mode: "id" as const, total: 0, rows: [], excludedByFilters: p }
+            ),
           (err) => {
             if (err instanceof ApiError && err.status === 404)
               return { mode: "id", total: 0, rows: [], excludedByFilters: null };
@@ -74,7 +92,7 @@ export function usePeopleList(state: PeopleState) {
           }
         )
       : api
-          .patientsPage({ ...filters, limit: PAGE_SIZE, offset: (pageNo - 1) * PAGE_SIZE }, ctrl.signal)
+          .patientsPage({ ...peopleQuery(parsed), limit: PAGE_SIZE, offset: (pageNo - 1) * PAGE_SIZE }, ctrl.signal)
           .then((r) => ({ mode: "list", total: r.total, rows: r.items, excludedByFilters: null }));
     load
       .then((data) => setPage({ requestId, state: { status: "ready", data } }))
@@ -170,6 +188,7 @@ const ruleDetailCache = new Map<string, Promise<RuleDetailOut>>();
 export function clearRuleDetailCache() {
   ruleDetailCache.clear();
 }
+onCacheReset(clearRuleDetailCache);
 
 /** Loads `GET /rules/{id}` only while `enabled` (e.g. when a trace is expanded). */
 export function useRuleDetail(ruleId: string, enabled: boolean) {

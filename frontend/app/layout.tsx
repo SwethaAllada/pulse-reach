@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
+import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeScript } from "@/components/theme/theme-script";
 import { AppShell } from "@/components/shell/app-shell";
+import { AuthProvider } from "@/lib/auth/auth-context";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,18 +15,20 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
+/** Editorial display serif — headings and figures. Variable optical size keeps large numbers crisp. */
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
   subsets: ["latin"],
+  axes: ["SOFT", "WONK", "opsz"],
 });
 
 export const metadata: Metadata = {
   title: {
-    default: "PulseReach — Population observatory",
+    default: "PulseReach — Prevention Atlas",
     template: "%s · PulseReach",
   },
   description:
-    "See the signals. Prevent the gaps. Change the outcome. PulseReach is a population-health observatory over a fully synthetic demonstration cohort.",
+    "A living view of population health. PulseReach maps preventive-care programmes, documented care gaps and their evidence over a fully synthetic demonstration cohort.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -33,7 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
     >
       <head>
         <ThemeScript />
@@ -45,7 +48,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           Skip to content
         </a>
-        <AppShell>{children}</AppShell>
+        <AuthProvider>
+          <AppShell>{children}</AppShell>
+        </AuthProvider>
       </body>
     </html>
   );

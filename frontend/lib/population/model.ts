@@ -60,6 +60,8 @@ export interface Cohort {
   label: string;
   description: string;
   people: number;
+  /** Members of this cohort, in API order. */
+  patientIds: string[];
   peopleWithOpenGap: number;
   openGaps: number;
   gapsByRule: CountRow[];
@@ -70,10 +72,15 @@ export interface Programme extends Cohort {
   segment: null;
   segments: Cohort[];
   history: Record<HistoryStatus, number>;
+  /** Open gap records per member under this programme's rules. */
+  openGapsByPatient: Map<string, number>;
 }
 
 export interface PopulationModel {
   totalPeople: number;
+  /** IDs of every person in the (backend-filtered) set. */
+  patientIds: string[];
+  patientsById: Map<string, PatientSummaryOut>;
   /** People with no history row for any pathway (not placed in a programme). */
   unassignedPeople: number;
   peopleWithOpenGap: number;
@@ -128,6 +135,7 @@ function buildCohort(
       ? meta.description
       : `Everyone with a ${pathwayLabel(pathway)} history record in the current filter set.`,
     people: people.length,
+    patientIds: people.map((p) => p.patient_id),
     peopleWithOpenGap: people.filter((p) => gapsOf(p.patient_id).length > 0).length,
     openGaps: gaps.length,
     gapsByRule: tally(gaps, (g) => g.rule_id, ruleLabel),
@@ -165,6 +173,7 @@ export function buildPopulationModel(
       ...buildCohort(pathway, pathway, null, members, gapsOf, ruleLabel),
       segment: null,
       history,
+      openGapsByPatient: new Map(members.map((p) => [p.patient_id, gapsOf(p.patient_id).length])),
       segments: SEGMENT_ORDER.map((seg) =>
         buildCohort(
           `${pathway}:${seg}`,
@@ -194,6 +203,8 @@ export function buildPopulationModel(
   const openPeople = new Set(openGaps.map((g) => g.patient_id));
   return {
     totalPeople: patients.length,
+    patientIds: patients.map((p) => p.patient_id),
+    patientsById: new Map(patients.map((p) => [p.patient_id, p])),
     unassignedPeople: patients.filter((p) => Object.keys(p.history_by_pathway).length === 0).length,
     peopleWithOpenGap: openPeople.size,
     openGaps: openGaps.length,

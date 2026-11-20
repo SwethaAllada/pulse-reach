@@ -11,7 +11,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("next/link", () => ({
-  default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  default: ({ href, children, transitionTypes, ...rest }: { href: string; children: React.ReactNode; transitionTypes?: string[] }) => (
     <a href={href} {...rest}>
       {children}
     </a>
