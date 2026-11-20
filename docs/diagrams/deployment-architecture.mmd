@@ -1,0 +1,26 @@
+flowchart LR
+  USER["Public browser"]
+  subgraph GCP["GCP project pulsereach-hackathon-2026 (PLANNED, not deployed)"]
+    subgraph RUN["Cloud Run, one region"]
+      WEB["pulsereach-web<br/>Next.js, scale to zero"]
+      APIS["pulsereach-api<br/>FastAPI, min 1 / max 2"]
+      JOB["pulsereach-init job<br/>migrations + seed + accounts"]
+    end
+    AR[("Artifact Registry<br/>pulsereach/backend")]
+    SM[["Secret Manager<br/>pulsereach-database-url<br/>pulsereach-gemini-api-key"]]
+    SQL[("Cloud SQL PostgreSQL 16<br/>pulsereach-db, no authorized networks")]
+    LOG["Cloud Logging + Monitoring"]
+    SA["Runtime SA pulsereach-run<br/>cloudsql.client, secretAccessor"]
+  end
+  GEM["Gemini API<br/>generativelanguage.googleapis.com"]
+
+  USER -- HTTPS --> WEB
+  USER -- "HTTPS, Bearer token, CORS-restricted" --> APIS
+  AR --> APIS & JOB
+  SA -.-> APIS & JOB
+  SM -- "DATABASE_URL" --> APIS & JOB
+  SM -- "GEMINI_API_KEY (API only)" --> APIS
+  APIS -- "Cloud SQL connector socket" --> SQL
+  JOB -- "Cloud SQL connector socket" --> SQL
+  APIS -- "optional, de-identified facts" --> GEM
+  APIS & WEB & JOB --> LOG

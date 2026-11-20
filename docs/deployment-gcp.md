@@ -1,281 +1,260 @@
 # PulseReach — GCP Deployment Runbook (hackathon, ~10 days, synthetic data only)
 
-Not a production or clinical deployment. Target project: `pulsereach-hackathon-2026`
-(billing enabled; Cloud Run, Cloud SQL Admin, Secret Manager, Artifact Registry and Cloud Build
-APIs enabled; **no services, jobs, SQL instances, secrets or registries existed on 2026-11-20**).
-Nothing in this document has been executed against GCP yet — every step needs explicit approval.
+Not a production or clinical deployment. **Deployed 2026-11-20** in project `pulsereach-hackathon-2026`
+(number `871361479060`), region **`asia-south1`** for everything. Pass `--region`/`--location`
+explicitly (local gcloud defaults differ: `compute/region=us-central1`).
 
-## 1. Architecture (smallest that fits)
+| | URL |
+|---|---|
+| Web UI | <https://pulsereach-web-871361479060.asia-south1.run.app> |
+| API | <https://pulsereach-api-871361479060.asia-south1.run.app> |
+| Liveness / DB readiness | `/health` · `/health/db` (503 when the DB is unreachable) |
 
-| Piece | Service | Notes |
+Cloud Run URLs are derived from service name + project number + region: redeploys never change them.
+
+## 1. Resources
+
+| Piece | Resource | Configuration |
 |---|---|---|
-| Backend (FastAPI) | Cloud Run service `pulsereach-api` | `backend/Dockerfile` (build context = repo root) |
-| Migrations / seed / admin | Cloud Run job `pulsereach-init` | same image; runs once, never from the service |
-| Database | Cloud SQL PostgreSQL 16, `db-g1-small`, 10 GB SSD | Cloud SQL connector socket; automated backups on |
-| Frontend (Next.js) | Cloud Run service `pulsereach-web` | `gcloud run deploy --source frontend` (buildpacks) |
-| Secrets | Secret Manager | `pulsereach-database-url`, `pulsereach-gemini-api-key`; never `--set-env-vars` |
-| AI (optional) | Google Gemini API (native provider, `LLM_PROVIDER=gemini`) | key from Google AI Studio; see §3a and `docs/ai-gemini.md` |
+| Backend (FastAPI) | Cloud Run service `pulsereach-api` | `backend/Dockerfile` (context = repo root); 1 vCPU / 1 GiB, min 0 / max 2, concurrency 40, timeout 60 s, startup CPU boost |
+| Frontend (Next.js) | Cloud Run service `pulsereach-web` | `frontend/Dockerfile` (multi-stage, `output: "standalone"`, Node 22 slim, non-root); 1 vCPU / 512 MiB, min 0 / max 2 |
+| Migrate / seed / roles | Cloud Run job `pulsereach-init` | same backend image; runs once on demand, never from the service |
+| Database | Cloud SQL `pulsereach-db` | PostgreSQL 16, Enterprise, `db-g1-small`, zonal, 10 GB SSD + auto-increase, daily backups 20:30 UTC (7 kept), PITR (3 days of logs), deletion protection, `ssl-mode=TRUSTED_CLIENT_CERTIFICATE_REQUIRED`, no authorized networks (only the Cloud SQL connector can connect) |
+| Database `pulsereach` | users | `pulsereach_owner` (Cloud SQL built-in user; owns the schema; used **only** by the init job) · `pulsereach_app` (runtime login role created by `app.db.runtime_role`: SELECT/INSERT/UPDATE/DELETE on the app schemas, read-only `public`, no DDL/TRUNCATE/CREATEROLE) |
+| Images | Artifact Registry `asia-south1-docker.pkg.dev/pulsereach-hackathon-2026/pulsereach` | `backend:<tag>`, `web:<tag>` |
+| AI | Gemini via **Vertex AI express** endpoint | project API key "API key 1" (restricted to `aiplatform.googleapis.com`), model `gemini-3.5-flash-lite` |
 
-Use **one region** for everything (e.g. `us-central1`, cheapest; `me-central1` is closest to Abu
-Dhabi but costs more). Note the local gcloud defaults differ (`artifacts/location=asia-south1`,
-`run`/`compute` `us-central1`) — pass `--region`/`--location` explicitly.
+### Secrets (Secret Manager, automatic replication)
 
-## 2. Environment variables (backend, production)
-
-| Variable | Value | Secret? |
+| Secret | Contents | Readable by |
 |---|---|---|
-| `AUTH_MODE` | `users` (**never `legacy`** on an exposed URL) | no |
-| `DATA_SOURCE` | `db` | no |
-| `DATABASE_URL` | `postgresql+psycopg://pulsereach:<pw>@/pulsereach?host=/cloudsql/<PROJECT>:<REGION>:pulsereach-db` | **yes** |
-| `CORS_ORIGINS` | the frontend `https://…run.app` origin only (never `*`) | no |
-| `TRUSTED_PROXY_HOPS` | `1` (Cloud Run appends the client address to `X-Forwarded-For`) | no |
-| `SELF_REGISTRATION_ENABLED` | `false` for judging | no |
-| `DEMO_IDENTITY_SEED` | unset/`false` (memory mode only) | no |
-| `ALLOW_UNPROTECTED_WRITES` | `false` | no |
-| `POPULATION_MIN_CELL_SIZE` | `5` (default; do not lower) | no |
-| `LOG_LEVEL` | `INFO` | no |
-| `LLM_ENABLED` | `false` (default), or `true` to enable AI with the rows below | no |
-| `LLM_PROVIDER` | `gemini` (native Gemini API; selection is explicit, no silent switching) | no |
-| `GEMINI_API_KEY` | from Secret Manager `pulsereach-gemini-api-key` via `--set-secrets` (§3a) | **yes** |
-| `GEMINI_MODEL` | `gemini-3.5-flash-lite` (default; `LLM_MODEL`, if set, overrides it — leave `LLM_MODEL` unset) | no |
-| `GEMINI_BASE_URL` | unset (default `https://generativelanguage.googleapis.com/v1beta`) | no |
-| `GEMINI_THINKING_LEVEL` | unset (model default) or `minimal`/`low` to save tokens and latency | no |
-| `LLM_MAX_OUTPUT_TOKENS` | `1024` for Gemini (thinking tokens count against it; `MAX_TOKENS` → `truncated` → deterministic fallback) | no |
-| `LLM_TIMEOUT_SECONDS` / `LLM_MAX_RETRIES` / `LLM_TOTAL_TIMEOUT_SECONDS` | defaults `20` / `2` / `45` (keep the total below the Cloud Run `--timeout=60`) | no |
-| `LLM_API_KEY` / `LLM_BASE_URL` | unset (used only by `openai_compatible` / `anthropic`) | — |
+| `pulsereach-database-url` | `postgresql+psycopg://pulsereach_app:…@/pulsereach?host=/cloudsql/pulsereach-hackathon-2026:asia-south1:pulsereach-db` | `pulsereach-api`, `pulsereach-init` |
+| `pulsereach-db-owner-url` | same, as `pulsereach_owner` | `pulsereach-init` only |
+| `pulsereach-gemini-api-key` | the Vertex AI express key | `pulsereach-api` only |
+| `pulsereach-demo-password` | shared password of the synthetic demo accounts | `pulsereach-init` only (and project owners) |
 
-Frontend build-time: `NEXT_PUBLIC_API_URL=https://<api-url>`; never set
-`NEXT_PUBLIC_ALLOW_LEGACY_BACKEND` (the production build refuses it). No AI key or AI setting is
-ever given to the frontend service or to any `NEXT_PUBLIC_*` variable.
+Passwords were generated inside a pipe (`openssl rand`) and never printed. Secrets are bound per
+secret (`roles/secretmanager.secretAccessor`), never project-wide.
 
-There is no FastAPI debug mode; `/docs` and `/openapi.json` stay public (no data, every API route
-needs a token) — accepted limitation.
+### Service accounts (no JSON keys)
 
-## 3. One-time setup (requires approval)
+| Account | Roles |
+|---|---|
+| `pulsereach-api@` | `roles/cloudsql.client` (project); accessor on `pulsereach-database-url`, `pulsereach-gemini-api-key` |
+| `pulsereach-init@` | `roles/cloudsql.client`; accessor on `pulsereach-db-owner-url`, `pulsereach-database-url`, `pulsereach-demo-password` |
+| `pulsereach-web@` | none (serves static/SSR pages only) |
+| `pulsereach-build@` | `roles/artifactregistry.writer`, `roles/logging.logWriter`, `roles/storage.objectViewer` (Cloud Build source tarballs) |
 
-```bash
-P=pulsereach-hackathon-2026; R=us-central1
-gcloud artifacts repositories create pulsereach --repository-format=docker --location=$R --project=$P
-gcloud sql instances create pulsereach-db --database-version=POSTGRES_16 --tier=db-g1-small \
-  --region=$R --storage-size=10 --backup-start-time=02:00 --project=$P
-# public IP with NO authorized networks: only the IAM-authorised Cloud Run connector can connect
-gcloud sql databases create pulsereach --instance=pulsereach-db --project=$P
-gcloud sql users create pulsereach --instance=pulsereach-db --password="$(openssl rand -hex 24)" --project=$P
-printf '%s' 'postgresql+psycopg://pulsereach:<pw>@/pulsereach?host=/cloudsql/'$P':'$R':pulsereach-db' \
-  | gcloud secrets create pulsereach-database-url --data-file=- --project=$P
-# Cloud Run runtime service account (dedicated, no keys): used by the API service and init job
-gcloud iam service-accounts create pulsereach-run --display-name="PulseReach Cloud Run runtime" --project=$P
-SA=pulsereach-run@$P.iam.gserviceaccount.com
-gcloud projects add-iam-policy-binding $P --member=serviceAccount:$SA --role=roles/cloudsql.client
-gcloud secrets add-iam-policy-binding pulsereach-database-url --member=serviceAccount:$SA \
-  --role=roles/secretmanager.secretAccessor --project=$P
-```
+The default compute service account (which has Editor) is not used by any PulseReach workload.
 
-## 3a. Gemini API key (optional AI; requires approval)
+### Monitoring and cost controls
 
-Architecture: **Google AI Studio Gemini API key → Secret Manager secret
-`pulsereach-gemini-api-key` → Cloud Run backend env var `GEMINI_API_KEY`
-(`--set-secrets=GEMINI_API_KEY=pulsereach-gemini-api-key:latest`) → `GeminiProvider`**
-(`backend/app/services/ai/provider.py`, REST `models/{model}:generateContent`, key sent only in
-the `x-goog-api-key` header). Details, error kinds and the smoke test: `docs/ai-gemini.md`.
+- Billing budget **"PulseReach hackathon (Rs 20k)"**: ₹20,000 on this project, alerts at 25/50/90/100 %
+  actual and 100 % forecasted spend (an alert, not a cap).
+- Uptime checks `pulsereach-web` (`/`) and `pulsereach-api` (`/health/db`), every 15 min from 3 regions.
+- Alert policies "PulseReach uptime check failing" and "PulseReach Cloud Run 5xx" (> 5 in 5 min),
+  notifying the email channel "PulseReach owner email".
 
-Rules:
+## 2. Backend environment (production)
 
-- No service-account keys and no JSON key downloads: Cloud Run reads the secret as its runtime
-  service account; nobody needs a credential file.
-- The Gemini key is never in source, `.env.example`, frontend config, `NEXT_PUBLIC_*`, Docker
-  images, build args (`--build-arg`, `--set-build-env-vars`), Cloud Build configs, `--set-env-vars`,
-  shell history or logs. Never commit `.env`; local development uses an untracked `backend/.env`
-  (`git check-ignore -v backend/.env` must report it as ignored).
-- Only the API service mounts the secret (the init job does not need it), and only the runtime
-  service account gets `roles/secretmanager.secretAccessor`, on this one secret only.
+| Variable | Value |
+|---|---|
+| `AUTH_MODE` | `users` (**never `legacy`**) |
+| `DATA_SOURCE` | `db` |
+| `DATABASE_URL` | secret `pulsereach-database-url` (runtime role) |
+| `CORS_ORIGINS` | `https://pulsereach-web-871361479060.asia-south1.run.app` only |
+| `TRUSTED_PROXY_HOPS` | `1` |
+| `SELF_REGISTRATION_ENABLED` | `false` |
+| `ALLOW_UNPROTECTED_WRITES` | `false` |
+| `LOG_LEVEL` | `INFO` |
+| `DB_MAX_OVERFLOW` | `5` (2 instances × (5 + 5) connections, within `db-g1-small` limits) |
+| `LLM_ENABLED` / `LLM_PROVIDER` | `true` / `gemini` |
+| `GEMINI_API_KEY` | secret `pulsereach-gemini-api-key` |
+| `GEMINI_MODEL` | `gemini-3.5-flash-lite` (leave `LLM_MODEL` unset; it overrides) |
+| `GEMINI_BASE_URL` | `https://aiplatform.googleapis.com/v1/publishers/google` (Vertex AI express: same `models/{model}:generateContent` + `x-goog-api-key` contract). With a Google AI Studio key, unset it (default `generativelanguage` v1beta). |
+| `LLM_MAX_OUTPUT_TOKENS` | `1024` |
 
-**1. Create and restrict the key (console, Google AI Studio).** Sign in at
-<https://aistudio.google.com/apikey> → *Create API key* → choose the existing project
-`pulsereach-hackathon-2026` (so usage is billed and budget-alerted there, not in a new project).
-Copy the key once, straight into step 2; do not paste it anywhere else. Then restrict it:
+Not set: `DEMO_IDENTITY_SEED`, `NEXT_PUBLIC_ALLOW_LEGACY_BACKEND`, `LLM_API_KEY`, `WRITE_API_KEY`.
+Frontend: only the build arg `NEXT_PUBLIC_API_URL=https://pulsereach-api-871361479060.asia-south1.run.app`
+(public URL; the Dockerfile refuses non-`https://` values). No AI setting or secret reaches the frontend.
+`/docs` and `/openapi.json` stay public (no data; every API route needs a token) — accepted limitation.
+
+## 3. Build and deploy
 
 ```bash
-gcloud services api-keys list --project=$P            # note the KEY_ID (uid) of the new key
-gcloud services api-keys update <KEY_ID> --project=$P \
-  --api-target=service=generativelanguage.googleapis.com   # Gemini API only
-```
+P=pulsereach-hackathon-2026; R=asia-south1; PN=871361479060
+TAG=$(git rev-parse --short HEAD)-$(date -u +%Y%m%d%H%M)
+AR=$R-docker.pkg.dev/$P/pulsereach
+BUILD_SA=projects/$P/serviceAccounts/pulsereach-build@$P.iam.gserviceaccount.com
+BUILD_OPTS="--project=$P --region=$R --service-account=$BUILD_SA --default-buckets-behavior=regional-user-owned-bucket --ignore-file=.dockerignore"
 
-(Application restrictions by IP are not practical: Cloud Run egress has no static IP without a
-VPC connector + Cloud NAT.) Check the Gemini API terms for the project's tier: free-tier prompts
-may be used to improve Google products; data here is synthetic, but a paid (billing-enabled)
-tier is preferred.
-
-**2. Store it in Secret Manager from stdin** (the key is never on a command line or in history):
-
-```bash
-read -rs GEMINI_KEY_INPUT        # paste the key, press Enter (nothing is echoed)
-printf '%s' "$GEMINI_KEY_INPUT" | gcloud secrets create pulsereach-gemini-api-key \
-  --replication-policy=automatic --data-file=- --project=$P
-unset GEMINI_KEY_INPUT
-```
-
-**3. Grant only the runtime service account, only on this secret:**
-
-```bash
-gcloud secrets add-iam-policy-binding pulsereach-gemini-api-key \
-  --member=serviceAccount:$SA --role=roles/secretmanager.secretAccessor --project=$P
-gcloud secrets get-iam-policy pulsereach-gemini-api-key --project=$P   # exactly that one binding
-```
-
-**4. Deploy with AI enabled** — see §4 (`API_SECRETS` / `AI_ENV`).
-
-**5. Verify** (`$API` and `$TOKEN` as in §6; the token needs `platform.status`, e.g. the
-population health manager):
-
-```bash
-curl -fsS -H "Authorization: Bearer $TOKEN" "$API/api/v1/ai/status"
-# expect llm_enabled=true, status="enabled", configured_provider="gemini", provider="gemini",
-# availability="configured_unverified" until the first AI call, then "last_call_succeeded".
-# "misconfigured" -> secret/model missing; "last_call_failed" -> see last_provider_error (an
-# error kind such as auth, rate_limited, truncated; never provider text).
-curl -fsS -H "Authorization: Bearer $TOKEN" "$API/api/v1/insights/population" | head -c 300   # aggregates only
-```
-
-**6. Rotate** (new key first, then retire the old one):
-
-```bash
-# create a second key in Google AI Studio (step 1), then:
-read -rs GEMINI_KEY_INPUT
-printf '%s' "$GEMINI_KEY_INPUT" | gcloud secrets versions add pulsereach-gemini-api-key --data-file=- --project=$P
-unset GEMINI_KEY_INPUT
-# secrets exposed as env vars are resolved when an instance starts: roll a new revision
-gcloud run services update pulsereach-api --region=$R --project=$P \
-  --update-secrets=GEMINI_API_KEY=pulsereach-gemini-api-key:latest
-# verify /ai/status (step 5), then retire the old material
-gcloud secrets versions list pulsereach-gemini-api-key --project=$P
-gcloud secrets versions disable <old-version> --secret=pulsereach-gemini-api-key --project=$P
-gcloud services api-keys delete <OLD_KEY_ID> --project=$P     # or delete it in Google AI Studio
-```
-
-**7. Disable AI** (deterministic templates take over; no secret change needed):
-
-```bash
-gcloud run services update pulsereach-api --region=$R --project=$P --update-env-vars=LLM_ENABLED=false
-```
-
-**8. Revoke** (suspected leak): delete the key in Google AI Studio (or `gcloud services api-keys
-delete <KEY_ID> --project=$P`) — this takes effect at Google immediately and the backend falls
-back with `last_provider_error=auth` — then disable AI (step 7) and destroy the secret version
-(`gcloud secrets versions destroy <version> --secret=pulsereach-gemini-api-key --project=$P`).
-Cleanup after judging: §8.
-
-## 4. Build and deploy
-
-```bash
-IMG=$R-docker.pkg.dev/$P/pulsereach/backend:$(git rev-parse --short HEAD)
-cat > /tmp/cloudbuild.yaml <<EOF
-steps: [{name: gcr.io/cloud-builders/docker, args: [build, -f, backend/Dockerfile, -t, $IMG, .]}]
-images: [$IMG]
+# backend (from repo root; .dockerignore keeps secrets, tests and frontend out of the upload)
+cat > /tmp/cb-backend.yaml <<EOF
+steps: [{name: gcr.io/cloud-builders/docker, args: [build, -f, backend/Dockerfile, -t, $AR/backend:$TAG, .]}]
+images: [$AR/backend:$TAG]
+options: {logging: CLOUD_LOGGING_ONLY, machineType: E2_HIGHCPU_8}
 EOF
-# Without a .gcloudignore, Cloud Build uploads per .gitignore, which excludes data/ (the image
-# needs it). Reuse the Docker context rules for this upload (do not commit secrets into data/):
-cp .dockerignore .gcloudignore
-gcloud builds submit . --project=$P --region=$R --config=/tmp/cloudbuild.yaml
+gcloud builds submit . --config=/tmp/cb-backend.yaml $BUILD_OPTS
 
-COMMON="--region=$R --project=$P --image=$IMG --add-cloudsql-instances=$P:$R:pulsereach-db \
-  --service-account=$SA"
-BASE_ENV="AUTH_MODE=users,DATA_SOURCE=db,SELF_REGISTRATION_ENABLED=false"
+# frontend (from frontend/)
+cat > /tmp/cb-web.yaml <<EOF
+steps: [{name: gcr.io/cloud-builders/docker, args: [build, --build-arg, NEXT_PUBLIC_API_URL=https://pulsereach-api-$PN.$R.run.app, -t, $AR/web:$TAG, .]}]
+images: [$AR/web:$TAG]
+options: {logging: CLOUD_LOGGING_ONLY, machineType: E2_HIGHCPU_8}
+EOF
+(cd frontend && gcloud builds submit . --config=/tmp/cb-web.yaml $BUILD_OPTS)
+```
 
-# migrations + official register + synthetic seed: once, idempotent, never reseeds a seeded DB
-# (the job gets the database secret only, never the Gemini key)
-gcloud run jobs create pulsereach-init $COMMON --set-secrets=DATABASE_URL=pulsereach-database-url:latest \
-  --set-env-vars=$BASE_ENV --command=python --args=-m,app.db.init,--seed --max-retries=0
+`package-lock.json` resolves through a private npm mirror; `frontend/Dockerfile` rewrites those
+URLs to `registry.npmjs.org` inside the build (same tarballs, integrity-checked).
+
+**Init job** (idempotent: migrates, loads the official register and seeds only when empty, then
+(re)applies the runtime role grants and the synthetic demo identities; never reseeds):
+
+```bash
+# take an on-demand backup first
+gcloud sql backups create --instance=pulsereach-db --project=$P --description="pre-migration $TAG"
+gcloud run jobs update pulsereach-init --region=$R --project=$P --image=$AR/backend:$TAG
 gcloud run jobs execute pulsereach-init --region=$R --project=$P --wait
-
-# Without AI: API_SECRETS=DATABASE_URL=pulsereach-database-url:latest and AI_ENV=LLM_ENABLED=false
-API_SECRETS="DATABASE_URL=pulsereach-database-url:latest,GEMINI_API_KEY=pulsereach-gemini-api-key:latest"
-AI_ENV="LLM_ENABLED=true,LLM_PROVIDER=gemini,GEMINI_MODEL=gemini-3.5-flash-lite,LLM_MAX_OUTPUT_TOKENS=1024"
-gcloud run deploy pulsereach-api $COMMON --allow-unauthenticated --port=8000 \
-  --cpu=1 --memory=1Gi --min-instances=1 --max-instances=2 --concurrency=40 --timeout=60 \
-  --set-secrets=$API_SECRETS \
-  --set-env-vars=$BASE_ENV,CORS_ORIGINS=https://<web-url>,TRUSTED_PROXY_HOPS=1,$AI_ENV
-
-gcloud run deploy pulsereach-web --source=frontend --region=$R --project=$P --allow-unauthenticated \
-  --set-build-env-vars=NEXT_PUBLIC_API_URL=https://<api-url> --min-instances=0 --max-instances=2
-# then redeploy the API with the final web origin in CORS_ORIGINS
 ```
 
-`--max-instances=2` caps cost and keeps the per-process login rate limiter meaningful; persistent
-per-account lockout is the authoritative brute-force control.
+The job (created once) runs
+`sh -c "python -m app.db.init --seed && python -m app.db.runtime_role && python -m app.services.identity seed-demo"`
+with `DATABASE_URL=pulsereach-db-owner-url`, `RUNTIME_DATABASE_URL=pulsereach-database-url`,
+`DEMO_IDENTITY_PASSWORD=pulsereach-demo-password`, `AUTH_MODE=users`, `DATA_SOURCE=db`, 2 vCPU / 2 GiB,
+30 min timeout, no retries. Because the password comes from the secret, the job log shows
+`<DEMO_IDENTITY_PASSWORD>`, never a password. Verify the revision:
+`gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="pulsereach-init"' --project=$P --limit=20`.
 
-## 5. Accounts
+**Services** (deploy the backend and the frontend independently; env vars persist across `--image` updates):
 
 ```bash
-# first administrator (password prompted; or PULSEREACH_ADMIN_PASSWORD from Secret Manager)
-gcloud run jobs execute pulsereach-init … --args=-m,app.services.identity,create-admin,--email,<email>
-# synthetic judge accounts (PostgreSQL mode prints random per-user passwords ONCE — store them safely)
-gcloud run jobs execute pulsereach-init … --args=-m,app.services.identity,seed-demo
+gcloud run deploy pulsereach-api --region=$R --project=$P --image=$AR/backend:$TAG
+gcloud run deploy pulsereach-web --region=$R --project=$P --image=$AR/web:$TAG
 ```
 
-Demo accounts are shared by judges: 5 wrong passwords lock an account for 15 minutes
-(`LOGIN_MAX_FAILURES`, `LOGIN_LOCKOUT_SECONDS`). Hand out one account per judge where possible.
-
-## 6. Health checks and smoke tests
-
-```bash
-API=https://<api-url>
-curl -fsS $API/health                    # {"status":"ok"}
-curl -fsS $API/health/db                 # {"database":"ok"}; 503 if the DB is unreachable
-curl -s -o /dev/null -w '%{http_code}\n' $API/api/v1/patients        # 401 (no token)
-TOKEN=$(curl -fsS -X POST $API/api/v1/auth/login -H 'Content-Type: application/json' \
-  -d '{"email":"manager.a@demo.pulsereach.invalid","password":"<pw>"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
-curl -fsS -H "Authorization: Bearer $TOKEN" "$API/api/v1/programmes/ifhas/summary" | head -c 300
-curl -fsS -H "Authorization: Bearer $TOKEN" "$API/api/v1/ai/status"   # needs platform.status
-curl -s -o /dev/null -w '%{http_code}\n' -H 'Origin: https://evil.example' -X OPTIONS \
-  -H 'Access-Control-Request-Method: GET' $API/api/v1/me   # 400 (origin not allowed)
-```
+First-time flags used for the API: `--service-account=pulsereach-api@$P.iam.gserviceaccount.com
+--add-cloudsql-instances=$P:$R:pulsereach-db --allow-unauthenticated --cpu=1 --memory=1Gi
+--min-instances=0 --max-instances=2 --concurrency=40 --timeout=60 --cpu-boost
+--set-secrets=DATABASE_URL=pulsereach-database-url:latest,GEMINI_API_KEY=pulsereach-gemini-api-key:latest
+--set-env-vars=<§2>`. Web: `--service-account=pulsereach-web@… --allow-unauthenticated --port=8080
+--cpu=1 --memory=512Mi --min-instances=0 --max-instances=2 --cpu-boost`.
 
 The backend refuses to start if the rule bundle is missing or the DB holds no matching seeded load
-(`app/core/startup.py`), so a broken revision never receives traffic; Cloud Run keeps the
-previous revision serving.
+(`app/core/startup.py`), so a broken revision never receives traffic; Cloud Run keeps the previous
+revision serving.
 
-## 7. Rollback
+## 4. Demo accounts
+
+`{admin,manager,coordinator,clinician,patient}.{a,b}@demo.pulsereach.invalid` (organizations
+`demo-org-a` / `demo-org-b`; patients `SYNTH-PAT-000001` / `SYNTH-PAT-000024`). One shared password,
+read privately by an owner — never paste it into documents, chat or tickets:
 
 ```bash
-gcloud run revisions list --service=pulsereach-api --region=$R --project=$P
+gcloud secrets versions access latest --secret=pulsereach-demo-password --project=$P
+```
+
+5 wrong passwords lock an account for 15 minutes. To rotate: add a secret version, then delete the
+accounts' passwords via the admin UI or set new ones (seed-demo never changes existing passwords).
+
+## 5. Smoke tests
+
+```bash
+API=https://pulsereach-api-871361479060.asia-south1.run.app
+curl -fsS $API/health; curl -fsS $API/health/db
+curl -s -o /dev/null -w '%{http_code}\n' $API/api/v1/patients                     # 401
+curl -s -o /dev/null -w '%{http_code}\n' -X OPTIONS -H 'Origin: https://evil.example' \
+  -H 'Access-Control-Request-Method: GET' $API/api/v1/me                          # 400
+PW=$(gcloud secrets versions access latest --secret=pulsereach-demo-password --project=$P)
+TOKEN=$(curl -fsS -X POST $API/api/v1/auth/login -H 'Content-Type: application/json' \
+  -d "{\"email\":\"manager.a@demo.pulsereach.invalid\",\"password\":\"$PW\"}" | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])'); unset PW
+curl -fsS -H "Authorization: Bearer $TOKEN" $API/api/v1/ai/status   # availability, last_provider_error
+```
+
+Verified on 2026-11-20: health/db ok; 401 without a token and for bad credentials; all five roles
+log in; org A/B managers get 404 for the other organization's patient; patient and admin tokens
+get 403 on `/patients`; CORS refuses foreign origins and allows the web origin; AI status
+`last_call_succeeded`; the web bundle targets the HTTPS API and contains no `localhost` URL or key.
+
+## 6. Logs and diagnosis
+
+```bash
+gcloud run services logs read pulsereach-api --region=$R --project=$P --limit=100
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="pulsereach-api" AND severity>=ERROR' --project=$P --limit=50
+gcloud logging read 'resource.type="cloud_run_revision" AND jsonPayload.request_id="<X-Request-ID>"' --project=$P   # one request
+```
+
+Every response carries `X-Request-ID`; the HTTP log line records method, path, status and duration
+(no bodies, tokens or patient content). Typical failures: `/health/db` 503 → instance stopped or the
+`DATABASE_URL` secret wrong; startup "does not match the deployed rule bundle" → rules changed, run
+the init job (and see §7 for reseeding); AI `last_provider_error=auth` → key revoked or restricted to
+the wrong API; `bad_request` → model name.
+
+## 7. Rollback and recovery
+
+```bash
+gcloud run revisions list --service=pulsereach-api --region=$R --project=$P     # last Ready revision = last healthy
 gcloud run services update-traffic pulsereach-api --to-revisions=<previous>=100 --region=$R --project=$P
 ```
 
-Schema rollback is not automatic: destructive downgrades are refused unless
-`-x allow_data_loss=true`. For a bad data state restore the Cloud SQL backup to a **new**
-instance and repoint the `pulsereach-database-url` secret. Never run the reseed command
-(`app.services.synthetic_generator.seed`) against the judging database — it deletes follow-up,
-workflow and AI audit history.
+Same for `pulsereach-web`. Old revisions are kept until deleted. **Disable Gemini** without touching
+the app (deterministic templates take over):
+`gcloud run services update pulsereach-api --region=$R --project=$P --update-env-vars=LLM_ENABLED=false`.
 
-## 8. Shutdown and cleanup after judging
+Schema rollback is not automatic (destructive downgrades are refused unless
+`-x allow_data_loss=true`). For a failed migration or bad data: restore the pre-migration backup or a
+PITR point to a **new** instance (`gcloud sql instances clone pulsereach-db pulsereach-db-restore
+--point-in-time=<RFC3339> --project=$P`, or `gcloud sql backups restore <id>
+--restore-instance=<new-instance>`), then repoint both DB URL secrets and redeploy. Never run the
+reseed command (`app.services.synthetic_generator.seed`) against the judging database — it deletes
+follow-up, workflow and AI audit history. Restores and reseeds need explicit approval.
+
+## 8. Gemini key
+
+The key in use is the existing project API key "API key 1" (Vertex AI express, restricted to
+`aiplatform.googleapis.com`), copied into `pulsereach-gemini-api-key` straight from
+`gcloud services api-keys get-key-string … | gcloud secrets create … --data-file=-` (never printed).
+It never appears in source, `.env.example`, images, build args, `--set-env-vars`, the frontend or logs.
+
+Rotate: create a new key (console → APIs & Services → Credentials, restrict to `aiplatform.googleapis.com`),
+`gcloud services api-keys get-key-string <NEW_UID> --format='value(keyString)' | tr -d '\n' |
+gcloud secrets versions add pulsereach-gemini-api-key --data-file=- --project=$P`, then
+`gcloud run services update pulsereach-api --region=$R --project=$P --update-secrets=GEMINI_API_KEY=pulsereach-gemini-api-key:latest`,
+check `/ai/status`, then disable the old secret version and delete the old key.
+
+To use a Google AI Studio key instead: store it with `read -rs K; printf '%s' "$K" | gcloud secrets
+versions add pulsereach-gemini-api-key --data-file=-; unset K`, and
+`--remove-env-vars=GEMINI_BASE_URL` on the API. Details: `docs/ai-gemini.md`.
+
+## 9. Cost (list prices, asia-south1, 10 days)
+
+| Item | Estimate | Idle cost? |
+|---|---|---|
+| Cloud SQL `db-g1-small` (~$0.035–0.042/h) + 10 GB SSD + backups/PITR logs | ≈ ₹800–1,100 | **yes** (runs 24/7) |
+| Cloud Run API + web, scale to zero, ≤ 2 instances each | ≈ ₹0–800 | no (uptime checks wake the API ~every 15 min; negligible) |
+| Artifact Registry (~1 GB images) | ≈ ₹10–30 | yes (storage) |
+| Secret Manager (4 secrets), Cloud Build (few builds), Logging/Monitoring (free tiers) | ≈ ₹0–200 | minimal |
+| Gemini `gemini-3.5-flash-lite` (judge-scale, ≤ 1024 output tokens, ≤ 3 attempts) | ≈ ₹0–500 | no |
+| **Total** | **≈ ₹1,000–2,700** (budget ₹20,000) | |
+
+Risks: max instances bound Cloud Run; Gemini spend scales with use (disable via §7 if alerts fire).
+
+## 10. Shutdown and cleanup after judging (requires approval; irreversible)
 
 ```bash
 gcloud run services delete pulsereach-web pulsereach-api --region=$R --project=$P
 gcloud run jobs delete pulsereach-init --region=$R --project=$P
+gcloud sql instances patch pulsereach-db --no-deletion-protection --project=$P
 gcloud sql instances delete pulsereach-db --project=$P        # deletes automated backups too
 gcloud secrets delete pulsereach-database-url --project=$P
-gcloud secrets delete pulsereach-gemini-api-key --project=$P    # replaces the old pulsereach-llm-key
+gcloud secrets delete pulsereach-db-owner-url --project=$P
+gcloud secrets delete pulsereach-gemini-api-key --project=$P
+gcloud secrets delete pulsereach-demo-password --project=$P
 gcloud artifacts repositories delete pulsereach --location=$R --project=$P
-gcloud iam service-accounts delete pulsereach-run@$P.iam.gserviceaccount.com --project=$P
-# revoke the Gemini key: delete it in Google AI Studio, or
-gcloud services api-keys list --project=$P && gcloud services api-keys delete <KEY_ID> --project=$P
-# set a billing budget alert before go-live
+for sa in api init web build; do gcloud iam service-accounts delete pulsereach-$sa@$P.iam.gserviceaccount.com --project=$P; done
+gcloud monitoring uptime list-configs --project=$P   # delete pulsereach-web / pulsereach-api
+# also: the two alert policies, the budget (Billing → Budgets), and the API key if no longer needed
 ```
 
-Earlier drafts of this runbook used a secret named `pulsereach-llm-key` (Gemini through
-`openai_compatible`). It is no longer used; if it was ever created, delete it as well
-(`gcloud secrets delete pulsereach-llm-key --project=$P`).
-
-## 9. Estimated 10-day cost (list prices, us-central1; verify in the GCP pricing calculator)
-
-| Item | Estimate |
-|---|---|
-| Cloud SQL `db-g1-small` + 10 GB SSD + backups | ≈ $9–11 (`db-f1-micro`: ≈ $4) |
-| Cloud Run API, 1 vCPU / 1 GiB, `min-instances=1` | ≈ $5–18 (idle min-instance vs. busy) |
-| Cloud Run web, scale to zero | ≈ $0–3 |
-| Cloud Build, Artifact Registry, Secret Manager, Logging | ≈ $0–2 (mostly free tier) |
-| Gemini API, `gemini-3.5-flash-lite` (optional, judge-scale traffic; ≤ 1024 output tokens per call, ≤ 3 attempts) | ≈ $0–5 |
-| **Total** | **≈ $15–40** |
-
-Set a budget alert (e.g. $50) on the billing account before deployment.
+To pause cheaply instead: `gcloud sql instances patch pulsereach-db --activation-policy=NEVER --project=$P`
+(storage is still billed; the API then reports `/health/db` 503).

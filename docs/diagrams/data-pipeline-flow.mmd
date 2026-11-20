@@ -1,0 +1,79 @@
+flowchart TB
+  subgraph SRC["1. Source data"]
+    R1["DoH standards<br/>IFHAS V10, Well-Child V10"]
+    R2["Abu Dhabi SDI facility register<br/>9 GeoJSON layers, 5,339 rows"]
+    R3["SCAD / StatAD aggregates<br/>shape calibration only"]
+  end
+
+  subgraph ING["2-3. Ingestion, validation, normalisation"]
+    Y["data-pipeline/rules YAML<br/>rule_loader: schema, provenance,<br/>authority derived, OQ register"]
+    FL["official_loader<br/>checksums, coordinate repair,<br/>quarantine on failure"]
+    CL["clinical_loader<br/>bundle hash + version checks"]
+    GEN["synthetic_generator<br/>seeded RNG, SYNTH-* ids,<br/>is_synthetic = true"]
+  end
+  R1 --> Y --> CL
+  R2 --> FL
+  R3 -. "plausibility only" .-> GEN
+
+  subgraph STORE["4. Stored records"]
+    DBO[("official.*")]
+    DBC[("clinical.*")]
+    DBS[("synthetic.patient, consent,<br/>screenings, visits, components,<br/>conditions, history availability")]
+  end
+  FL --> DBO
+  CL --> DBC
+  GEN --> DBS
+  DBO -- "facility service profiles<br/>reference real facilities" --> GEN
+
+  subgraph DET["5-8. Deterministic evaluation (no AI)"]
+    EN["EvaluationEngine<br/>guards first, then status logic"]
+    EV[("eligibility_evaluation<br/>+ evaluation_reason<br/>rule_id + rule_version")]
+    GAP[("care_gap<br/>open / closed_*")]
+    EN --> EV --> GAP
+  end
+  DBC --> EN
+  DBS --> EN
+
+  subgraph AGG["9. Population aggregation"]
+    FACT["facts.py SQL GROUP BY / memory"]
+    PE["engine.py metrics, trends, hotspots"]
+    PRIV["privacy.py small-cell suppression k=5"]
+    FACT --> PE --> PRIV
+  end
+  GAP --> FACT
+  DBS --> FACT
+  DBO --> FACT
+
+  subgraph HUMAN["10-14. Human workflows"]
+    ASG["Org ownership + staff assignments"]
+    REV["Care-gap review"]
+    TASK["Follow-up tasks, contact attempts"]
+    APPT["Appointments, referrals"]
+    PORT["Patient portal: view, respond,<br/>request appointment / help"]
+    REQ["Staff respond to patient requests"]
+    ASG --> REV --> TASK --> PORT --> REQ --> APPT
+  end
+  GAP --> ASG
+
+  subgraph DONE["15-16. Completion evidence"]
+    CE["completion_documented follow-up<br/>validated against current rule"]
+    CLOSE["care gap closed_completed<br/>task completed only with evidence"]
+    CE --> CLOSE
+  end
+  APPT --> CE
+  CLOSE --> GAP
+
+  subgraph OUT["17. Outcome reporting"]
+    PS["Programme summary"]
+    PD["Population map, alerts, coverage,<br/>follow-up completion rate"]
+  end
+  PRIV --> PD
+  GAP --> PS
+  CLOSE -. "data-version change<br/>triggers re-aggregation" .-> FACT
+
+  subgraph AIL["AI explanatory layer (separate, optional)"]
+    AIX["Gemini restates deterministic facts<br/>explanations, drafts, summaries"]
+  end
+  EV -. "read-only facts" .-> AIX
+  PRIV -. "aggregates only" .-> AIX
+  AIX -. "never writes back" .-x GAP

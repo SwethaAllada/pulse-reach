@@ -3,6 +3,10 @@
 .env.*
 !.env.example
 
+# Private demo credentials (share with judges through a private channel only)
+docs/DEMO_ACCESS_PRIVATE.md
+docs/PULSEREACH_SUBMISSION.md
+
 # Python
 __pycache__/
 *.py[cod]

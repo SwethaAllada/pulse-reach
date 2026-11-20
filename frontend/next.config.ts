@@ -10,6 +10,8 @@ if (process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_ALLOW_LEGAC
 
 const nextConfig: NextConfig = {
   /* config options here */
+  // Self-contained server for the container image (Dockerfile); `next start` still works locally.
+  output: "standalone",
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

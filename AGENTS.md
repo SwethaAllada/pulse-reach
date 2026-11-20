@@ -92,6 +92,12 @@ Live fixtures that set `DATA_SOURCE=db` must clear `get_identity_engine`/`get_po
 (`test_live_backend_completion._clear_store_engines`), or later memory-mode suites error.
 
 Deployment: `docs/deployment-gcp.md`; behind Cloud Run set `TRUSTED_PROXY_HOPS=1` (not uvicorn `--forwarded-allow-ips='*'`).
+Live since 2026-11-20 in `pulsereach-hackathon-2026` / `asia-south1` (web `pulsereach-web`, API `pulsereach-api`, job
+`pulsereach-init`, Cloud SQL `pulsereach-db`). The API connects as least-privilege `pulsereach_app`
+(`app/db/runtime_role.py`, test `tests/test_runtime_role.py`); migrations run only in the init job as `pulsereach_owner`.
+New tables are covered by its default privileges; a new schema must be added to `DATA_SCHEMAS`.
+`frontend/package-lock.json` resolves via a private mirror (`artifact.devsnc.com`), unreachable from Cloud Build: the
+frontend Dockerfile rewrites it to npmjs. Gemini runs through Vertex AI express (`GEMINI_BASE_URL=https://aiplatform.googleapis.com/v1/publishers/google`).
 
 Docker builds through the forwarded socket also wedge `gvproxy` (build context uploads at ~0.5 MB/min).
 Build inside the VM instead, then start Compose without building:

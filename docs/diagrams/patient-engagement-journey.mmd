@@ -1,0 +1,19 @@
+sequenceDiagram
+  autonumber
+  participant E as Evaluation engine
+  participant C as Care coordinator
+  participant Pt as Patient (portal)
+  participant Cl as Clinician
+  E->>C: Open care gap with evidence (rule_id + version)
+  C->>Pt: Portal invitation code (handed over out of band)
+  Pt->>Pt: POST /portal/link {code, date_of_birth}
+  C->>C: Review gap, create patient-visible follow-up task
+  Pt->>Pt: Sees recommendation, evidence, explanation, assistant
+  Pt->>C: Response (will_book / need_help / already_done) or appointment request
+  C->>C: Respond to request, log contact attempt
+  C->>Pt: Schedule appointment (visible in portal)
+  Pt->>C: Optional change / cancel request (more than 24 h ahead)
+  Cl->>Cl: Documents completion with evidence
+  Cl->>E: care gap closed_completed
+  C->>C: Complete task (requires completion evidence id)
+  Pt->>Pt: Timeline shows completion

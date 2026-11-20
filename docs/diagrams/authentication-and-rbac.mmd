@@ -1,0 +1,30 @@
+sequenceDiagram
+  autonumber
+  participant B as Browser (Next.js)
+  participant A as FastAPI /api/v1/auth
+  participant P as get_principal + require()
+  participant S as Scope check
+  participant DB as identity schema
+  participant L as audit_event
+
+  B->>A: POST /auth/login {email, password}
+  A->>DB: scrypt verify, lockout + rate limit
+  A->>DB: create auth_session, store SHA-256 of tokens
+  A-->>B: access pra_ (15 min) + refresh prr_ (7 days) + role + permissions
+  A->>L: auth.login
+  B->>P: GET /api/v1/patients  Authorization: Bearer pra_
+  P->>DB: token, session, user, membership, org all active?
+  alt invalid or expired
+    P-->>B: 401 WWW-Authenticate Bearer
+    B->>A: POST /auth/refresh {refresh_token}
+    A->>DB: mark refresh used, revoke old access, new pair
+    A-->>B: rotated tokens (reuse of old refresh revokes session)
+  else permission missing
+    P->>L: authz.denied
+    P-->>B: 403
+  else permitted
+    P->>S: patient_scope: organization / assigned / self link
+    S-->>B: 200 filtered to scope, or 404 for out-of-scope ids
+  end
+  B->>A: POST /auth/logout
+  A->>DB: revoke session and tokens

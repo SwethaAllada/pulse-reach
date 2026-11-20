@@ -1,0 +1,62 @@
+flowchart LR
+  subgraph Browser["Browser"]
+    UI["Next.js 16 frontend<br/>React 19, Tailwind, MapLibre<br/>EN / AR, LTR / RTL"]
+    SS["sessionStorage<br/>access + refresh tokens"]
+    UI --- SS
+  end
+
+  subgraph FE["Frontend workspaces"]
+    direction TB
+    W1["Role homes<br/>PHM / coordinator / clinician / admin"]
+    W2["People, profile, care gaps, evidence"]
+    W3["Follow-up, appointments, referrals"]
+    W4["Programmes and rules"]
+    W5["Population map and insights"]
+    W6["Facility directory"]
+    W7["Admin console"]
+    W8["Patient portal + portal assistant"]
+    W9["Staff AI copilot panel"]
+  end
+  UI --> FE
+
+  subgraph API["FastAPI backend /api/v1"]
+    direction TB
+    MW["Middleware<br/>request id, CORS, body limit, JSON logs"]
+    AUTH["auth.py / identity services<br/>opaque tokens, sessions, scrypt"]
+    RBAC["require permission<br/>+ patient scope + org isolation"]
+    RD["Read repository<br/>patients, rules, gaps, facilities"]
+    EVAL["Deterministic evaluation engine<br/>54 versioned rules"]
+    ENG["Engagement services<br/>tasks, requests, appointments, referrals"]
+    POP["Population intelligence<br/>facts, engine, privacy k=5, alerts"]
+    PORTAL["Portal services<br/>patient-facing views"]
+    AI["AIService<br/>prompts, guardrails, fallback"]
+    PROV["Provider abstraction<br/>Gemini / OpenAI-compatible / Anthropic"]
+    AUD["Audit<br/>identity.audit_event + AI audit"]
+    MW --> AUTH --> RBAC
+    RBAC --> RD & ENG & POP & PORTAL & AI
+    RD --> EVAL
+    AI --> PROV
+    ENG --> AUD
+    AI --> AUD
+    RBAC --> AUD
+  end
+
+  UI -- "HTTPS JSON, Bearer token" --> MW
+
+  subgraph DB["PostgreSQL (DATA_SOURCE=db)"]
+    S1[("official<br/>facilities, regions, indicators")]
+    S2[("clinical<br/>rules, items, guards, open questions")]
+    S3[("synthetic<br/>patients, evaluations, care gaps,<br/>appointments, referrals, AI audit")]
+    S4[("identity + engagement<br/>users, orgs, memberships, tokens,<br/>assignments, links, tasks, requests, audit")]
+    S5[("population<br/>areas, runs, thresholds, alerts")]
+  end
+  RD --> S1 & S2 & S3
+  ENG --> S3 & S4
+  AUTH --> S4
+  POP --> S5
+  AUD --> S3 & S4
+
+  GEM["Google Gemini API<br/>generateContent<br/>optional, off by default"]
+  PROV -- "x-goog-api-key, de-identified facts only" --> GEM
+  TILES["OpenFreeMap vector tiles"]
+  UI -. "map tiles only" .-> TILES

@@ -1,0 +1,32 @@
+flowchart TB
+  U["Staff or patient request<br/>explanation, outreach draft, assistant, copilot"]
+  RB["require(permission) + patient scope<br/>rate limit per user"]
+  SCR["Question screening (portal)<br/>emergency, prompt injection, other person"]
+  CTX["Deterministic context builder<br/>stored records, approved labels"]
+  GATE["Outreach gate<br/>consent, channel, language, next step"]
+  DET["Deterministic answer / template<br/>always built first"]
+  FACTS["De-identified facts<br/>no names, ids, contacts, free text"]
+  CFG{"LLM_ENABLED and<br/>provider configured?"}
+  PROV["GeminiProvider<br/>temperature 0, systemInstruction,<br/>timeout, retries with backoff"]
+  GR{"Guardrails pass?<br/>identifiers, links, clinical/risk claims,<br/>numbers, language, JSON shape"}
+  OUT_AI["Return AI text<br/>generation_mode = llm_grounded"]
+  OUT_DET["Return deterministic text<br/>fallback_reason recorded"]
+  AUD[("AI audit record<br/>prompt version, model, SHA-256<br/>fingerprints, latency, actor, org")]
+  HUM["Human review<br/>outreach approve / reject<br/>simulated_not_sent"]
+
+  U --> RB --> SCR --> CTX
+  CTX --> GATE
+  GATE -- "blocked" --> OUT_DET
+  GATE -- "allowed" --> DET
+  CTX --> DET --> FACTS --> CFG
+  SCR -- "screened" --> OUT_DET
+  CFG -- "no" --> OUT_DET
+  CFG -- "yes" --> PROV
+  PROV -- "error / timeout" --> OUT_DET
+  PROV --> GR
+  GR -- "yes" --> OUT_AI
+  GR -- "no" --> OUT_DET
+  OUT_AI --> AUD
+  OUT_DET --> AUD
+  OUT_AI --> HUM
+  OUT_DET --> HUM
