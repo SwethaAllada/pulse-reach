@@ -55,6 +55,7 @@ _RECONCILED_TABLES = {
     "care_gap": "care_gaps",
     "care_gap_review": "care_gap_reviews",
     "outreach_event": "outreach_events",
+    "condition_record": "condition_records",
 }
 
 

@@ -191,6 +191,25 @@ MESSAGES: dict[str, dict[str, str]] = {
     "time_of_day.morning": {"en": "Morning", "ar": "صباحًا"},
     "time_of_day.afternoon": {"en": "Afternoon", "ar": "بعد الظهر"},
     "time_of_day.evening": {"en": "Evening", "ar": "مساءً"},
+    # --- population intelligence (BE-33) --------------------------------------------------
+    "population.alert_not_found": {"en": "The population alert was not found.", "ar": "لم يتم العثور على تنبيه صحة السكان."},
+    "population.invalid_transition": {"en": "An alert cannot move from {from_status} to {to_status}.", "ar": "لا يمكن نقل التنبيه من {from_status} إلى {to_status}."},
+    "population.area_not_found": {"en": "The geographic area was not found.", "ar": "لم يتم العثور على المنطقة الجغرافية."},
+    "population.refresh_in_progress": {"en": "An aggregation for this organization is already running. Try again shortly.", "ar": "يجري حاليًا تجميع بيانات هذه الجهة. يُرجى المحاولة بعد قليل."},
+    "population.condition_required": {"en": "Select a condition for the metric {metric}.", "ar": "اختر حالة مرضية للمؤشر {metric}."},
+    "population.invalid_bbox": {"en": "The bounding box must be min_longitude,min_latitude,max_longitude,max_latitude.", "ar": "يجب أن يكون نطاق الخريطة بالصيغة: أدنى خط طول، أدنى خط عرض، أعلى خط طول، أعلى خط عرض."},
+    "population.alert.case_increase.title": {"en": "Recorded {condition} cases increased in {area}", "ar": "ارتفعت الحالات المسجلة من {condition} في {area}"},
+    "population.alert.case_increase.explanation": {"en": "{current} new recorded diagnoses in the latest {period} versus {previous} in the previous {period} (change {change}). Threshold-based signal of recorded counts; not a confirmed outbreak.", "ar": "{current} تشخيصًا جديدًا مسجلًا في آخر {period} مقابل {previous} في الفترة السابقة {period} (التغير {change}). إشارة مبنية على حدود لعدد الحالات المسجلة، وليست تفشيًا مؤكدًا."},
+    "population.alert.disease_burden.title": {"en": "High recorded {condition} burden in {area}", "ar": "عبء مرتفع مسجل من {condition} في {area}"},
+    "population.alert.disease_burden.explanation": {"en": "{count} patients have an active recorded {condition}, at or above the configured threshold of {threshold}.", "ar": "لدى {count} مريضًا حالة {condition} نشطة مسجلة، وهو ما يساوي الحد المحدد البالغ {threshold} أو يتجاوزه."},
+    "population.alert.prevalence.title": {"en": "Recorded {condition} prevalence above threshold in {area}", "ar": "انتشار {condition} المسجل أعلى من الحد في {area}"},
+    "population.alert.prevalence.explanation": {"en": "Recorded prevalence is {prevalence} of the registered population, at or above the configured {threshold}.", "ar": "يبلغ الانتشار المسجل {prevalence} من السكان المسجلين، وهو ما يساوي الحد المحدد {threshold} أو يتجاوزه."},
+    "population.alert.preventive_coverage_low.title": {"en": "Preventive-care coverage below target in {area}", "ar": "تغطية الرعاية الوقائية أقل من المستهدف في {area}"},
+    "population.alert.preventive_coverage_low.explanation": {"en": "{coverage} of in-scope patients have no open preventive-care gap, below the configured target of {target}.", "ar": "{coverage} من المرضى المشمولين ليست لديهم فجوة رعاية وقائية مفتوحة، وهو أقل من المستهدف المحدد البالغ {target}."},
+    "population.alert.follow_up_completion_decline.title": {"en": "Follow-up completion declining in {area}", "ar": "تراجع إنجاز المتابعة في {area}"},
+    "population.alert.follow_up_completion_decline.explanation": {"en": "Documented follow-up completion fell from {previous} to {current} of eligible care gaps.", "ar": "انخفض إنجاز المتابعة الموثق من {previous} إلى {current} من فجوات الرعاية المؤهلة."},
+    "population.alert.facility_coverage_insufficient.title": {"en": "Limited published facility coverage in {area}", "ar": "تغطية محدودة بالمنشآت المنشورة في {area}"},
+    "population.alert.facility_coverage_insufficient.explanation": {"en": "{count} care facilities (hospitals, health centres, clinics) are listed under this area's label in the official register, below the configured minimum of {threshold}. Capacity and services are not published.", "ar": "{count} منشأة رعاية (مستشفيات ومراكز صحية وعيادات) مدرجة تحت اسم هذه المنطقة في السجل الرسمي، وهو أقل من الحد الأدنى المحدد البالغ {threshold}. لا تُنشر السعة والخدمات."},
 }
 
 TASK_MESSAGE_KEYS = tuple(k.removeprefix("task.") for k in MESSAGES if k.startswith("task."))

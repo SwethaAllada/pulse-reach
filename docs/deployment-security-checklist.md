@@ -86,6 +86,14 @@ WRITE_API_KEY=pulsereach-write-key:latest`) and share it out of band.
 - **Migrations:** run `python -m app.db.init --seed` as a one-off job (idempotent; never reseeds a
   seeded DB; applies `0011` identity/engagement schemas). Destructive downgrades are refused unless
   `-x allow_data_loss=true`.
+- **Population intelligence (BE-33):** migration `0012` adds `synthetic.condition_record` and the
+  `population` schema (aggregates and alerts only). Keep `POPULATION_MIN_CELL_SIZE` at its default
+  (5) or higher — it is the small-cell privacy threshold and is not organization-configurable.
+  Optional: schedule `python -m app.services.population refresh` (Cloud Scheduler → Cloud Run job)
+  every few minutes; otherwise snapshots refresh on first use and when stale
+  (`POPULATION_FRESHNESS_CHECK_SECONDS`, `POPULATION_MAX_SNAPSHOT_AGE_SECONDS`,
+  `POPULATION_REFRESH_TIMEOUT_SECONDS`, `POPULATION_RUNS_RETAINED`). Do not describe hotspots as
+  outbreaks or the synthetic rates as Abu Dhabi prevalence.
 - **Tenant isolation** is application-level (no PostgreSQL RLS); keep the database reachable only
   by the API and init job.
 - **Reseed** (`python -m app.services.synthetic_generator.seed`) deletes all follow-up, workflow

@@ -17,6 +17,7 @@ from app.services.synthetic_generator.generator import (
 CHUNK_SIZE = 2000
 
 DELETE_ORDER = (
+    "condition_record",
     "ai_audit_record",
     "workflow_status_event",
     "care_gap_follow_up_event",
@@ -153,10 +154,12 @@ def _load_with_sa_conn(
 
     _insert_table("care_gap_review", ds.care_gap_reviews)
     _insert_table("outreach_event", ds.outreach_events)
+    _insert_table("condition_record", ds.condition_records)
 
     return {
         "run_id": run_id,
         "patients": len(ds.patients),
+        "condition_records": len(ds.condition_records),
         "eligibility_evaluations": len(ds.eligibility_evaluations),
         "care_gaps": len(ds.care_gaps),
     }

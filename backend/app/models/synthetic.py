@@ -1,6 +1,7 @@
-"""SQLAlchemy 2.x models for the `synthetic` schema (18 tables).
+"""SQLAlchemy 2.x models for the `synthetic` schema (18 tables + later additions).
 
-Matches `docs/phase-3-database-design.md` §5.
+Matches `docs/phase-3-database-design.md` §5; later migrations add `care_gap_follow_up_event`
+(0008), `workflow_status_event` (0009), `ai_audit_record` (0010) and `condition_record` (0012).
 All 18 tables carry `run_id` and `is_synthetic BOOLEAN NOT NULL DEFAULT true CHECK (is_synthetic)`,
 PK prefix regex checks (`^SYNTH-<CODE>-[0-9]{N,}$`), and composite `ON DELETE RESTRICT` /
 `ON UPDATE RESTRICT` foreign keys.
@@ -265,6 +266,7 @@ class Patient(Base):
         Index("ix_patient_region_id", "region_id"),
         Index("ix_patient_registered_profile_id", "registered_profile_id"),
         Index("ix_patient_date_of_birth", "date_of_birth"),
+        Index("ix_patient_run_region_district", "run_id", "region_id", "district_label"),  # 0012
         {"schema": SCHEMA},
     )
 
@@ -1789,6 +1791,62 @@ class WorkflowStatusEvent(Base):
         Index("ix_workflow_status_event_appointment", "appointment_id", "recorded_at"),
         Index("ix_workflow_status_event_referral", "referral_id", "recorded_at"),
         Index("ix_workflow_status_event_patient", "patient_id", "recorded_at"),
+        {"schema": SCHEMA},
+    )
+
+
+class ConditionRecord(Base):
+    """Synthetic problem-list entry (migration 0012, BE-33): one recorded condition of a patient.
+
+    Distinct from care gaps (preventive-care facts). `diagnosis_date` may be unknown;
+    `recorded_at` is when the entry reached the record (reporting delay); duplicates of the same
+    patient/condition are allowed and collapsed by the aggregation engine.
+    """
+
+    __tablename__ = "condition_record"
+
+    condition_record_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    run_id: Mapped[str] = mapped_column(Text, nullable=False)
+    patient_id: Mapped[str] = mapped_column(Text, nullable=False)
+    is_synthetic: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    condition_code: Mapped[str] = mapped_column(Text, nullable=False)
+    diagnosis_date: Mapped[date | None] = mapped_column(Date)
+    recorded_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    resolved_date: Mapped[date | None] = mapped_column(Date)
+    source_system: Mapped[str] = mapped_column(Text, nullable=False)
+    scenario_tag: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (
+        _fk(
+            ["run_id", "patient_id"],
+            ["patient.run_id", "patient.patient_id"],
+            "fk_condition_record_patient_id_patient",
+        ),
+        *_synth_checks("condition_record_id", "CND"),
+        CheckConstraint(
+            "condition_code IN ('diabetes_type_2', 'hypertension', 'dyslipidaemia', 'asthma')",
+            name="condition_code",
+        ),
+        CheckConstraint(
+            "status IN ('active', 'resolved', 'entered_in_error')", name="status"
+        ),
+        CheckConstraint(
+            "(status = 'resolved') = (resolved_date IS NOT NULL)", name="resolved_date_consistency"
+        ),
+        CheckConstraint(
+            "resolved_date IS NULL OR diagnosis_date IS NULL OR resolved_date >= diagnosis_date",
+            name="resolved_after_diagnosis",
+        ),
+        CheckConstraint(
+            "diagnosis_date IS NULL OR diagnosis_date <= (recorded_at AT TIME ZONE 'UTC')::date",
+            name="diagnosed_before_recorded",
+        ),
+        Index("ix_condition_record_run_condition_diagnosis", "run_id", "condition_code", "diagnosis_date"),
+        Index("ix_condition_record_patient", "patient_id", "condition_code"),
+        Index("ix_condition_record_recorded_at", "recorded_at"),
         {"schema": SCHEMA},
     )
 

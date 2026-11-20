@@ -117,6 +117,30 @@
 | `GET /api/v1/patient-requests`, `GET/PATCH /api/v1/patient-requests/{id}` | `patient_requests.manage` | Appointment / assistance / change requests from patients |
 | `/api/v1/portal/*` | `patients.read_self` (linked PATIENT) | Patient portal — see `patient-portal-api.md` |
 
+### Geospatial population intelligence (`/api/v1/population`, BE-33)
+
+Organization-level aggregates of the caller's organization (from the session) computed by the
+backend from synthetic condition records, care gaps, screenings, follow-ups and the SDI facility
+register; counts 1…`POPULATION_MIN_CELL_SIZE − 1` (default 5) and complementary cells are `null`
+and listed in `suppressed`. No patient-level fields. Responses share `is_synthetic`, `as_of`,
+`complete_through`, `latest_data_at`, `aggregation` (`run_id`, `status`, `finished_at`, `stale`,
+`refresh_scheduled`, …), `privacy`, `disclaimer`. Details, metric definitions and thresholds:
+`geospatial-population-intelligence.md`.
+
+| Method & Path | Permission | Purpose |
+|---|---|---|
+| `GET /population/map` | `population.read` | Areas of one `geography` (`country`\|`state`\|`district`\|`city`\|`local_area`) with population, `metric_value` (`metric` = `population`, `new_cases`, `patients_with_condition`, `prevalence`, `trend`, `hotspot`, `open_care_gaps`, `preventive_coverage`, `care_facilities`), disease block for `condition` + `period` (`7d`\|`30d`\|`90d`\|`6m`\|`12m`) + `cohort` (`all`\|`adults`\|`children`\|`female`\|`male`), hotspot class, active alert count, care/facility figures, data quality. `bbox=minLon,minLat,maxLon,maxLat` (published facility-point extent; `excluded_without_geometry`), `sort` (`metric_desc`\|`name`), `limit` ≤ 500, `offset`. `boundary`/`reference_point` are `null` (no boundary data). Disease metric without `condition` / bad bbox → `422` |
+| `GET /population/trends` | `population.read` | `condition` (required), `area_id` or `geography` (default `district`), `period`, `cohort`, pagination: current vs previous period comparisons (counts, change, prevalence, `trend.direction` `INCREASING`\|`DECREASING`\|`STABLE`\|`INSUFFICIENT_DATA` with `reason_codes`) and 12 complete calendar months. Unknown area → `404` |
+| `GET /population/hotspots` | `population.read` | Threshold-based hotspots (`CRITICAL`\|`HIGH`\|`MODERATE`\|`WATCH`\|`NO_ALERT`\|`INSUFFICIENT_DATA`) at district/local level (or `geography`), `condition`, `period`, `min_classification` (default `WATCH`); each with `reason_codes`, `supporting_metrics`, `thresholds`, windows, `detected_at`, `data_freshness_at`, `statistical_significance: "not_assessed"` |
+| `GET /population/areas/{area_id}` | `population.read` | Area profile: ancestors, children, population by cohort, all conditions (current, every period, series, hotspot, data quality), active alerts, facilities (association basis, counts by layer, point extent, distance/capacity unavailable), preventive care, data quality |
+| `GET /population/summary` | `population.read` | Population represented, conditions monitored, areas monitored, areas with increasing recorded cases, hotspots by class, active alerts by severity, preventive-care indicators, latest aggregation time |
+| `GET /population/updates` | `population.read` or `population.refresh` | Aggregation status, last aggregation, latest aggregated data time, `data_changed_since_aggregation`, `staleness_seconds`, dataset/version ids, `recommended_poll_seconds` (map 60, alerts 30, trends 300); schedules a background refresh when stale |
+| `POST /population/refresh` | `population.refresh` | Run the aggregation now (`409` while one is running); audited |
+| `GET /population/config` · `PATCH /population/config` | `population.read` or `population.configure` · `population.configure` | Organization thresholds (`PopulationThresholds`, unknown fields → `422`); PATCH increments `version`, is audited and refreshes |
+| `GET /population/alerts` | `population.alerts.read` | Filters `condition`, `area_id`, `severity`, `status` (`NEW`\|`ACKNOWLEDGED`\|`INVESTIGATING`\|`RESOLVED`\|`DISMISSED`), `category`, `active_only`, `since`, `until`; paginated, newest detection first |
+| `GET /population/alerts/{alert_id}` | `population.alerts.read` | Alert with `allowed_transitions` and append-only `history`; other organizations' alerts → `404` |
+| `PATCH /population/alerts/{alert_id}` | `population.alerts.manage` | `{status, note?}`; invalid transition → `409`; actor from the session; audited (`population_alert.status_changed`) |
+
 `EvaluationItemOut` carries `reason_detail` (the engine's own reason text recorded at evaluation time, or the generic template for the code), `input_snapshot` (de-identified inputs) and `input_snapshot_basis`: `recorded_at_evaluation` (stored with the evaluation) or `reconstructed_at_read` (legacy rows evaluated before migration 0010, rebuilt from current records and possibly different from what the engine saw). `PatientEvaluationsOut.is_persisted` is `false` only for ad-hoc recomputations.
 
 `EvaluationItemOut` also carries `applicability` (`in_band` \| `out_of_band` \| `not_determined`: is the person inside the rule's printed age/sex band, or the pathway's programme scope when the rule has none) with `applicability_basis`, and `review_origin` (`rule` \| `record`, only for `requires_clinical_review`).

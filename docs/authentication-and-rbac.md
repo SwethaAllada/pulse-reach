@@ -135,6 +135,9 @@ permission marker.
 | patient_requests.manage | | ✓ | ✓ | | |
 | outreach.draft / outreach.review | | | ✓ | | |
 | followups.respond, patient_requests.create | | | | | ✓ |
+| population.read, population.alerts.read (BE-33 surveillance aggregates) | | ✓ | | ✓ | |
+| population.alerts.manage (alert lifecycle) | | ✓ | | | |
+| population.refresh, population.configure (aggregation runs, thresholds) | ✓ | ✓ | | | |
 
 ¹ `rules.manage` is reserved (no rule-editing endpoint exists; rules come from the versioned
 bundle). ² Coordinators and clinicians see **assigned** patients only; an administrator can grant
@@ -142,6 +145,11 @@ organization-wide access explicitly (`PATCH /admin/users/{id} {"patient_access":
 
 SYSTEM_ADMIN has **no** patient-data permissions by default. Patients have no access to staff
 endpoints, analytics, other patients, staff notes or audit logs.
+
+Population surveillance (`/api/v1/population/*`, `geospatial-population-intelligence.md`) is
+organization-wide, small-cell-suppressed aggregate data: managers and clinicians read it, only
+managers change alert status; administrators can trigger aggregation and edit thresholds but cannot
+read the aggregates; coordinators keep only the existing assigned-patient `insights.read` views.
 
 Status codes: `401` unauthenticated · `403` authenticated without the permission (audited as
 `authz.denied`) · `404` for patient-owned resources outside the caller's scope, with exactly the

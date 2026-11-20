@@ -76,6 +76,12 @@ ALL_PERMISSIONS = frozenset(
         "rules.read",
         "rules.manage",
         "platform.status",
+        # Geospatial population intelligence (docs/geospatial-population-intelligence.md).
+        "population.read",
+        "population.alerts.read",
+        "population.alerts.manage",
+        "population.refresh",
+        "population.configure",
     }
 )
 
@@ -111,10 +117,18 @@ ROLE_PERMISSIONS: dict[Role, frozenset[str]] = {
             "rules.read",
             "rules.manage",
             "platform.status",
+            # Aggregation operations and thresholds only; no access to population data itself.
+            "population.refresh",
+            "population.configure",
         }
     ),
     Role.POPULATION_HEALTH_MANAGER: _CLINICAL_READ
     | {
+        "population.read",
+        "population.alerts.read",
+        "population.alerts.manage",
+        "population.refresh",
+        "population.configure",
         "patients.read",
         "care_gaps.review",
         "evaluations.run",
@@ -141,6 +155,8 @@ ROLE_PERMISSIONS: dict[Role, frozenset[str]] = {
     },
     Role.CLINICIAN: _CLINICAL_READ
     | {
+        "population.read",
+        "population.alerts.read",
         "care_gaps.review",
         "care_gaps.complete",
         "evaluations.run",

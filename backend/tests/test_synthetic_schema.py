@@ -47,6 +47,7 @@ TABLES = {
     "appointment",
     "outreach_event",
     "ai_audit_record",
+    "condition_record",  # 0012 (BE-33)
 }
 
 EXPECTED_PKS = {
@@ -373,6 +374,19 @@ EXPECTED = {
         "clinician_approved_by": True,
         "message_template_id": True,
     },
+    "condition_record": {
+        "condition_record_id": False,
+        "run_id": False,
+        "patient_id": False,
+        "is_synthetic": False,
+        "condition_code": False,
+        "diagnosis_date": True,
+        "recorded_at": False,
+        "status": False,
+        "resolved_date": True,
+        "source_system": False,
+        "scenario_tag": True,
+    },
 }
 
 
@@ -472,7 +486,8 @@ def test_migration_0007_uses_frozen_static_ddl():
     src = mig_path.read_text(encoding="utf-8")
     assert "app.models" not in src
     assert "Base.metadata" not in src
-    for tbl_name in TABLES - {"care_gap_follow_up_event", "workflow_status_event", "ai_audit_record"}:
+    for tbl_name in TABLES - {"care_gap_follow_up_event", "workflow_status_event", "ai_audit_record",
+                              "condition_record"}:
         assert f"CREATE TABLE synthetic.{tbl_name}" in src
 
 

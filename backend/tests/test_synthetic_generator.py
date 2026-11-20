@@ -33,6 +33,7 @@ def test_reproducibility_and_seed_variation(dataset: SyntheticDataset):
     assert dataset.patients == same_seed.patients
     assert dataset.eligibility_evaluations == same_seed.eligibility_evaluations
     assert dataset.care_gaps == same_seed.care_gaps
+    assert dataset.condition_records == same_seed.condition_records
 
     diff_seed = generate_synthetic_dataset(seed=20261117, total_patients=60)
     assert diff_seed.patients[35]["date_of_birth"] != dataset.patients[35]["date_of_birth"] or (
@@ -271,6 +272,7 @@ def test_synthetic_dataset_rows_match_sqlalchemy_table_columns(dataset: Syntheti
         "workflow_status_event": [],
         "ai_audit_record": [],
         "outreach_event": dataset.outreach_events,
+        "condition_record": dataset.condition_records,
     }
     assert set(collection_by_table) == set(synth_tables)
     for tbl_name, rows in collection_by_table.items():

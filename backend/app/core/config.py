@@ -67,6 +67,17 @@ class Settings(BaseSettings):
     demo_identity_seed: bool = False
     demo_identity_password: SecretStr | None = None
 
+    # Geospatial population intelligence (docs/geospatial-population-intelligence.md).
+    # Minimum reportable cell size; system-level (not editable by organizations).
+    population_min_cell_size: int = Field(default=5, ge=3, le=50)
+    # How often a request may re-check whether the underlying data changed (cheap query).
+    population_freshness_check_seconds: int = Field(default=15, ge=0, le=3600)
+    # A snapshot older than this is refreshed in the background even if no change was detected.
+    population_max_snapshot_age_seconds: int = Field(default=3600, ge=60)
+    # A `running` aggregation older than this is treated as abandoned (crashed worker).
+    population_refresh_timeout_seconds: int = Field(default=600, ge=30)
+    population_runs_retained: int = Field(default=10, ge=1, le=1000)
+
     # Connection pool (SQLAlchemy QueuePool)
     db_pool_size: int = 5
     db_max_overflow: int = 10

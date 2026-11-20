@@ -12,6 +12,7 @@ from app.api.admin import router as admin_router
 from app.api.auth import router as auth_router
 from app.api.engagement import router as engagement_router
 from app.api.health import router as health_router
+from app.api.population import router as population_router
 from app.api.portal import router as portal_router
 from app.api.v1 import router as v1_router
 from app.core.config import settings
@@ -126,3 +127,4 @@ app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(portal_router)
 app.include_router(engagement_router)
+app.include_router(population_router)

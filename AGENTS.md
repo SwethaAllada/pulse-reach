@@ -31,6 +31,19 @@
   (optional `LLM_BASE_URL`); check `GET /api/v1/ai/status` (`availability`) and `GET /api/v1/ai/audit`.
 - Bump the prompt version in `prompts.py` whenever a template's wording changes.
 
+## Population intelligence (BE-33, `backend/app/services/population/`, migration 0012)
+
+- Tests: `tests/test_population_engine.py` (pure engine, privacy, alert sync), `tests/test_population_api.py`
+  (users mode, `world` fixture; reset with `reset_population_store()` + `get_population_service().reset()`);
+  live PG: `tests/test_population_live_pg.py` (memory/PostgreSQL facts parity).
+- `facts.py` has two providers (PostgreSQL `GROUP BY` and memory) with identical definitions; change both and
+  keep the parity test green. The engine (`engine.py`) is pure; privacy is applied only in `views.py`/`privacy.py`.
+- `population` tables use their own MetaData (`app/models/population.py`); keep migration 0012 DDL in sync.
+  Memory mode stores them in a separate in-process SQLite DB (`population/store.py`).
+- New synthetic tables must be added to `load.DELETE_ORDER`, `seed._RECONCILED_TABLES` and the schema tests.
+- Condition scenarios live in `synthetic_generator/conditions.py` on a separate RNG stream; never change the
+  main generator's random sequence.
+
 ## Environment gotcha (macOS + Podman)
 
 If PostgreSQL round trips through the published port take hundreds of ms, Podman's `gvproxy`

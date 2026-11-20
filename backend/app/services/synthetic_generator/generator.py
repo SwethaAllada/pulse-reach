@@ -42,6 +42,7 @@ from app.services.evaluation.recorded import (
     evaluation_snapshot,
     fired_reason_detail,
 )
+from app.services.synthetic_generator.conditions import generate_condition_records
 from app.services.followup.completion import (
     CompletionEvidence,
     evaluate_current_rule,
@@ -121,6 +122,7 @@ class SyntheticDataset:
     care_gaps: list[dict[str, Any]]
     care_gap_reviews: list[dict[str, Any]]
     outreach_events: list[dict[str, Any]]
+    condition_records: list[dict[str, Any]] = dataclasses.field(default_factory=list)  # BE-33
 
 
 def generate_synthetic_dataset(
@@ -1342,6 +1344,10 @@ def generate_synthetic_dataset(
             }
         )
 
+    condition_records = generate_condition_records(
+        patients, reference_date=reference_date, run_id=run_id, seed=seed
+    )
+
     generation_run = {
         "run_id": run_id,
         "is_synthetic": True,
@@ -1401,6 +1407,7 @@ def generate_synthetic_dataset(
         care_gaps=care_gaps,
         care_gap_reviews=care_gap_reviews,
         outreach_events=outreach_events,
+        condition_records=condition_records,
     )
 
 
@@ -1446,6 +1453,7 @@ def write_data_card(dataset: SyntheticDataset, output_path: Path) -> Path:
 | `synthetic.care_gap` | {len(dataset.care_gaps)} |
 | `synthetic.care_gap_review` | {len(dataset.care_gap_reviews)} |
 | `synthetic.outreach_event` | {len(dataset.outreach_events)} |
+| `synthetic.condition_record` | {len(dataset.condition_records)} (BE-33 problem-list entries; illustrative rates, labelled scenarios) |
 
 ## 3. Safety & Governance Guarantees
 - Every primary key begins with `SYNTH-<CODE>-`.
