@@ -14,6 +14,10 @@ below uses:
 | Setting | Value |
 |---|---|
 | `DEMO_IDENTITY_PASSWORD` | `Demo-QA-Passphrase-77` |
+| `DEMO_IDENTITY_PASSWORD` (Phase 7 geographic QA stack, ports 8021/3200) | `Phase7-QA-demo!` |
+
+The password is whatever the running API was started with: on the Phase 7 stack below, every account
+signs in with `Phase7-QA-demo!`; on the default stack, with `Demo-QA-Passphrase-77`.
 
 This value is for a disposable, memory-mode, synthetic-data API on your machine only. Never use it,
 or `DEMO_IDENTITY_SEED`, in a shared or deployed environment.
@@ -51,6 +55,27 @@ cd frontend
 NEXT_PUBLIC_API_URL=http://localhost:8001 npx next dev -p 3100
 ```
 
-Open <http://localhost:3100> and sign in with any account above. Memory mode resets all identities,
+Phase 7 (geographic intelligence & facility directory) QA stack, used when 3100/8001 are taken:
+
+```bash
+cd backend
+DATA_SOURCE=memory DEMO_IDENTITY_SEED=true DEMO_IDENTITY_PASSWORD='Phase7-QA-demo!' \
+  CORS_ORIGINS=http://localhost:3200 .venv/bin/python -m uvicorn app.main:app --port 8021 --reload --reload-dir app
+
+cd frontend
+NEXT_PUBLIC_API_URL=http://localhost:8021 npx next dev -p 3200
+```
+
+| Account (password `Phase7-QA-demo!`) | Population map (`/population`) | Facility directory (`/facilities`) |
+|---|---|---|
+| `manager.a@demo.pulsereach.invalid` | Yes, with facility deep links | Yes, with "Show on map" |
+| `clinician.a@demo.pulsereach.invalid` | Yes, with facility deep links | Yes, with "Show on map" |
+| `coordinator.a@demo.pulsereach.invalid` | No (no `population.read`) | Yes, no map links |
+| `admin.a@demo.pulsereach.invalid` | No | Yes, no map links |
+| `patient.a@demo.pulsereach.invalid` | No (portal only) | No (portal only) |
+
+Only one `next dev` can run per frontend directory; stop the other one first.
+
+Open <http://localhost:3100> (or <http://localhost:3200> for the Phase 7 stack) and sign in with any account above. Memory mode resets all identities,
 follow-ups and requests when the API restarts. Repeated failed sign-ins lock an account briefly
 (brute-force protection); restart the memory-mode API to clear it.
