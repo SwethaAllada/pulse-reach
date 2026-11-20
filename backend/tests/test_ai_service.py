@@ -249,7 +249,7 @@ def test_outreach_draft_is_gated_and_simulated(use_ai):
     ok = client.post("/api/v1/outreach/draft", json={**ALLOWED, "rule_id": rule_id}).json()
     assert ok["allowed"] and ok["simulated_only"] and ok["sendable"] is False
     assert ok["draft_message"].startswith("[SIMULATED OUTREACH PREVIEW — PHONE (en)] Hello")
-    assert ok["ai"]["generation_mode"] == LLM_GROUNDED and ok["ai"]["prompt_version"] == "outreach-v2"
+    assert ok["ai"]["generation_mode"] == LLM_GROUNDED and ok["ai"]["prompt_version"] == "outreach-v3"
 
     calls = len(prov.calls)
     blocked = client.post("/api/v1/outreach/draft", json=BLOCKED).json()

@@ -9,11 +9,15 @@
 > - Outreach previews (`POST /api/v1/outreach/preview`) are **simulated only** (`simulated_only: true`) and blocked unless `contact` consent is `granted`.
 > - AI assistance (explanations, outreach drafts, population insights) only restates deterministic results; it is off unless `LLM_ENABLED=true` with `LLM_API_KEY` and `LLM_MODEL`, and every output is validated with a deterministic fallback.
 >
-> **Errors:** every error body keeps `detail` and adds `error: {status, code, message, request_id}` (`code` in `bad_request`, `unauthorized`, `not_found`, `conflict`, `validation_error`, `service_unavailable`, `internal_error`). Validation `detail` items carry only `type`, `loc`, `msg`. Database and unexpected errors never return SQL, parameters or tracebacks. Database constraint violations on writes are `409`.
+> **Errors:** every error body keeps `detail` and adds `error: {status, code, message, request_id}` (+ `message_key`, `locale` for localized errors; `code` in `bad_request`, `unauthorized`, `forbidden`, `not_found`, `conflict`, `validation_error`, `rate_limited`, `service_unavailable`, `internal_error`). Validation `detail` items carry only `type`, `loc`, `msg`. Database and unexpected errors never return SQL, parameters or tracebacks. Database constraint violations on writes are `409`.
 >
-> **Write key:** every non-GET request except `POST /evaluations`, `POST /outreach/preview` and `POST /explanations` needs header `X-PulseReach-Write-Key` (shared demo access code, `WRITE_API_KEY`); missing/invalid → `401`, key not configured on the server → `503`. GET endpoints are public.
+> **Authentication (`AUTH_MODE=users`, default):** every `/api/v1` endpoint requires `Authorization: Bearer <access token>` from `POST /api/v1/auth/login`, except login, registration, refresh and password-reset endpoints. Missing/invalid/expired/revoked token → `401` (`WWW-Authenticate: Bearer`); missing permission → `403` (`error.code = "forbidden"`); patient-owned resources outside the caller's organization/assignment/self scope → `404` with the same body as a missing record. List endpoints and dashboard/insight aggregates include only the caller's authorized patients (filtered before `total`/pagination). Rate limits → `429` (`rate_limited`, `Retry-After`). See `authentication-and-rbac.md`.
 >
-> **Writes:** every write requires a non-blank actor (`recorded_by`, or `reviewer` for reviews). The actor is **client-supplied and unauthenticated** (no authentication exists in this MVP); treat it as attribution, not identity.
+> **Writes:** in `AUTH_MODE=users` the actor fields (`recorded_by`, `reviewed_by`, `reviewer`) are optional and **ignored**: the stored actor is the authenticated user id. Every state-changing request also produces an audit event (`GET /api/v1/audit-events`).
+>
+> **Legacy mode (`AUTH_MODE=legacy`, migration only):** the previous contract — GET endpoints public; every non-GET request except `POST /evaluations`, `POST /outreach/preview` and `POST /explanations` needs `X-PulseReach-Write-Key` (`WRITE_API_KEY`; missing/invalid → `401`, not configured → `503`); actor fields are client-supplied and required. Identity, admin, portal and engagement endpoints return `404`.
+>
+> **Localization:** `?lang=en|ar` > user preference > `Accept-Language`. Catalog-backed errors add `error.message_key` and `error.locale` and localize `error.message`; `detail` is unchanged. See `localization-and-language-support.md`.
 >
 > **Conflicts (`409`):** `detail` is a string for constraint violations, or an object for:
 > - duplicate requests — `{"message", "code": "duplicate_request", "existing_id"}`: an active (`scheduled`/`rescheduled`) appointment for the same patient, facility profile, type and `scheduled_datetime`; an active (`pending`/`initiated`) referral for the same patient, rule/version and target; or a non-completion follow-up identical to one recorded on the same gap within 60 s (same requested event type, actor and note). A second completion of a closed gap stays `422` (`care_gap_not_open`).
@@ -58,12 +62,60 @@
 | `GET /api/v1/open-questions` | Open-question register (`oq_id`, `title`, `detail`, `status`, `category`, `affects`, `resolve_via`, linked `rule_ids`); filters `status`, `category`. Questions are reported, never answered | `PaginatedOpenQuestionsOut` |
 | `GET /api/v1/open-questions/{oq_id}` | One open question | `OpenQuestionOut` |
 | `POST /api/v1/explanations` | Plain-language explanation of a precomputed evaluation; AI-grounded when enabled, deterministic otherwise. `ai` gives `generation_mode`, `prompt_version`, `provider`, `model`, `fallback_reason`, `violations`, `audit_id` | `ExplanationOut` |
-| `POST /api/v1/outreach/preview` | Permission-checked simulated outreach message preview (never sends real messages) | `OutreachPreviewOut` |
+| `POST /api/v1/outreach/preview` | Permission-checked simulated outreach message preview (never sends real messages). `language` `en` or `ar` (Arabic template) | `OutreachPreviewOut` |
 | `POST /api/v1/outreach/draft` | Same gate as the preview; when allowed, an AI-assisted (or template) simulated draft. `sendable` is always `false`; the model is never called for blocked outreach. `ai.audit_id` is the durable draft id used for review (in `DATA_SOURCE=db` it survives restarts and is shared by all workers) | `OutreachDraftOut` |
 | `POST /api/v1/outreach/draft/review` | Human decision on a draft (`draft_audit_id`, `patient_id`, `rule_id`, `care_gap_id`, `channel`, `language` must match the draft; `decision` = `approved` \| `rejected`; `final_message` required for approval; `reviewed_by`; optional `reason`, whose text is not stored). Approval re-checks consent and eligibility (`review_status: "blocked"` + `blocked_reason` if they changed), re-validates the possibly edited text (`422` with `violations`), and records one `outreach_attempted` follow-up with `outcome_status: "simulated_not_sent"`, returned as `follow_up` (also visible at once in `/care-gaps/{id}/follow-ups` and `/patients/{id}/activity`). Response also has `review_audit_id`, `edited`, `simulated_outreach_status`, and `simulated_only: true`, `sendable: false`, `delivered: false`. One final decision per draft: a replayed or concurrent approval, or approving a rejected draft, is `409 draft_already_reviewed`; unknown or blocked drafts are `404` | `OutreachDraftReviewOut` |
 | `GET /api/v1/insights/population` | Aggregate facts from the dashboard plus a narrative restating them (numbers not in the facts are rejected) | `PopulationInsightOut` |
 | `GET /api/v1/ai/status` | AI configuration (enabled, provider, model, prompt versions; never the key) | `AIStatusOut` |
 | `GET /api/v1/ai/audit` | Recent AI generation and human-review audit records, newest first (`feature` = `explanation` \| `outreach_draft` \| `outreach_review` \| `population_insight`, `limit` 1-500). Each record: `audit_id`, `recorded_at`, `request_id`, `feature`, `subject` (synthetic ids), `run_id`, `prompt_version`, `provider`, `model`, `generation_mode` (`llm_grounded`, `deterministic_fallback`, `not_generated`, `human_approved` / `_rejected` / `_blocked` / `_invalid`), `fallback_reason`, `violations`, `input_sha256`, `output_sha256`, `latency_ms`, `extra` (channel, language, tone, `reviewed_by`, `follow_up_id`, `simulated_outreach_status`, `edited`, fingerprints). Message texts are never stored. `durable: true` when stored in PostgreSQL (`synthetic.ai_audit_record`, append-only); memory mode keeps a bounded in-process buffer | `AIAuditOut` |
+
+### Permissions of the clinical endpoints (`AUTH_MODE=users`)
+
+| Endpoint(s) | Permission | Scope |
+|---|---|---|
+| `GET /dashboard/summary`, `GET /insights/population` | `insights.read` | aggregates over the caller's patients |
+| `GET /patients`, `/patients/{id}`, `/history`, `/consents` | `patients.read` or `patients.read_assigned` | organization or assigned patients |
+| `GET /patients/{id}/evaluations` | `evaluations.read` | same |
+| `POST /evaluations` | `evaluations.run` | same |
+| `GET /patients/{id}/activity`, `GET /care-gaps/{id}/follow-ups` | `followups.read` | same |
+| `GET /care-gaps`, `/care-gaps/{id}`, `GET …/reviews` | `care_gaps.read` | same |
+| `POST /care-gaps/{id}/reviews` | `care_gaps.review` | same |
+| `POST /care-gaps/{id}/follow-ups` | `followups.create` (+ `care_gaps.complete` for `completion_documented`) | same |
+| `GET /appointments`, `…/history` · `POST` · `PATCH` | `appointments.read` · `appointments.create` · `appointments.update` | same |
+| `GET /referrals`, `…/history` · `POST` · `PATCH` | `referrals.read` · `referrals.create` · `referrals.update` | same |
+| `POST /explanations` | `ai.explain` | same |
+| `POST /outreach/preview`, `POST /outreach/draft` | `outreach.draft` | same |
+| `POST /outreach/draft/review` | `outreach.review` | same; draft must come from the caller's organization |
+| `GET /rules*`, `GET /open-questions*` | `rules.read` | global reference data |
+| `GET /facilities*` | `facilities.read` | global reference data |
+| `GET /ai/status` | `platform.status` | — |
+| `GET /ai/audit` | `audit_logs.read` | records initiated in the caller's organization (`extra.organization_id`, `extra.actor_user_id`, `extra.actor_role`) |
+
+### Identity, administration, engagement and portal endpoints (`AUTH_MODE=users` only)
+
+| Method & Path | Permission | Purpose |
+|---|---|---|
+| `POST /api/v1/auth/login` | public | `{email, password, organization_id?}` → `TokenOut` (`access_token`, `refresh_token`, `expires_in`, `refresh_expires_in`, `user`, `organization_id`, `role`, `permissions`) |
+| `POST /api/v1/auth/refresh` | public | `{refresh_token}` → new `TokenOut` (rotation; reuse revokes the session) |
+| `POST /api/v1/auth/register` | public | Patient self-registration; always `202` |
+| `POST /api/v1/auth/password-reset/request` | public | Always `202` (no e-mail is sent) |
+| `POST /api/v1/auth/password-reset/confirm` | public | `{token, new_password}` (reset or activation code) → `204` |
+| `POST /api/v1/auth/logout`, `/auth/logout-all` | authenticated | Revoke current / all sessions → `204` |
+| `POST /api/v1/auth/password/change` | authenticated | `{current_password, new_password}` → `204`, other sessions revoked |
+| `POST /api/v1/auth/switch-organization` | authenticated | `{organization_id}` → new `TokenOut` |
+| `GET/PATCH /api/v1/me`, `GET/PATCH /api/v1/me/preferences` | authenticated | Profile, memberships, permissions, language |
+| `GET/POST /api/v1/admin/organizations` | `organizations.manage` | List own / create (creator becomes admin) |
+| `POST /api/v1/admin/patient-ownership`, `…/release` | `organizations.manage` | Attach unowned patients (`patient_ids` / `region_id`; others' → `409`) / release |
+| `GET/POST /api/v1/admin/users`, `GET/PATCH /api/v1/admin/users/{id}` | `users.read` / `users.create` / `users.update` | Members of the organization; create returns a one-time activation code |
+| `POST /api/v1/admin/users/{id}/deactivate`, `/activate` | `users.deactivate` | Account (or, if multi-org, membership) status; sessions revoked |
+| `POST /api/v1/admin/users/{id}/password-reset` | `users.update` | One-time reset code for out-of-band delivery |
+| `GET/POST /api/v1/admin/assignments`, `POST …/{id}/end` | `assignments.manage` | Staff ↔ patient assignments |
+| `POST /api/v1/patients/{id}/portal-invitations` | `patient_links.invite` + patient scope | One-time invitation code |
+| `GET /api/v1/admin/patient-links`, `POST …/{id}/revoke` | `patient_links.manage` | Account ↔ record links |
+| `GET /api/v1/audit-events` | `audit_logs.read` | Organization audit events (filters before pagination) |
+| `GET/POST /api/v1/follow-up-tasks`, `GET/PATCH /api/v1/follow-up-tasks/{id}`, `POST …/notes`, `…/escalate`, `…/complete` | `followups.read` / `followups.create` / `followups.update` | Patient-facing follow-up tasks (see `patient-portal-api.md`) |
+| `GET /api/v1/patient-requests`, `GET/PATCH /api/v1/patient-requests/{id}` | `patient_requests.manage` | Appointment / assistance / change requests from patients |
+| `/api/v1/portal/*` | `patients.read_self` (linked PATIENT) | Patient portal — see `patient-portal-api.md` |
 
 `EvaluationItemOut` carries `reason_detail` (the engine's own reason text recorded at evaluation time, or the generic template for the code), `input_snapshot` (de-identified inputs) and `input_snapshot_basis`: `recorded_at_evaluation` (stored with the evaluation) or `reconstructed_at_read` (legacy rows evaluated before migration 0010, rebuilt from current records and possibly different from what the engine saw). `PatientEvaluationsOut.is_persisted` is `false` only for ad-hoc recomputations.
 
@@ -192,5 +244,6 @@ Response (blocked because contact consent was withdrawn):
 - Fresh database (from `backend/`, `DATABASE_URL` set): `python -m app.db.init --seed` (migrations → official register if empty → clinical + synthetic seed if unseeded; safe to re-run). Explicit reseed: `python -m app.services.synthetic_generator.seed` (replaces the synthetic run, including follow-up history; official and clinical data are untouched; atomic).
 - Docker: `docker compose --env-file .env -f infrastructure/docker-compose.yml up --build` (`db-init` runs the bootstrap once, then `backend` starts).
 - The API refuses to start if the rule bundle is missing/invalid, or (in `DATA_SOURCE=db`) if the database has no matching clinical load or seeded run.
-- Migrations: head is `0010`. Downgrading `0010`/`0009` refuses while it would delete recorded data (AI audit, recorded snapshots, workflow history) unless run with `alembic -x allow_data_loss=true downgrade <rev>`.
+- Migrations: head is `0011` (schemas `identity` and `engagement`: accounts, organizations, memberships, sessions/tokens, assignments, patient links, audit events, follow-up tasks, patient requests). Downgrading `0011`/`0010`/`0009` refuses while it would delete recorded data (accounts, audit events, tasks, AI audit, recorded snapshots, workflow history) unless run with `alembic -x allow_data_loss=true downgrade <rev>`.
+- First administrator: `python -m app.services.identity create-admin …`; synthetic demo organizations/users: `python -m app.services.identity seed-demo` (see `authentication-and-rbac.md` §8–9).
 - AI: `LLM_ENABLED`, `LLM_PROVIDER` (`openai_compatible` \| `anthropic`), `LLM_MODEL`, `LLM_API_KEY`, optional `LLM_BASE_URL`, `LLM_TIMEOUT_SECONDS`.

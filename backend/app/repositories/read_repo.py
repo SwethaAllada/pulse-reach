@@ -10,7 +10,7 @@ from functools import lru_cache
 from typing import Any, Protocol
 
 from fastapi import HTTPException
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, true
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -139,8 +139,10 @@ _FACILITY_NOTICE = (
 )
 
 
+# `patient_ids` (when not None) restricts results to the caller's authorized patients; it is
+# applied before counting and pagination so totals never include other organizations' records.
 class ReadRepository(Protocol):
-    def get_dashboard_summary(self) -> DashboardSummaryOut: ...
+    def get_dashboard_summary(self, patient_ids: frozenset[str] | None = None) -> DashboardSummaryOut: ...
     def list_patients(
         self,
         limit: int,
@@ -155,6 +157,7 @@ class ReadRepository(Protocol):
         has_open_care_gaps: bool | None = None,
         history_status: str | None = None,
         age_band: str | None = None,
+        patient_ids: frozenset[str] | None = None,
     ) -> PaginatedPatientsOut: ...
     def get_patient(self, patient_id: str) -> PatientSummaryOut | None: ...
     def get_patient_evaluations(self, patient_id: str) -> PatientEvaluationsOut | None: ...
@@ -176,8 +179,10 @@ class ReadRepository(Protocol):
         limit: int,
         offset: int,
         patient_id: str | None = None,
+        patient_ids: frozenset[str] | None = None,
     ) -> PaginatedCareGapsOut: ...
     def get_care_gap_detail(self, gap_id: str) -> CareGapDetailOut | None: ...
+    def get_care_gap_patient_id(self, gap_id: str) -> str | None: ...
     def list_facilities(
         self,
         limit: int,
@@ -836,11 +841,18 @@ def _build_dashboard_summary_out(
 class MemoryReadRepository:
     """In-memory repository preserving the existing deterministic demo mode."""
 
-    def get_dashboard_summary(self) -> DashboardSummaryOut:
+    def get_dashboard_summary(self, patient_ids: frozenset[str] | None = None) -> DashboardSummaryOut:
         bundle = get_cached_bundle()
         ds = get_cached_dataset()
         gr = ds.generation_run
         er = ds.evaluation_run
+        keep = (lambda pid: True) if patient_ids is None else (lambda pid: pid in patient_ids)
+        n_adults, n_children = gr["n_adults"], gr["n_children"]
+        if patient_ids is not None:
+            with_guardian = {g["patient_id"] for g in ds.guardians}
+            scoped = [p["patient_id"] for p in ds.patients if keep(p["patient_id"])]
+            n_children = sum(1 for pid in scoped if pid in with_guardian)
+            n_adults = len(scoped) - n_children
         rule_pathway_map = {r["rule_id"]: r["pathway"] for r in bundle.rules}
         auth_rules = sum(1 for r in bundle.rules if r["is_authoritative"])
         flagged_rules = sum(1 for r in bundle.rules if r["requires_clinical_review"])
@@ -850,22 +862,27 @@ class MemoryReadRepository:
             run_id=gr["run_id"],
             evaluation_run_id=er["evaluation_run_id"],
             reference_date=er["reference_date"],
-            n_adults=gr["n_adults"],
-            n_children=gr["n_children"],
+            n_adults=n_adults,
+            n_children=n_children,
             patients=[
-                (p["patient_id"], p["region_id"], p["date_of_birth"], p["sex"]) for p in ds.patients
+                (p["patient_id"], p["region_id"], p["date_of_birth"], p["sex"])
+                for p in ds.patients
+                if keep(p["patient_id"])
             ],
             evaluations=[
                 (e["patient_id"], e["rule_id"], e["evaluation_status"], e["reason_code"])
                 for e in ds.eligibility_evaluations
+                if keep(e["patient_id"])
             ],
             care_gaps=[
                 (g["patient_id"], g["rule_id"], g["gap_type"], g["status"])
                 for g in ds.care_gaps
+                if keep(g["patient_id"])
             ],
             history_rows=[
                 (h["patient_id"], h["pathway"], h["history_status"])
                 for h in ds.history_availabilities
+                if keep(h["patient_id"])
             ],
             rule_pathway_map=rule_pathway_map,
             rules_summary=RulesSummaryOut(
@@ -892,6 +909,7 @@ class MemoryReadRepository:
         has_open_care_gaps: bool | None = None,
         history_status: str | None = None,
         age_band: str | None = None,
+        patient_ids: frozenset[str] | None = None,
     ) -> PaginatedPatientsOut:
         idx = get_cached_index()
         ref_date = idx.dataset.evaluation_run["reference_date"]
@@ -910,6 +928,8 @@ class MemoryReadRepository:
             )
 
         filtered = idx.dataset.patients
+        if patient_ids is not None:
+            filtered = [p for p in filtered if p["patient_id"] in patient_ids]
         if sex is not None:
             filtered = [p for p in filtered if p["sex"] == sex]
         if region_id is not None:
@@ -1256,8 +1276,11 @@ class MemoryReadRepository:
         limit: int,
         offset: int,
         patient_id: str | None = None,
+        patient_ids: frozenset[str] | None = None,
     ) -> PaginatedCareGapsOut:
         gaps = get_cached_dataset().care_gaps
+        if patient_ids is not None:
+            gaps = [g for g in gaps if g["patient_id"] in patient_ids]
         if status is not None:
             gaps = [g for g in gaps if g["status"] == status]
         if gap_type is not None:
@@ -1273,6 +1296,11 @@ class MemoryReadRepository:
             limit=limit,
             offset=offset,
             items=[_build_care_gap_out(g) for g in page],
+        )
+
+    def get_care_gap_patient_id(self, gap_id: str) -> str | None:
+        return next(
+            (g["patient_id"] for g in get_cached_dataset().care_gaps if g["care_gap_id"] == gap_id), None
         )
 
     def get_care_gap_detail(self, gap_id: str) -> CareGapDetailOut | None:
@@ -1740,7 +1768,8 @@ class PostgresReadRepository:
             )
         return gr, er
 
-    def get_dashboard_summary(self) -> DashboardSummaryOut:
+    def get_dashboard_summary(self, patient_ids: frozenset[str] | None = None) -> DashboardSummaryOut:
+        scope = sorted(patient_ids) if patient_ids is not None else None
         try:
             gr, er = self._latest_runs()
             eval_rows = list(
@@ -1752,6 +1781,8 @@ class PostgresReadRepository:
                         EligibilityEvaluation.reason_code,
                     ).where(
                         EligibilityEvaluation.evaluation_run_id == er.evaluation_run_id
+                    ).where(
+                        EligibilityEvaluation.patient_id.in_(scope) if scope is not None else true()
                     )
                 ).all()
             )
@@ -1763,6 +1794,7 @@ class PostgresReadRepository:
                         CareGap.gap_type,
                         CareGap.status,
                     ).where(CareGap.run_id == gr.run_id)
+                    .where(CareGap.patient_id.in_(scope) if scope is not None else true())
                 ).all()
             )
             patient_rows = list(
@@ -1770,6 +1802,7 @@ class PostgresReadRepository:
                     select(
                         Patient.patient_id, Patient.region_id, Patient.date_of_birth, Patient.sex
                     ).where(Patient.run_id == gr.run_id)
+                    .where(Patient.patient_id.in_(scope) if scope is not None else true())
                 ).all()
             )
             history_rows = list(
@@ -1779,8 +1812,16 @@ class PostgresReadRepository:
                         HistoryAvailability.pathway,
                         HistoryAvailability.history_status,
                     ).where(HistoryAvailability.run_id == gr.run_id)
+                    .where(HistoryAvailability.patient_id.in_(scope) if scope is not None else true())
                 ).all()
             )
+            n_adults, n_children = gr.n_adults, gr.n_children
+            if scope is not None:
+                with_guardian = set(self._session.scalars(
+                    select(Guardian.patient_id).where(Guardian.run_id == gr.run_id, Guardian.patient_id.in_(scope))
+                ))
+                n_children = sum(1 for r in patient_rows if r[0] in with_guardian)
+                n_adults = len(patient_rows) - n_children
             rules = self._session.scalars(select(Rule)).all()
             n_items = len(self._session.scalars(select(RuleItem.rule_id)).all())
             rl = self._session.scalars(
@@ -1794,8 +1835,8 @@ class PostgresReadRepository:
             run_id=gr.run_id,
             evaluation_run_id=er.evaluation_run_id,
             reference_date=er.reference_date,
-            n_adults=gr.n_adults,
-            n_children=gr.n_children,
+            n_adults=n_adults,
+            n_children=n_children,
             patients=[tuple(r) for r in patient_rows],
             evaluations=[tuple(r) for r in eval_rows],
             care_gaps=[(pid, rid, gt, gst) for pid, rid, gt, gst in gap_rows],
@@ -1873,10 +1914,13 @@ class PostgresReadRepository:
         has_open_care_gaps: bool | None = None,
         history_status: str | None = None,
         age_band: str | None = None,
+        patient_ids: frozenset[str] | None = None,
     ) -> PaginatedPatientsOut:
         try:
             gr, er = self._latest_runs()
             stmt = select(Patient).where(Patient.run_id == gr.run_id)
+            if patient_ids is not None:
+                stmt = stmt.where(Patient.patient_id.in_(sorted(patient_ids)))
             if sex is not None:
                 stmt = stmt.where(Patient.sex == sex)
             if region_id is not None:
@@ -2393,10 +2437,13 @@ class PostgresReadRepository:
         limit: int,
         offset: int,
         patient_id: str | None = None,
+        patient_ids: frozenset[str] | None = None,
     ) -> PaginatedCareGapsOut:
         try:
             gr, _ = self._latest_runs()
             stmt = select(CareGap).where(CareGap.run_id == gr.run_id)
+            if patient_ids is not None:
+                stmt = stmt.where(CareGap.patient_id.in_(sorted(patient_ids)))
             if status is not None:
                 stmt = stmt.where(CareGap.status == status)
             if gap_type is not None:
@@ -2421,6 +2468,15 @@ class PostgresReadRepository:
             offset=offset,
             items=[_build_care_gap_out(_row_to_dict(g)) for g in page],
         )
+
+    def get_care_gap_patient_id(self, gap_id: str) -> str | None:
+        try:
+            gr, _ = self._latest_runs()
+            return self._session.scalar(
+                select(CareGap.patient_id).where(CareGap.run_id == gr.run_id, CareGap.care_gap_id == gap_id)
+            )
+        except SQLAlchemyError as exc:
+            raise _db_query_failed(exc) from exc
 
     def get_care_gap_detail(self, gap_id: str) -> CareGapDetailOut | None:
         try:

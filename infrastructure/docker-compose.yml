@@ -9,8 +9,13 @@ x-backend-env: &backend-env
   RULES_DIR: /app/data-pipeline/rules
   DATA_DIR: /app/data
   CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
-  # Writes need X-PulseReach-Write-Key = WRITE_API_KEY; without a key they are refused unless
-  # ALLOW_UNPROTECTED_WRITES=true (local only).
+  # users (default): per-user bearer tokens, RBAC, organization isolation (docs/authentication-and-rbac.md).
+  # legacy: previous shared write key contract, for frontend migration only.
+  AUTH_MODE: ${AUTH_MODE:-users}
+  SELF_REGISTRATION_ENABLED: ${SELF_REGISTRATION_ENABLED:-true}
+  DEFAULT_LOCALE: ${DEFAULT_LOCALE:-en}
+  # Legacy mode only: writes need X-PulseReach-Write-Key = WRITE_API_KEY; without a key they are
+  # refused unless ALLOW_UNPROTECTED_WRITES=true (local only).
   WRITE_API_KEY: ${WRITE_API_KEY:-}
   ALLOW_UNPROTECTED_WRITES: ${ALLOW_UNPROTECTED_WRITES:-false}
   LLM_ENABLED: ${LLM_ENABLED:-false}

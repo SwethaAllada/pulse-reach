@@ -186,13 +186,17 @@ class FollowUpRepository(Protocol):
     ) -> FollowUpEventOut: ...
     def list_follow_ups(self, gap_id: str, limit: int, offset: int) -> PaginatedFollowUpEventsOut: ...
     def list_appointments(
-        self, patient_id: str | None, care_gap_id: str | None, status: str | None, limit: int, offset: int
+        self, patient_id: str | None, care_gap_id: str | None, status: str | None, limit: int, offset: int,
+        patient_ids: frozenset[str] | None = None,
     ) -> PaginatedAppointmentsOut: ...
+    def get_appointment_patient_id(self, appointment_id: str) -> str | None: ...
+    def get_referral_patient_id(self, referral_id: str) -> str | None: ...
     def create_appointment(self, req: AppointmentCreateIn) -> AppointmentOut: ...
     def update_appointment(self, appointment_id: str, req: AppointmentPatchIn) -> AppointmentOut: ...
     def get_appointment_history(self, appointment_id: str) -> WorkflowHistoryOut: ...
     def list_referrals(
-        self, patient_id: str | None, status: str | None, limit: int, offset: int
+        self, patient_id: str | None, status: str | None, limit: int, offset: int,
+        patient_ids: frozenset[str] | None = None,
     ) -> PaginatedReferralsOut: ...
     def create_referral(self, req: ReferralCreateIn) -> ReferralOut: ...
     def update_referral(self, referral_id: str, req: ReferralPatchIn) -> ReferralOut: ...
@@ -571,8 +575,11 @@ class MemoryFollowUpRepository:
         status: str | None,
         limit: int,
         offset: int,
+        patient_ids: frozenset[str] | None = None,
     ) -> PaginatedAppointmentsOut:
         apts = get_cached_dataset().appointments
+        if patient_ids is not None:
+            apts = [a for a in apts if a["patient_id"] in patient_ids]
         if patient_id is not None:
             apts = [a for a in apts if a["patient_id"] == patient_id]
         if care_gap_id is not None:
@@ -586,6 +593,17 @@ class MemoryFollowUpRepository:
             limit=limit,
             offset=offset,
             items=[_to_appointment_out(a) for a in page],
+        )
+
+    def get_appointment_patient_id(self, appointment_id: str) -> str | None:
+        return next(
+            (a["patient_id"] for a in get_cached_dataset().appointments if a["appointment_id"] == appointment_id),
+            None,
+        )
+
+    def get_referral_patient_id(self, referral_id: str) -> str | None:
+        return next(
+            (r["patient_id"] for r in get_cached_dataset().referrals if r["referral_id"] == referral_id), None
         )
 
     def create_appointment(self, req: AppointmentCreateIn) -> AppointmentOut:
@@ -723,8 +741,11 @@ class MemoryFollowUpRepository:
         status: str | None,
         limit: int,
         offset: int,
+        patient_ids: frozenset[str] | None = None,
     ) -> PaginatedReferralsOut:
         refs = get_cached_dataset().referrals
+        if patient_ids is not None:
+            refs = [r for r in refs if r["patient_id"] in patient_ids]
         if patient_id is not None:
             refs = [r for r in refs if r["patient_id"] == patient_id]
         if status is not None:
@@ -1255,10 +1276,13 @@ class PostgresFollowUpRepository:
         status: str | None,
         limit: int,
         offset: int,
+        patient_ids: frozenset[str] | None = None,
     ) -> PaginatedAppointmentsOut:
         with self._read():
             gr, _ = self._latest_runs()
             stmt = select(Appointment).where(Appointment.run_id == gr.run_id)
+            if patient_ids is not None:
+                stmt = stmt.where(Appointment.patient_id.in_(sorted(patient_ids)))
             if patient_id is not None:
                 stmt = stmt.where(Appointment.patient_id == patient_id)
             if care_gap_id is not None:
@@ -1277,6 +1301,18 @@ class PostgresFollowUpRepository:
         return PaginatedAppointmentsOut(
             is_synthetic=True, total=total, limit=limit, offset=offset, items=items
         )
+
+    def get_appointment_patient_id(self, appointment_id: str) -> str | None:
+        with self._read():
+            gr, _ = self._latest_runs()
+            return self._session.scalar(select(Appointment.patient_id).where(
+                Appointment.run_id == gr.run_id, Appointment.appointment_id == appointment_id))
+
+    def get_referral_patient_id(self, referral_id: str) -> str | None:
+        with self._read():
+            gr, _ = self._latest_runs()
+            return self._session.scalar(select(Referral.patient_id).where(
+                Referral.run_id == gr.run_id, Referral.referral_id == referral_id))
 
     def create_appointment(self, req: AppointmentCreateIn) -> AppointmentOut:
         with self._write():
@@ -1446,10 +1482,13 @@ class PostgresFollowUpRepository:
         status: str | None,
         limit: int,
         offset: int,
+        patient_ids: frozenset[str] | None = None,
     ) -> PaginatedReferralsOut:
         with self._read():
             gr, _ = self._latest_runs()
             stmt = select(Referral).where(Referral.run_id == gr.run_id)
+            if patient_ids is not None:
+                stmt = stmt.where(Referral.patient_id.in_(sorted(patient_ids)))
             if patient_id is not None:
                 stmt = stmt.where(Referral.patient_id == patient_id)
             if status is not None:

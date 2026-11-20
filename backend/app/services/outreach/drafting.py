@@ -36,6 +36,10 @@ PROGRAMME_NAMES = {
     "ifhas": "IFHAS preventive screening programme",
     "well_child": "Well-Child preventive care programme",
 }
+PROGRAMME_NAMES_AR = {
+    "ifhas": "برنامج الفحص الوقائي IFHAS",
+    "well_child": "برنامج رعاية الطفل السليم الوقائي",
+}
 _GAP_CATEGORY_TEXT = {
     ("ifhas", "no_documented_screening"): "no preventive screening is documented for you",
     ("well_child", "no_documented_screening"): "no well-child visit is documented",
@@ -45,6 +49,22 @@ _GAP_CATEGORY_TEXT = {
     ("well_child", "visit_not_attended"): "a planned well-child visit is not documented as attended",
     ("ifhas", "referral_not_initiated"): "a follow-up step noted in your record is not yet documented",
     ("well_child", "referral_not_initiated"): "a follow-up step noted in the record is not yet documented",
+}
+_GAP_CATEGORY_TEXT_AR = {
+    ("ifhas", "no_documented_screening"): "لا يوجد فحص وقائي موثّق لك",
+    ("well_child", "no_documented_screening"): "لا توجد زيارة موثّقة للطفل السليم",
+    ("ifhas", "partial_completion"): "بعض أجزاء فحصك الوقائي غير موثّقة بعد",
+    ("well_child", "partial_completion"): "بعض أجزاء زيارة الطفل السليم غير موثّقة بعد",
+    ("ifhas", "visit_not_attended"): "زيارة وقائية مخططة غير موثّقة على أنها تمت",
+    ("well_child", "visit_not_attended"): "زيارة مخططة للطفل السليم غير موثّقة على أنها تمت",
+    ("ifhas", "referral_not_initiated"): "خطوة متابعة مذكورة في سجلك غير موثّقة بعد",
+    ("well_child", "referral_not_initiated"): "خطوة متابعة مذكورة في السجل غير موثّقة بعد",
+}
+_NEXT_STEP_TEXT_AR = {
+    "offer_screening_package": "التواصل مع مقدّم الرعاية الوقائية لترتيب فحص البرنامج",
+    "complete_outstanding_components": "التواصل مع مقدّم الرعاية الوقائية لاستكمال الأجزاء المتبقية",
+    "schedule_well_child_visit": "التواصل مع مقدّم الرعاية الوقائية لترتيب زيارة الطفل السليم",
+    "initiate_referral": "التواصل مع مقدّم الرعاية الوقائية بشأن خطوة المتابعة المذكورة في سجلك",
 }
 _NEXT_STEP_TEXT = {
     "offer_screening_package": "contact your preventive-care provider to arrange the programme screening",
@@ -95,6 +115,12 @@ def pre_consent_block(channel: str, language: str) -> str | None:
 
 
 def deterministic_draft(facts: Mapping[str, Any], channel: str) -> str:
+    if facts.get("language") == "ar":
+        opening = "مرحبًا، أتواصل معك هاتفيًا من" if channel == "phone" else "مرحبًا، معك"
+        return (
+            f"{opening} {facts['programme']}. تُظهر سجلاتنا أن {facts['care_gap_category']}. "
+            f"ندعوك إلى {facts['approved_next_step']}. لأي استفسار، يُرجى استشارة مختص رعاية صحية مرخّص."
+        )
     opening = "Hello, I am calling from" if channel == "phone" else "Hello, this is"
     return (
         f"{opening} the {facts['programme']}. Our records show that {facts['care_gap_category']}. "
@@ -141,13 +167,14 @@ def gate_outreach_draft(
     gap = next(g for g in care_gaps if g.get("care_gap_id") == preview.care_gap_id)
     step = recommended_pathway(gap, rule)
     pathway = str(rule["pathway"])
-    category = _GAP_CATEGORY_TEXT.get((pathway, str(gap.get("gap_type"))))
-    step_text = _NEXT_STEP_TEXT.get(step.get("next_step") or "")
+    arabic = language == "ar"
+    category = (_GAP_CATEGORY_TEXT_AR if arabic else _GAP_CATEGORY_TEXT).get((pathway, str(gap.get("gap_type"))))
+    step_text = (_NEXT_STEP_TEXT_AR if arabic else _NEXT_STEP_TEXT).get(step.get("next_step") or "")
     if step["status"] != "documented_next_step" or category is None or step_text is None:
         return blocked("no_supported_next_step", next_step=step)
 
     facts = {
-        "programme": PROGRAMME_NAMES[pathway],
+        "programme": (PROGRAMME_NAMES_AR if arabic else PROGRAMME_NAMES)[pathway],
         "care_gap_category": category,
         "approved_next_step": step_text,
         "channel": channel,

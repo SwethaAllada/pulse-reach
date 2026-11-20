@@ -10,6 +10,18 @@
 - Data pipeline: `cd data-pipeline && ../backend/.venv/bin/python -m pytest -q -p no:cacheprovider`.
 - Fresh DB bootstrap: `python -m app.db.init --seed`; image: `docker build -f backend/Dockerfile .` from the repo root.
 
+## Identity / RBAC / portal (`backend/app/core/auth.py`, `app/services/identity/`, migration 0011)
+
+- `AUTH_MODE=users` is the default; `tests/conftest.py` sets `AUTH_MODE=legacy` + cheap scrypt for the
+  pre-existing regression suites. Users-mode suites import fixtures from `tests/identity_fixtures.py`
+  (`world`): `test_auth.py`, `test_rbac.py`, `test_tenant_isolation.py`, `test_patient_portal.py`,
+  `test_localization.py`, `test_audit_events.py`; live PG: `test_identity_live_pg.py`.
+- Every `/api/v1` route must declare `require(...)`/`authenticated`/`public_endpoint` (meta-test in `test_rbac.py`).
+- Memory mode keeps identity data in an in-process SQLite DB (`store.py`); never nest two `identity_session()`s.
+- Identity tables use their own MetaData (`app/models/identity.py`); keep migration 0011 DDL in sync (live test compares).
+- New user-facing strings go in `app/core/i18n.py` MESSAGES with both `en` and `ar` (catalog test).
+- Demo users: `python -m app.services.identity seed-demo`; first admin: `create-admin`.
+
 ## AI layer (`backend/app/services/ai/`)
 
 - Tests: `tests/test_ai_service.py`, `tests/test_ai_explanations.py`, `tests/test_ai_outreach.py` (providers mocked via `httpx.post`; no live calls).

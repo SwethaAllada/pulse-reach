@@ -11,7 +11,7 @@ import json
 from typing import Any
 
 EXPLANATION_PROMPT_VERSION = "explanation-v2"
-OUTREACH_PROMPT_VERSION = "outreach-v2"
+OUTREACH_PROMPT_VERSION = "outreach-v3"
 POPULATION_PROMPT_VERSION = "population-v1"
 
 PROMPT_VERSIONS = {
@@ -51,9 +51,15 @@ OUTREACH_SYSTEM = (
     "completed, or that the person is eligible. Do not use fear, urgency, pressure or deadlines. "
     "Do not invent appointments, dates, times, facilities, locations, costs, phone numbers, names "
     "or links. Always keep the advice to consult a licensed healthcare professional. Write in the "
-    "language with code '{language}'. {channel_format} Maximum {max_chars} characters. Reply "
-    "with the message text only."
+    "language with code '{language}'. {language_rules} {channel_format} Maximum {max_chars} "
+    "characters. Reply with the message text only."
 )
+OUTREACH_LANGUAGE_RULES = {
+    "en": "Use plain English.",
+    "ar": "Use Modern Standard Arabic only, with no English words except the programme acronym "
+    "IFHAS when it appears in the facts; include the exact phrase 'مختص رعاية صحية مرخّص'; use "
+    "Western digits only.",
+}
 OUTREACH_CHANNEL_FORMAT = {
     "sms": "Format: one short paragraph with no line breaks, suitable for an SMS.",
     "app": "Format: one short paragraph with no line breaks, for an in-app notification.",

@@ -120,7 +120,7 @@ def test_valid_consent_generates_reviewable_draft_with_minimal_context(llm, prov
     assert body["review_status"] == "pending_review" and body["simulated_outreach_status"] is None
     assert body["sendable"] is False and body["simulated_only"] is True
     assert body["next_step"]["status"] == "documented_next_step"
-    assert body["ai"]["prompt_version"] == "outreach-v2" and body["ai"]["provider"] == provider
+    assert body["ai"]["prompt_version"] == "outreach-v3" and body["ai"]["provider"] == provider
 
     (call,) = llm.calls
     payload = call["json"]
@@ -183,7 +183,7 @@ def test_unsupported_channel(llm, channel):
     _assert_blocked(_draft(channel=channel), "channel_unsupported", llm.calls)
 
 
-@pytest.mark.parametrize("language", ["ar", "fr", "EN"])
+@pytest.mark.parametrize("language", ["fr", "EN", "AR", "ur"])
 def test_unsupported_language_is_never_silently_english(llm, language):
     llm()
     body = _draft(language=language)
@@ -403,7 +403,7 @@ def test_audit_records_generation_block_and_review_without_message_text(llm):
     assert gen["audit_id"] == draft["ai"]["audit_id"] and gen["feature"] == "outreach_draft"
     assert gen["subject"] == {"patient_id": PID, "rule_id": RULE, "care_gap_id": draft["care_gap_id"]}
     assert (gen["prompt_version"], gen["provider"], gen["model"], gen["generation_mode"]) == (
-        "outreach-v2", "openai_compatible", "m-1", "llm_grounded")
+        "outreach-v3", "openai_compatible", "m-1", "llm_grounded")
     assert gen["extra"]["channel"] == "phone" and gen["extra"]["language"] == "en"
     assert gen["extra"]["tone"] == "supportive" and len(gen["extra"]["returned_sha256"]) == 64
 

@@ -8,7 +8,11 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.admin import router as admin_router
+from app.api.auth import router as auth_router
+from app.api.engagement import router as engagement_router
 from app.api.health import router as health_router
+from app.api.portal import router as portal_router
 from app.api.v1 import router as v1_router
 from app.core.config import settings
 from app.core.errors import INTERNAL_ERROR_MESSAGE, error_body, install_error_handlers
@@ -38,15 +42,23 @@ async def _lifespan(_app: FastAPI):
             report.authoritative_rules,
             report.db_rule_load_id,
         )
-    from app.core.write_auth import write_protection_status
+    if settings.auth_mode == "users":
+        logger.info("Access control: user authentication, RBAC and organization isolation (AUTH_MODE=users)")
+        if settings.demo_identity_seed:
+            from app.services.identity.demo import seed_demo_identities_at_startup
 
-    protection = write_protection_status()
-    if protection == "enforced":
-        logger.info("Write protection: enforced (X-PulseReach-Write-Key)")
-    elif protection == "unprotected":
-        logger.warning("Write protection: DISABLED by ALLOW_UNPROTECTED_WRITES=true; never use publicly")
+            seed_demo_identities_at_startup()
     else:
-        logger.warning("Write protection: WRITE_API_KEY not set; all state-changing requests are refused")
+        from app.core.write_auth import write_protection_status
+
+        logger.warning("Access control: AUTH_MODE=legacy (public reads, shared write key); migration only")
+        protection = write_protection_status()
+        if protection == "enforced":
+            logger.info("Write protection: enforced (X-PulseReach-Write-Key)")
+        elif protection == "unprotected":
+            logger.warning("Write protection: DISABLED by ALLOW_UNPROTECTED_WRITES=true; never use publicly")
+        else:
+            logger.warning("Write protection: WRITE_API_KEY not set; all state-changing requests are refused")
     from app.services.ai import get_ai_service
 
     logger.info("AI service: %s", get_ai_service().status())
@@ -110,3 +122,7 @@ app.add_middleware(
 )
 app.include_router(health_router)
 app.include_router(v1_router)
+app.include_router(auth_router)
+app.include_router(admin_router)
+app.include_router(portal_router)
+app.include_router(engagement_router)

@@ -9,8 +9,14 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, StringConstraints, model_validator
 
-# Accountable actor for every write (audit trail); blank values are rejected.
+# Accountable actor for every write (audit trail); blank values are rejected. In AUTH_MODE=users the
+# value is ignored and replaced by the authenticated user id (`app.core.auth.with_actor`); in
+# AUTH_MODE=legacy it is still required.
 Actor = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+OptionalActor = Annotated[
+    Actor | None,
+    Field(description="Ignored when authenticated (server-derived); required in legacy mode."),
+]
 
 
 class RulesSummaryOut(BaseModel):
@@ -389,7 +395,7 @@ class OutreachDraftReviewIn(BaseModel):
     final_message: str | None = Field(
         default=None, description="Required when approved: the reviewed (possibly edited) body."
     )
-    reviewed_by: Actor
+    reviewed_by: OptionalActor = None
     reason: str | None = None
 
 
@@ -769,7 +775,7 @@ class FollowUpCreateIn(BaseModel):
     close_gap: bool = False
     documented_evidence: bool = False
     evidence_reference: str | None = None
-    recorded_by: Actor
+    recorded_by: OptionalActor = None
     note: str | None = None
 
     @model_validator(mode="after")
@@ -790,7 +796,7 @@ class AppointmentCreateIn(BaseModel):
     scheduled_datetime: datetime
     slot_type: Literal["weekday", "evening", "weekend"] = "weekday"
     booked_via: str = Field(default="clinician_portal", min_length=1)
-    recorded_by: Actor
+    recorded_by: OptionalActor = None
     note: str | None = None
 
 
@@ -804,7 +810,7 @@ class AppointmentPatchIn(BaseModel):
         "rescheduled",
     ]
     scheduled_datetime: datetime | None = None
-    recorded_by: Actor
+    recorded_by: OptionalActor = None
     note: str | None = None
 
     @model_validator(mode="after")
@@ -837,7 +843,7 @@ class ReferralCreateIn(BaseModel):
     initiated_date: date | None = None
     status: Literal["pending", "initiated"] = "pending"
     care_gap_id: str | None = None
-    recorded_by: Actor
+    recorded_by: OptionalActor = None
     note: str | None = None
 
 
@@ -845,7 +851,7 @@ class ReferralPatchIn(BaseModel):
     status: Literal["pending", "initiated", "completed", "declined", "cancelled"]
     initiated_date: date | None = None
     completed_date: date | None = None
-    recorded_by: Actor
+    recorded_by: OptionalActor = None
     note: str | None = None
 
 
@@ -872,7 +878,7 @@ class RecommendedPathwayOut(BaseModel):
 
 
 class CareGapReviewIn(BaseModel):
-    reviewer: Actor
+    reviewer: OptionalActor = None
     action: Literal["confirmed", "dismissed", "priority_overridden"]
     reason: Actor
     new_priority: float | None = None

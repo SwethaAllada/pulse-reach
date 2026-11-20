@@ -115,6 +115,30 @@ _LOGISTICS_RE = re.compile(
     re.IGNORECASE,
 )
 _MARKDOWN_RE = re.compile(r"(^\s*[-*#>]|\*\*|__|`)", re.MULTILINE)
+
+# Arabic equivalents of the outreach rules. Arabic attaches prefixes (ال، و، ب، ل) to words, so
+# these are substring patterns rather than word-boundary patterns. Eastern Arabic digits are
+# normalized to ASCII before the invented-number check.
+_AR_CHECKS = (
+    (re.compile(r"تشخيص|سرطان|ورم|خبيث|مرض السكري|ضغط الدم المرتفع|وصفة|دواء|أدوية|جرعة|خطة علاج|علاج|شفاء"), "clinical_claim"),
+    (re.compile(r"خطر|مخاطر|احتمال|أرجح|مرجّح|نسبة|٪|بالمئة|في المائة|توقع|تنبؤ"), "risk_or_probability"),
+    (re.compile(r"متأخر|تأخرت|فات موعد"), "overdue_claim"),
+    (re.compile(r"معتمد سريريًا|معتمد سريريا|توصية رسمية"), "approval_claim"),
+    (re.compile(r"(?<!غير )(?<!لم ي)مكتمل|أكملت|أتممت|محدّث|محدث"), "completed_claim"),
+    (re.compile(r"(?<!غير )مستحق|حان موعد"), "due_claim"),
+    (re.compile(r"(?<!غير )مؤهل|أهليتك|تستوفي|معايير"), "eligibility_claim"),
+    (re.compile(r"يجب|إلزامي|إجباري|مطلوب|ملزم|موعد نهائي|عاجل|فورًا|فورا|حالًا|في أقرب وقت|آخر فرصة|"
+                r"إشعار أخير|تذكير أخير|غرامة|عقوبة|عواقب|لا تتجاهل"), "coercive_or_requirement"),
+    (re.compile(r"خطير|خطورة|يهدد الحياة|وفاة|موت|يموت|مميت|قاتل|قلق|تقلق|خوف|تخاف|مخيف|مقلق|ضرر|أذى"), "fear_language"),
+    (re.compile(r"موعد|مواعيد|حجز|محجوز|عيادة|مستشفى|مركز صحي|مركز|منشأة|فرع|عنوان|موقع|مجان|بدون تكلفة|"
+                r"تكلفة|رسوم|سعر|دفع|درهم|تأمين|مغطى|اليوم|غدًا|غدا|الليلة|هذا الأسبوع|الأسبوع القادم|"
+                r"عطلة نهاية الأسبوع|الاثنين|الثلاثاء|الأربعاء|الخميس|الجمعة|السبت|الأحد|يناير|فبراير|مارس|"
+                r"أبريل|مايو|يونيو|يوليو|أغسطس|سبتمبر|أكتوبر|نوفمبر|ديسمبر|صباحًا|مساءً|اتصل بنا|رد على"), "invented_logistics"),
+)
+_LATIN_WORD_RE = re.compile(r"[A-Za-z]{2,}")
+_ALLOWED_LATIN_IN_AR = frozenset({"IFHAS"})
+_ARABIC_LETTER_RE = re.compile(r"[\u0600-\u06FF]")
+_EASTERN_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
 _NON_LATIN_LETTER_RE = re.compile(r"[\u0600-\u06FF\u0750-\u077F\u0400-\u04FF\u4E00-\u9FFF]")
 _SINGLE_PARAGRAPH_CHANNELS = frozenset({"sms", "app", "phone"})
 
@@ -124,8 +148,11 @@ def validate_outreach_output(
 ) -> list[str]:
     """Shared checks plus outreach rules: no status/eligibility claims, record ids, coercion,
     fear, invented logistics (appointments, facilities, costs, dates), channel format, language."""
+    arabic = language == "ar"
+    if arabic and text:
+        text = text.translate(_EASTERN_DIGITS)
     out = validate_output(
-        text, facts=facts, max_chars=max_chars, must_contain=("professional",),
+        text, facts=facts, max_chars=max_chars, must_contain=("مختص",) if arabic else ("professional",),
         allow_completed=False, allow_due=False, allow_eligibility=False,
     )
     if not text or not text.strip():
@@ -142,4 +169,9 @@ def validate_outreach_output(
         out.append("format_line_breaks")
     if language == "en" and _NON_LATIN_LETTER_RE.search(text):
         out.append("language_mismatch")
+    if arabic:
+        out += [v for rx, v in _AR_CHECKS if rx.search(text) and v not in out]
+        latin = {w for w in _LATIN_WORD_RE.findall(text) if w not in _ALLOWED_LATIN_IN_AR}
+        if latin or not _ARABIC_LETTER_RE.search(text):
+            out.append("language_mismatch")
     return out

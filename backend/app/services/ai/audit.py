@@ -104,9 +104,15 @@ class AIAuditLog:
             self._records.append(rec)
         return rec
 
-    def recent(self, limit: int = 50, feature: str | None = None) -> list[AIAuditRecord]:
+    def recent(
+        self, limit: int = 50, feature: str | None = None, organization_id: str | None = None
+    ) -> list[AIAuditRecord]:
         with self._lock:
-            items = [r for r in self._records if feature is None or r.feature == feature]
+            items = [
+                r for r in self._records
+                if (feature is None or r.feature == feature)
+                and (organization_id is None or r.extra.get("organization_id") == organization_id)
+            ]
         return list(reversed(items))[:limit]
 
     def get(self, audit_id: str) -> AIAuditRecord | None:
@@ -217,12 +223,16 @@ class PostgresAIAuditLog:
         with Session(self._engine_factory()) as s:
             return [self._from_row(r) for r in s.scalars(stmt).all()]
 
-    def recent(self, limit: int = 50, feature: str | None = None) -> list[AIAuditRecord]:
+    def recent(
+        self, limit: int = 50, feature: str | None = None, organization_id: str | None = None
+    ) -> list[AIAuditRecord]:
         from app.models.synthetic import AIAuditRecord as Row
 
         stmt = select(Row).order_by(Row.recorded_at.desc(), Row.audit_id.desc()).limit(limit)
         if feature is not None:
             stmt = stmt.where(Row.feature == feature)
+        if organization_id is not None:
+            stmt = stmt.where(Row.extra["organization_id"].astext == organization_id)
         return self._query(stmt)
 
     def get(self, audit_id: str) -> AIAuditRecord | None:

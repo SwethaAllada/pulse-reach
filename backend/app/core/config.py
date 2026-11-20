@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -41,6 +41,31 @@ class Settings(BaseSettings):
     llm_model: str | None = None
     llm_timeout_seconds: float = 20.0
     llm_max_output_tokens: int = 400
+
+    # Identity and access control (docs/authentication-and-rbac.md).
+    # 'users': per-user bearer tokens, RBAC and organization isolation on every /api/v1 route.
+    # 'legacy': previous behaviour (public reads + shared write key) for migration only; never
+    # use it for a deployment with real user accounts.
+    auth_mode: Literal["users", "legacy"] = "users"
+    access_token_ttl_seconds: int = Field(default=900, ge=60, le=3600)
+    refresh_token_ttl_seconds: int = Field(default=7 * 24 * 3600, ge=300)
+    session_max_age_seconds: int = Field(default=30 * 24 * 3600, ge=300)
+    password_reset_ttl_seconds: int = Field(default=1800, ge=300, le=86400)
+    account_activation_ttl_seconds: int = Field(default=3 * 24 * 3600, ge=300)
+    patient_invitation_ttl_seconds: int = Field(default=7 * 24 * 3600, ge=300)
+    patient_invitation_max_attempts: int = Field(default=5, ge=1, le=20)
+    password_min_length: int = Field(default=12, ge=8, le=128)
+    # scrypt cost (N = 2**k). OWASP minimum is N=2**17, r=8, p=1. Lower only for tests.
+    password_scrypt_n: int = Field(default=2**17, ge=2**10)
+    login_max_failures: int = Field(default=5, ge=1)
+    login_lockout_seconds: int = Field(default=900, ge=1)
+    auth_rate_limit_per_minute: int = Field(default=10, ge=1)
+    self_registration_enabled: bool = True
+    default_locale: Literal["en", "ar"] = "en"
+    # Memory mode only: seed clearly synthetic demo organizations/users at startup with this
+    # password (never a production password). Ignored unless both are set.
+    demo_identity_seed: bool = False
+    demo_identity_password: SecretStr | None = None
 
     # Connection pool (SQLAlchemy QueuePool)
     db_pool_size: int = 5

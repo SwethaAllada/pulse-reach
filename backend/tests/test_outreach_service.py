@@ -220,7 +220,7 @@ def test_consent_for_different_pathway_or_rule_does_not_authorize():
     assert res.blocked_reason == "contact_consent_absent"
 
 
-def test_arabic_language_without_approved_template_is_blocked():
+def test_arabic_language_uses_the_approved_arabic_template():
     svc = OutreachService()
     res = svc.preview_outreach(
         patient=_base_patient(),
@@ -231,6 +231,23 @@ def test_arabic_language_without_approved_template_is_blocked():
         consents=[_consent("SYNTH-CON-1", "granted", datetime(2026, 1, 1, tzinfo=timezone.utc))],
         channel="sms",
         language="ar",
+    )
+    assert res.allowed is True and res.simulated_only is True
+    assert res.preview_message.startswith("[SIMULATED OUTREACH PREVIEW — SMS (ar)]")
+    assert "مختص رعاية صحية مرخّص" in res.preview_message
+
+
+def test_language_without_approved_template_is_blocked():
+    svc = OutreachService()
+    res = svc.preview_outreach(
+        patient=_base_patient(),
+        rule=_base_rule(),
+        rule_id="IFHAS-PKG-MAMMOGRAPHY-40-75",
+        evaluations=[_base_eval()],
+        care_gaps=[_base_gap()],
+        consents=[_consent("SYNTH-CON-1", "granted", datetime(2026, 1, 1, tzinfo=timezone.utc))],
+        channel="sms",
+        language="fr",
     )
     assert res.allowed is False
     assert res.blocked_reason == "template_unavailable"
@@ -288,5 +305,5 @@ def test_api_outreach_preview_unknown_rule_returns_404_and_non_authoritative_blo
         },
     )
     assert r_ar.status_code == 200
-    assert r_ar.json()["allowed"] is False
-    assert r_ar.json()["blocked_reason"] == "template_unavailable"
+    assert r_ar.json()["allowed"] is True
+    assert "مختص" in r_ar.json()["preview_message"]

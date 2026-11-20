@@ -21,7 +21,8 @@ from app.services.explanation.service import (
     OutreachPreviewResult,
 )
 
-SUPPORTED_OUTREACH_LANGUAGES: frozenset[str] = frozenset({"en"})
+# Arabic has its own template and Arabic guardrails (`guardrails.validate_outreach_output`).
+SUPPORTED_OUTREACH_LANGUAGES: frozenset[str] = frozenset({"en", "ar"})
 
 _OUTREACH_DISCLAIMER = (
     "SIMULATED OUTREACH PREVIEW ONLY — No real SMS, email, phone call, or push notification "
@@ -273,12 +274,20 @@ class OutreachService:
                 reason="template_unavailable",
             )
 
-        msg = (
-            f"[SIMULATED OUTREACH PREVIEW — {channel.upper()} ({language})] "
-            f"Dear synthetic participant ({patient_id}), our records indicate you may be "
-            f"due for preventive screening under rule {rule_id} (v{rule_version}). "
-            f"Please consult a licensed healthcare professional to review your eligibility."
-        )
+        banner = f"[SIMULATED OUTREACH PREVIEW — {channel.upper()} ({language})] "
+        if language == "ar":
+            # Identifiers are wrapped in Unicode isolates so they cannot reorder the Arabic text.
+            msg = banner + (
+                f"عزيزي المشارك المُصطنع (\u2068{patient_id}\u2069)، تشير سجلاتنا إلى أنه قد يُنصح لك "
+                f"بإجراء فحص وقائي وفق القاعدة \u2068{rule_id} (v{rule_version})\u2069. "
+                "يُرجى استشارة مختص رعاية صحية مرخّص لمراجعة مدى أهليتك."
+            )
+        else:
+            msg = banner + (
+                f"Dear synthetic participant ({patient_id}), our records indicate you may be "
+                f"due for preventive screening under rule {rule_id} (v{rule_version}). "
+                f"Please consult a licensed healthcare professional to review your eligibility."
+            )
         return OutreachPreviewResult(
             synthetic_patient_id=patient_id,
             care_gap_id=care_gap_id,

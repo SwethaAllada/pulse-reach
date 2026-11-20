@@ -8,6 +8,12 @@ from collections.abc import Iterator
 # Workflow tests exercise business rules, not the shared write key; write protection itself is
 # covered with explicit settings in `test_write_auth.py`. Set before `app` settings are imported.
 os.environ.setdefault("ALLOW_UNPROTECTED_WRITES", "true")
+# Pre-existing workflow/regression suites exercise the legacy contract (public reads, shared write
+# key, client-supplied actor). Identity, RBAC and isolation tests switch to AUTH_MODE=users
+# explicitly (`identity_fixtures.users_mode`). Cheap scrypt cost keeps those tests fast; the
+# production default is N=2**17.
+os.environ.setdefault("AUTH_MODE", "legacy")
+os.environ.setdefault("PASSWORD_SCRYPT_N", "1024")
 
 import pytest
 from sqlalchemy import create_engine, text

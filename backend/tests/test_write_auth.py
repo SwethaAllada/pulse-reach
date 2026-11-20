@@ -67,7 +67,11 @@ def _call(method, path, body, key=None):
 
 
 def test_every_non_get_route_is_either_protected_here_or_explicitly_read_only():
-    writes = {(m.lower(), r.path) for r in app.routes if isinstance(r, APIRoute)
+    # The shared key guards the legacy `/api/v1` router. Identity/portal/admin routers only exist in
+    # AUTH_MODE=users (404 here); their authorization is covered by tests/test_rbac.py.
+    from app.api.v1 import router as v1_router
+
+    writes = {(m.lower(), r.path) for r in v1_router.routes if isinstance(r, APIRoute)
               for m in r.methods if m not in ("GET", "HEAD")}
     covered = {(m, p.replace(GAP, "{gap_id}").replace("SYNTH-GAP-000026", "{gap_id}")
                 .replace("SYNTH-APT-000001", "{appointment_id}").replace("SYNTH-REF-000001", "{referral_id}"))

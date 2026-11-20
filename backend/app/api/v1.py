@@ -11,8 +11,8 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
+from app.core.auth import Principal, ensure_patient_access, legacy_write_guard, require, with_actor
 from app.core.config import settings
-from app.core.write_auth import require_write_key
 from app.db.deps import get_db_session
 from app.repositories.followup_repo import (
     FollowUpRepository,
@@ -91,7 +91,40 @@ from app.services.explanation.context import build_explanation_context
 from app.services.outreach import OutreachRuleNotFoundError, OutreachService
 from app.services.outreach.drafting import OutreachDraftGate, gate_outreach_draft, pre_consent_block
 
-router = APIRouter(prefix="/api/v1", tags=["v1"], dependencies=[Depends(require_write_key)])
+# Every route declares its permission (`require`); patient-owned data is additionally limited to
+# the caller's patient scope. The shared write key only applies in AUTH_MODE=legacy.
+router = APIRouter(prefix="/api/v1", tags=["v1"], dependencies=[Depends(legacy_write_guard)])
+_PATIENT_READ = require("patients.read", "patients.read_assigned", any_of=True)
+
+
+def _patient_404(patient_id: str) -> str:
+    return f"Synthetic patient '{patient_id}' not found"
+
+
+def _audit(p: Principal, action: str, resource_type: str, resource_id: str | None, *,
+           patient_id: str | None = None, permission: str | None = None, status_code: int = 200,
+           details: dict[str, Any] | None = None) -> None:
+    from app.services.identity.audit import record_event
+
+    record_event(p, action, resource_type, resource_id=resource_id, patient_id=patient_id,
+                 permission=permission, status_code=status_code, details=details)
+
+
+def _audited(p: Principal, action: str, resource_type: str, fn, *, resource_id: str | None = None,
+             patient_id: str | None = None, permission: str | None = None, status_code: int = 200,
+             result_id=None, details: dict[str, Any] | None = None):
+    """Run a state-changing operation and record its outcome (success or failure)."""
+    try:
+        out = fn()
+    except HTTPException as exc:
+        from app.services.identity.audit import record_event
+
+        record_event(p, action, resource_type, resource_id=resource_id, patient_id=patient_id,
+                     permission=permission, outcome="failed", status_code=exc.status_code, details=details)
+        raise
+    _audit(p, action, resource_type, result_id(out) if result_id else resource_id, patient_id=patient_id,
+           permission=permission, status_code=status_code, details=details)
+    return out
 
 _outreach_service = OutreachService()
 _OUTREACH_DRAFT_DISCLAIMER = (
@@ -137,8 +170,9 @@ def get_followup_repository() -> Iterator[FollowUpRepository]:
 @router.get("/dashboard/summary", response_model=DashboardSummaryOut)
 def get_dashboard_summary(
     repo: ReadRepository = Depends(get_read_repository),
+    p: Principal = Depends(require("insights.read")),
 ) -> DashboardSummaryOut:
-    return repo.get_dashboard_summary()
+    return repo.get_dashboard_summary(patient_ids=p.patient_scope())
 
 
 _ALLOWED_PATIENTS_QUERY_PARAMS = frozenset(
@@ -187,8 +221,9 @@ def list_patients(
         default=None
     ),
     repo: ReadRepository = Depends(get_read_repository),
+    p: Principal = Depends(_PATIENT_READ),
 ) -> PaginatedPatientsOut:
-    extra = set(request.query_params.keys()) - _ALLOWED_PATIENTS_QUERY_PARAMS
+    extra = set(request.query_params.keys()) - _ALLOWED_PATIENTS_QUERY_PARAMS - {"lang"}
     if extra:
         raise HTTPException(
             status_code=422,
@@ -207,6 +242,7 @@ def list_patients(
         has_open_care_gaps=has_open_care_gaps,
         history_status=history_status,
         age_band=age_band,
+        patient_ids=p.patient_scope(),
     )
 
 
@@ -214,7 +250,9 @@ def list_patients(
 def get_patient(
     patient_id: str,
     repo: ReadRepository = Depends(get_read_repository),
+    p: Principal = Depends(_PATIENT_READ),
 ) -> PatientSummaryOut:
+    ensure_patient_access(p, patient_id, _patient_404(patient_id))
     p = repo.get_patient(patient_id)
     if p is None:
         raise HTTPException(status_code=404, detail=f"Synthetic patient '{patient_id}' not found")
@@ -225,7 +263,9 @@ def get_patient(
 def get_patient_evaluations(
     patient_id: str,
     repo: ReadRepository = Depends(get_read_repository),
+    p: Principal = Depends(require("evaluations.read")),
 ) -> PatientEvaluationsOut:
+    ensure_patient_access(p, patient_id, _patient_404(patient_id))
     res = repo.get_patient_evaluations(patient_id)
     if res is None:
         raise HTTPException(status_code=404, detail=f"Synthetic patient '{patient_id}' not found")
@@ -236,7 +276,9 @@ def get_patient_evaluations(
 def get_patient_history(
     patient_id: str,
     repo: ReadRepository = Depends(get_read_repository),
+    p: Principal = Depends(_PATIENT_READ),
 ) -> PatientHistoryOut:
+    ensure_patient_access(p, patient_id, _patient_404(patient_id))
     res = repo.get_patient_history(patient_id)
     if res is None:
         raise HTTPException(status_code=404, detail=f"Synthetic patient '{patient_id}' not found")
@@ -247,7 +289,9 @@ def get_patient_history(
 def get_patient_consents(
     patient_id: str,
     repo: ReadRepository = Depends(get_read_repository),
+    p: Principal = Depends(_PATIENT_READ),
 ) -> PatientConsentsOut:
+    ensure_patient_access(p, patient_id, _patient_404(patient_id))
     res = repo.get_patient_consents(patient_id)
     if res is None:
         raise HTTPException(status_code=404, detail=f"Synthetic patient '{patient_id}' not found")
@@ -258,7 +302,9 @@ def get_patient_consents(
 def run_evaluation(
     req: EvaluateRequestIn,
     repo: ReadRepository = Depends(get_read_repository),
+    p: Principal = Depends(require("evaluations.run")),
 ) -> PatientEvaluationsOut:
+    ensure_patient_access(p, req.patient_id, _patient_404(req.patient_id))
     eval_run_id, ref_date, default_look_ahead = repo.get_evaluation_run_info()
     ctx = repo.get_patient_context(req.patient_id)
     if ctx is None:
@@ -367,6 +413,7 @@ def list_rules(
     ),
     is_authoritative: bool | None = Query(default=None),
     repo: ReadRepository = Depends(get_read_repository),
+    _p: Principal = Depends(require("rules.read")),
 ) -> PaginatedRulesOut:
     return repo.list_rules(
         pathway=pathway,
@@ -379,6 +426,7 @@ def list_rules(
 def get_rule_detail(
     rule_id: str,
     repo: ReadRepository = Depends(get_read_repository),
+    _p: Principal = Depends(require("rules.read")),
 ) -> RuleDetailOut:
     detail = repo.get_rule_detail(rule_id)
     if detail is None:
@@ -405,6 +453,7 @@ def list_care_gaps(
     limit: int = Query(default=25, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     repo: ReadRepository = Depends(get_read_repository),
+    p: Principal = Depends(require("care_gaps.read")),
 ) -> PaginatedCareGapsOut:
     return repo.list_care_gaps(
         status=status,
@@ -413,14 +462,27 @@ def list_care_gaps(
         limit=limit,
         offset=offset,
         patient_id=patient_id,
+        patient_ids=p.patient_scope(),
     )
+
+
+def _ensure_gap_access(p: Principal, repo: ReadRepository, gap_id: str) -> str | None:
+    if p.legacy:
+        return None
+    owner = repo.get_care_gap_patient_id(gap_id)
+    if owner is not None:
+        ensure_patient_access(p, owner, f"Care gap '{gap_id}' not found", resource_type="care_gap",
+                              resource_id=gap_id)
+    return owner
 
 
 @router.get("/care-gaps/{gap_id}", response_model=CareGapDetailOut)
 def get_care_gap_detail(
     gap_id: str,
     repo: ReadRepository = Depends(get_read_repository),
+    p: Principal = Depends(require("care_gaps.read")),
 ) -> CareGapDetailOut:
+    _ensure_gap_access(p, repo, gap_id)
     detail = repo.get_care_gap_detail(gap_id)
     if detail is None:
         raise HTTPException(status_code=404, detail=f"Care gap '{gap_id}' not found")
@@ -449,6 +511,7 @@ def list_facilities(
     source_layer: _FACILITY_LAYERS | None = Query(default=None),
     q: str | None = Query(default=None, max_length=100),
     repo: ReadRepository = Depends(get_read_repository),
+    _p: Principal = Depends(require("facilities.read")),
 ) -> PaginatedFacilitiesOut:
     return repo.list_facilities(
         limit=limit,
@@ -464,6 +527,7 @@ def list_facilities(
 def get_facility(
     ch_fid: str,
     repo: ReadRepository = Depends(get_read_repository),
+    _p: Principal = Depends(require("facilities.read")),
 ) -> FacilityDetailOut:
     detail = repo.get_facility(ch_fid)
     if detail is None:
@@ -476,6 +540,7 @@ def list_open_questions(
     status: Literal["open", "resolved"] | None = Query(default=None),
     category: str | None = Query(default=None, max_length=64),
     repo: ReadRepository = Depends(get_read_repository),
+    _p: Principal = Depends(require("rules.read")),
 ) -> PaginatedOpenQuestionsOut:
     return repo.list_open_questions(status=status, category=category)
 
@@ -484,6 +549,7 @@ def list_open_questions(
 def get_open_question(
     oq_id: str,
     repo: ReadRepository = Depends(get_read_repository),
+    _p: Principal = Depends(require("rules.read")),
 ) -> OpenQuestionOut:
     oq = repo.get_open_question(oq_id)
     if oq is None:
@@ -496,7 +562,12 @@ def create_explanation(
     req: ExplanationRequestIn,
     repo: ReadRepository = Depends(get_read_repository),
     ai: AIService = Depends(get_ai_service),
+    p: Principal = Depends(require("ai.explain")),
 ) -> ExplanationOut:
+    ensure_patient_access(
+        p, req.patient_id,
+        f"Evaluation for patient '{req.patient_id}' and rule '{req.rule_id}' not found",
+    )
     ev_match, r_meta, h_status, eval_reasons, rule_oqs = repo.get_explanation_inputs(
         req.patient_id, req.rule_id
     )
@@ -542,6 +613,7 @@ def create_explanation(
             ),
             context,
             run_id=ev_match.get("run_id"),
+            actor=None if p.legacy else p.audit_actor(),
         )
     except PrivacyViolationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -613,7 +685,9 @@ def _gated_preview(req: OutreachPreviewRequestIn | OutreachDraftRequestIn, repo:
 def preview_outreach(
     req: OutreachPreviewRequestIn,
     repo: ReadRepository = Depends(get_read_repository),
+    p: Principal = Depends(require("outreach.draft")),
 ) -> OutreachPreviewOut:
+    ensure_patient_access(p, req.patient_id, _patient_404(req.patient_id))
     res, _, _ = _gated_preview(req, repo)
     return OutreachPreviewOut(
         synthetic_patient_id=res.synthetic_patient_id,
@@ -656,10 +730,17 @@ def draft_outreach(
     req: OutreachDraftRequestIn,
     repo: ReadRepository = Depends(get_read_repository),
     ai: AIService = Depends(get_ai_service),
+    p: Principal = Depends(require("outreach.draft")),
 ) -> OutreachDraftOut:
     """Consent-gated, simulated outreach draft for human review. Nothing is ever sent."""
+    ensure_patient_access(p, req.patient_id, _patient_404(req.patient_id))
     gate = _draft_gate(req, repo, req.tone)
-    draft = ai.draft_outreach(gate)  # audits blocked requests too; no provider call when blocked
+    # audits blocked requests too; no provider call when blocked
+    draft = ai.draft_outreach(gate, actor=None if p.legacy else p.audit_actor())
+    _audit(p, "outreach.draft", "outreach_draft", draft.meta.audit_id if draft else None,
+           patient_id=req.patient_id, permission="outreach.draft",
+           details={"allowed": gate.allowed, "blocked_reason": gate.blocked_reason,
+                    "channel": req.channel, "language": req.language})
     fallback = draft is not None and draft.meta.generation_mode == "deterministic_fallback"
     return OutreachDraftOut(
         synthetic_patient_id=gate.patient_id,
@@ -689,13 +770,31 @@ def review_outreach_draft(
     repo: ReadRepository = Depends(get_read_repository),
     followups: FollowUpRepository = Depends(get_followup_repository),
     ai: AIService = Depends(get_ai_service),
+    p: Principal = Depends(require("outreach.review")),
 ) -> OutreachDraftReviewOut:
     """Human approval or rejection of a draft. Approval re-checks consent and eligibility,
     validates the final text and records a *simulated* outreach attempt (`simulated_not_sent`);
     nothing is sent. A draft takes one terminal decision: approval cannot be replayed and a
-    rejected draft cannot be approved later (409)."""
+    rejected draft cannot be approved later (409). Only `outreach.review` holders with access to
+    the patient may decide; the reviewer is the authenticated user."""
+    ensure_patient_access(p, req.patient_id, "Outreach draft not found; generate a new draft.")
+    req = with_actor(p, req, "reviewed_by")
+    out_resp = _review_outreach_draft(req, repo, followups, ai, p)
+    _audit(p, f"outreach.review.{out_resp.review_status}", "outreach_draft", req.draft_audit_id,
+           patient_id=req.patient_id, permission="outreach.review",
+           details={"review_audit_id": out_resp.review_audit_id,
+                    "follow_up_id": out_resp.follow_up.follow_up_id if out_resp.follow_up else None})
+    return out_resp
+
+
+def _review_outreach_draft(
+    req: OutreachDraftReviewIn, repo: ReadRepository, followups: FollowUpRepository, ai: AIService,
+    p: Principal,
+) -> OutreachDraftReviewOut:
     src = ai.audit.get(req.draft_audit_id)
     if src is None or src.feature != "outreach_draft" or src.generation_mode == NOT_GENERATED:
+        raise HTTPException(status_code=404, detail="Outreach draft not found; generate a new draft.")
+    if not p.legacy and src.extra.get("organization_id") not in (None, p.organization_id):
         raise HTTPException(status_code=404, detail="Outreach draft not found; generate a new draft.")
     if (src.subject.get("patient_id"), src.subject.get("rule_id"), src.subject.get("care_gap_id"),
             src.extra.get("channel"), src.extra.get("language")) != (
@@ -705,7 +804,8 @@ def review_outreach_draft(
 
     subject = {"patient_id": req.patient_id, "rule_id": req.rule_id, "care_gap_id": req.care_gap_id}
     extra: dict[str, Any] = {"draft_audit_id": req.draft_audit_id, "channel": req.channel,
-                             "language": req.language, "reviewed_by": req.reviewed_by}
+                             "language": req.language, "reviewed_by": req.reviewed_by,
+                             **({} if p.legacy else p.audit_actor())}
     out = dict(draft_audit_id=req.draft_audit_id, synthetic_patient_id=req.patient_id,
                care_gap_id=req.care_gap_id, rule_id=req.rule_id, channel=req.channel,
                language=req.language, disclaimer=_OUTREACH_DRAFT_DISCLAIMER)
@@ -796,8 +896,9 @@ def _ensure_not_reviewed(ai: AIService, draft_audit_id: str) -> None:
 def population_insight(
     repo: ReadRepository = Depends(get_read_repository),
     ai: AIService = Depends(get_ai_service),
+    p: Principal = Depends(require("insights.read")),
 ) -> PopulationInsightOut:
-    d = repo.get_dashboard_summary()
+    d = repo.get_dashboard_summary(patient_ids=p.patient_scope())
     facts = {
         "run_id": d.run_id,
         "evaluation_run_id": d.evaluation_run_id,
@@ -814,7 +915,7 @@ def population_insight(
         "review_flagged_patients_count": d.review_flagged_patients_count,
         "rule_review_patients_count": d.rule_review_patients_count,
     }
-    insight = ai.population_insight(facts)
+    insight = ai.population_insight(facts, actor=None if p.legacy else p.audit_actor())
     return PopulationInsightOut(
         facts=insight.facts,
         summary_text=insight.summary_text,
@@ -824,7 +925,9 @@ def population_insight(
 
 
 @router.get("/ai/status", response_model=AIStatusOut)
-def ai_status(ai: AIService = Depends(get_ai_service)) -> AIStatusOut:
+def ai_status(
+    ai: AIService = Depends(get_ai_service), _p: Principal = Depends(require("platform.status"))
+) -> AIStatusOut:
     return AIStatusOut(**ai.status())
 
 
@@ -835,12 +938,16 @@ def ai_audit(
         default=None
     ),
     ai: AIService = Depends(get_ai_service),
+    p: Principal = Depends(require("audit_logs.read")),
 ) -> AIAuditOut:
+    """Organization-scoped in AUTH_MODE=users: only records initiated within the caller's
+    organization (records written before user authentication carry no organization)."""
+    org = None if p.legacy else (p.organization_id or "")
     return AIAuditOut(
         durable=ai.audit.durable,
         items=[
             AIAuditRecordOut(**{**r.__dict__, "violations": list(r.violations)})
-            for r in ai.audit.recent(limit=limit, feature=feature)
+            for r in ai.audit.recent(limit=limit, feature=feature, organization_id=org)
         ]
     )
 
@@ -854,8 +961,21 @@ def create_care_gap_follow_up(
     gap_id: str,
     req: FollowUpCreateIn,
     repo: FollowUpRepository = Depends(get_followup_repository),
+    reads: ReadRepository = Depends(get_read_repository),
+    p: Principal = Depends(require("followups.create")),
 ) -> FollowUpEventOut:
-    return repo.create_follow_up(gap_id, req)
+    """Documented completion (`completion_documented`) additionally needs `care_gaps.complete`."""
+    owner = _ensure_gap_access(p, reads, gap_id)
+    if req.event_type == "completion_documented" and not p.has("care_gaps.complete"):
+        from app.core.i18n import AppError
+
+        _audit(p, "authz.denied", "care_gap", gap_id, patient_id=owner, permission="care_gaps.complete",
+               status_code=403)
+        raise AppError(403, "error.forbidden")
+    req = with_actor(p, req)
+    return _audited(p, f"follow_up.{req.event_type}", "care_gap", lambda: repo.create_follow_up(gap_id, req),
+                    resource_id=gap_id, patient_id=owner, permission="followups.create", status_code=201,
+                    details={"close_gap": req.close_gap, "documented_evidence": req.documented_evidence})
 
 
 @router.post("/care-gaps/{gap_id}/reviews", response_model=CareGapReviewOut, status_code=201)
@@ -863,15 +983,23 @@ def create_care_gap_review(
     gap_id: str,
     req: CareGapReviewIn,
     repo: FollowUpRepository = Depends(get_followup_repository),
+    reads: ReadRepository = Depends(get_read_repository),
+    p: Principal = Depends(require("care_gaps.review")),
 ) -> CareGapReviewOut:
-    return repo.create_review(gap_id, req)
+    owner = _ensure_gap_access(p, reads, gap_id)
+    req = with_actor(p, req, "reviewer")
+    return _audited(p, f"care_gap.review.{req.action}", "care_gap", lambda: repo.create_review(gap_id, req),
+                    resource_id=gap_id, patient_id=owner, permission="care_gaps.review", status_code=201)
 
 
 @router.get("/care-gaps/{gap_id}/reviews", response_model=CareGapReviewsOut)
 def list_care_gap_reviews(
     gap_id: str,
     repo: FollowUpRepository = Depends(get_followup_repository),
+    reads: ReadRepository = Depends(get_read_repository),
+    p: Principal = Depends(require("care_gaps.read")),
 ) -> CareGapReviewsOut:
+    _ensure_gap_access(p, reads, gap_id)
     return repo.list_reviews(gap_id)
 
 
@@ -881,7 +1009,10 @@ def list_care_gap_follow_ups(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     repo: FollowUpRepository = Depends(get_followup_repository),
+    reads: ReadRepository = Depends(get_read_repository),
+    p: Principal = Depends(require("followups.read")),
 ) -> PaginatedFollowUpEventsOut:
+    _ensure_gap_access(p, reads, gap_id)
     return repo.list_follow_ups(gap_id, limit=limit, offset=offset)
 
 
@@ -889,7 +1020,9 @@ def list_care_gap_follow_ups(
 def get_patient_activity(
     patient_id: str,
     repo: FollowUpRepository = Depends(get_followup_repository),
+    p: Principal = Depends(require("followups.read")),
 ) -> PatientActivityOut:
+    ensure_patient_access(p, patient_id, _patient_404(patient_id))
     return repo.get_patient_activity(patient_id)
 
 
@@ -909,6 +1042,7 @@ def list_appointments(
     limit: int = Query(default=25, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     repo: FollowUpRepository = Depends(get_followup_repository),
+    p: Principal = Depends(require("appointments.read")),
 ) -> PaginatedAppointmentsOut:
     return repo.list_appointments(
         patient_id=patient_id,
@@ -916,6 +1050,7 @@ def list_appointments(
         status=status,
         limit=limit,
         offset=offset,
+        patient_ids=p.patient_scope(),
     )
 
 
@@ -923,8 +1058,19 @@ def list_appointments(
 def create_appointment(
     req: AppointmentCreateIn,
     repo: FollowUpRepository = Depends(get_followup_repository),
+    p: Principal = Depends(require("appointments.create")),
 ) -> AppointmentOut:
-    return repo.create_appointment(req)
+    ensure_patient_access(p, req.patient_id, f"Patient '{req.patient_id}' not found")
+    req = with_actor(p, req)
+    return _audited(p, "appointment.create", "appointment", lambda: repo.create_appointment(req),
+                    patient_id=req.patient_id, permission="appointments.create", status_code=201,
+                    result_id=lambda o: o.appointment_id, details={"care_gap_id": req.care_gap_id})
+
+
+def _ensure_entity_access(p: Principal, owner: str | None, entity: str, entity_id: str) -> None:
+    if not p.legacy and owner is not None:
+        ensure_patient_access(p, owner, f"{entity.capitalize()} '{entity_id}' not found",
+                              resource_type=entity, resource_id=entity_id)
 
 
 @router.patch("/appointments/{appointment_id}", response_model=AppointmentOut)
@@ -932,15 +1078,24 @@ def update_appointment(
     appointment_id: str,
     req: AppointmentPatchIn,
     repo: FollowUpRepository = Depends(get_followup_repository),
+    p: Principal = Depends(require("appointments.update")),
 ) -> AppointmentOut:
-    return repo.update_appointment(appointment_id, req)
+    owner = None if p.legacy else repo.get_appointment_patient_id(appointment_id)
+    _ensure_entity_access(p, owner, "appointment", appointment_id)
+    req = with_actor(p, req)
+    return _audited(p, "appointment.update", "appointment", lambda: repo.update_appointment(appointment_id, req),
+                    resource_id=appointment_id, patient_id=owner, permission="appointments.update",
+                    details={"status": req.status})
 
 
 @router.get("/appointments/{appointment_id}/history", response_model=WorkflowHistoryOut)
 def get_appointment_history(
     appointment_id: str,
     repo: FollowUpRepository = Depends(get_followup_repository),
+    p: Principal = Depends(require("appointments.read")),
 ) -> WorkflowHistoryOut:
+    if not p.legacy:
+        _ensure_entity_access(p, repo.get_appointment_patient_id(appointment_id), "appointment", appointment_id)
     return repo.get_appointment_history(appointment_id)
 
 
@@ -953,9 +1108,10 @@ def list_referrals(
     limit: int = Query(default=25, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     repo: FollowUpRepository = Depends(get_followup_repository),
+    p: Principal = Depends(require("referrals.read")),
 ) -> PaginatedReferralsOut:
     return repo.list_referrals(
-        patient_id=patient_id, status=status, limit=limit, offset=offset
+        patient_id=patient_id, status=status, limit=limit, offset=offset, patient_ids=p.patient_scope()
     )
 
 
@@ -963,8 +1119,13 @@ def list_referrals(
 def create_referral(
     req: ReferralCreateIn,
     repo: FollowUpRepository = Depends(get_followup_repository),
+    p: Principal = Depends(require("referrals.create")),
 ) -> ReferralOut:
-    return repo.create_referral(req)
+    ensure_patient_access(p, req.patient_id, f"Patient '{req.patient_id}' not found")
+    req = with_actor(p, req)
+    return _audited(p, "referral.create", "referral", lambda: repo.create_referral(req),
+                    patient_id=req.patient_id, permission="referrals.create", status_code=201,
+                    result_id=lambda o: o.referral_id, details={"care_gap_id": req.care_gap_id})
 
 
 @router.patch("/referrals/{referral_id}", response_model=ReferralOut)
@@ -972,13 +1133,22 @@ def update_referral(
     referral_id: str,
     req: ReferralPatchIn,
     repo: FollowUpRepository = Depends(get_followup_repository),
+    p: Principal = Depends(require("referrals.update")),
 ) -> ReferralOut:
-    return repo.update_referral(referral_id, req)
+    owner = None if p.legacy else repo.get_referral_patient_id(referral_id)
+    _ensure_entity_access(p, owner, "referral", referral_id)
+    req = with_actor(p, req)
+    return _audited(p, "referral.update", "referral", lambda: repo.update_referral(referral_id, req),
+                    resource_id=referral_id, patient_id=owner, permission="referrals.update",
+                    details={"status": req.status})
 
 
 @router.get("/referrals/{referral_id}/history", response_model=WorkflowHistoryOut)
 def get_referral_history(
     referral_id: str,
     repo: FollowUpRepository = Depends(get_followup_repository),
+    p: Principal = Depends(require("referrals.read")),
 ) -> WorkflowHistoryOut:
+    if not p.legacy:
+        _ensure_entity_access(p, repo.get_referral_patient_id(referral_id), "referral", referral_id)
     return repo.get_referral_history(referral_id)

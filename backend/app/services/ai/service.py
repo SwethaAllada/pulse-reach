@@ -28,6 +28,7 @@ from app.services.ai.prompts import (
     EXPLANATION_PROMPT_VERSION,
     EXPLANATION_SYSTEM,
     OUTREACH_CHANNEL_FORMAT,
+    OUTREACH_LANGUAGE_RULES,
     OUTREACH_PROMPT_VERSION,
     OUTREACH_SYSTEM,
     POPULATION_PROMPT_VERSION,
@@ -140,6 +141,7 @@ class AIService:
         extra: dict[str, Any] | None = None,
         fallback_text: str | None = None,
         run_id: str | None = None,
+        actor: dict[str, Any] | None = None,
     ) -> tuple[str | None, AIGenerationMeta]:
         user = facts_json(facts)
         text: str | None = None
@@ -176,8 +178,9 @@ class AIService:
             output_sha256=sha256(text),
             latency_ms=latency,
             # `returned_sha256` fingerprints the text actually returned (model or fallback).
-            extra={**(extra or {}), **({"returned_sha256": sha256(accepted or fallback_text)}
-                                       if fallback_text is not None else {})},
+            extra={**(extra or {}), **(actor or {}),
+                   **({"returned_sha256": sha256(accepted or fallback_text)}
+                      if fallback_text is not None else {})},
             run_id=run_id,
         )
         meta = AIGenerationMeta(
@@ -200,6 +203,7 @@ class AIService:
         context: ExplanationContext | None = None,
         *,
         run_id: str | None = None,
+        actor: dict[str, Any] | None = None,
     ) -> tuple[ExplanationResult, AIGenerationMeta]:
         """Deterministic result plus, when accepted, a validated generated summary.
 
@@ -233,6 +237,7 @@ class AIService:
             facts=facts,
             subject=subject,
             run_id=run_id,
+            actor=actor,
             validate=lambda t: validate_output(
                 t,
                 facts=facts,
@@ -251,14 +256,16 @@ class AIService:
 
     # -- outreach ---------------------------------------------------------------------------
 
-    def draft_outreach(self, gate: OutreachDraftGate) -> OutreachDraft | None:
+    def draft_outreach(
+        self, gate: OutreachDraftGate, *, actor: dict[str, Any] | None = None
+    ) -> OutreachDraft | None:
         """Draft a simulated message for an *allowed* gate; None (and no model call) otherwise.
 
         The model only sees `gate.facts` (programme, gap category, approved next step, channel,
         language, tone); the fallback is the deterministic draft built from the same facts.
         """
         if not gate.allowed or not gate.deterministic_body:
-            self.record_outreach_blocked(gate)
+            self.record_outreach_blocked(gate, actor=actor)
             return None
         max_chars = gate.max_chars
         text, meta = self._generate(
@@ -266,6 +273,7 @@ class AIService:
             prompt_version=OUTREACH_PROMPT_VERSION,
             system=OUTREACH_SYSTEM.format(
                 max_chars=max_chars, tone=gate.tone, language=gate.language,
+                language_rules=OUTREACH_LANGUAGE_RULES[gate.language],
                 channel_format=OUTREACH_CHANNEL_FORMAT[gate.channel],
             ),
             facts=gate.facts,
@@ -276,18 +284,22 @@ class AIService:
             extra=gate.audit_extra,
             fallback_text=gate.deterministic_body,
             run_id=gate.run_id,
+            actor=actor,
         )
         body = text or gate.deterministic_body
         banner = _SIMULATED_BANNER.format(channel=gate.channel.upper(), language=gate.language)
         return OutreachDraft(message=banner + body, meta=meta, body=body)
 
-    def record_outreach_blocked(self, gate: OutreachDraftGate) -> AIAuditRecord:
+    def record_outreach_blocked(
+        self, gate: OutreachDraftGate, *, actor: dict[str, Any] | None = None
+    ) -> AIAuditRecord:
         """Audit a draft request refused before generation (the provider is never called)."""
         return self.audit.record(
             feature="outreach_draft", subject=gate.audit_subject, prompt_version=OUTREACH_PROMPT_VERSION,
             provider=None, model=None, generation_mode=NOT_GENERATED,
             fallback_reason=f"blocked:{gate.blocked_reason}", violations=(), input_sha256=None,
-            output_sha256=None, latency_ms=None, extra=gate.audit_extra, run_id=gate.run_id,
+            output_sha256=None, latency_ms=None, extra={**gate.audit_extra, **(actor or {})},
+            run_id=gate.run_id,
         )
 
     def record_outreach_review(
@@ -313,7 +325,9 @@ class AIService:
 
     # -- population ------------------------------------------------------------------------
 
-    def population_insight(self, facts: dict[str, Any]) -> PopulationInsight:
+    def population_insight(
+        self, facts: dict[str, Any], *, actor: dict[str, Any] | None = None
+    ) -> PopulationInsight:
         deterministic = _deterministic_population_summary(facts)
         text, meta = self._generate(
             feature="population_insight",
@@ -322,6 +336,7 @@ class AIService:
             facts=facts,
             subject={"run_id": facts.get("run_id"), "evaluation_run_id": facts.get("evaluation_run_id")},
             run_id=facts.get("run_id"),
+            actor=actor,
             validate=lambda t: validate_output(t, facts=facts, max_chars=1200, must_contain=("synthetic",)),
         )
         return PopulationInsight(facts=facts, summary_text=text or deterministic, meta=meta)
