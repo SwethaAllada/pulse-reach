@@ -259,7 +259,9 @@ function notSignedIn(path: string): ApiError {
 }
 
 async function apiRequest<T>(path: string, pathWithQuery: string, init: RequestInit): Promise<T> {
-  const url = `${API_BASE_URL}/api/v1${pathWithQuery}`;
+  // `?lang=` outranks the account's saved preference on the backend, so labels follow the active UI language.
+  const lang = documentLocale();
+  const url = `${API_BASE_URL}/api/v1${pathWithQuery}${lang === "en" ? "" : `${pathWithQuery.includes("?") ? "&" : "?"}lang=${lang}`}`;
   const identity = UNGATED.has(path);
   if (!identity && !SESSION_ONLY.has(path))
     await (path.startsWith("/portal/") ? waitForPortal(init.signal) : waitForGate(init.signal));

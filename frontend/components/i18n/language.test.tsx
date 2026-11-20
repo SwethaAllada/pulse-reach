@@ -43,7 +43,7 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => 
   return ok({ total: 0, items: [] });
 });
 const preferenceCalls = () =>
-  fetchMock.mock.calls.filter(([u, init]) => String(u).endsWith("/me/preferences") && init?.method === "PATCH").map(([, init]) => JSON.parse(String(init?.body)));
+  fetchMock.mock.calls.filter(([u, init]) => new URL(String(u)).pathname.endsWith("/me/preferences") && init?.method === "PATCH").map(([, init]) => JSON.parse(String(init?.body)));
 
 function renderApp() {
   return render(
@@ -109,7 +109,7 @@ describe("Language selection", () => {
     expect(preferenceCalls()).toEqual([{ preferred_language: "ar" }]);
     expect(window.localStorage.getItem(LOCALE_UNSYNCED_KEY)).toBeNull();
     // Every API request now asks the backend for Arabic labels and messages.
-    const meCall = fetchMock.mock.calls.findLast(([u]) => String(u).endsWith("/me"))!;
+    const meCall = fetchMock.mock.calls.findLast(([u]) => new URL(String(u)).pathname.endsWith("/me"))!;
     expect(new Headers(meCall[1]?.headers).get("Accept-Language")).toBe("ar");
   });
 

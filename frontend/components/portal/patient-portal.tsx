@@ -18,6 +18,9 @@ import { portalApi, apiErrorMessage } from "@/lib/api/client";
 import { useResource, type Resource } from "@/lib/api/resource";
 import type { AssistantTopic, PatientAssistantOut, PatientRequestOut, PatientResponse, PortalAppointmentOut, PortalFollowUpOut, RecommendationOut, TimeOfDay } from "@/lib/api/portal-types";
 import { useAuth } from "@/lib/auth/auth-context";
+import { useLocale } from "@/lib/i18n/use-locale";
+import type { MessageKey } from "@/lib/i18n/translate";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { LogoMark, LogoWordmark } from "@/components/shell/logo";
 import { SyntheticBanner } from "@/components/shell/synthetic-banner";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
@@ -30,13 +33,13 @@ import { cn } from "@/lib/cn";
 
 type View = "home" | "care" | "appointments" | "messages" | "requests" | "record";
 
-const VIEWS: { id: View; label: string; icon: typeof Home }[] = [
-  { id: "home", label: "Overview", icon: Home },
-  { id: "care", label: "Recommended care", icon: ClipboardCheck },
-  { id: "appointments", label: "Appointments", icon: CalendarClock },
-  { id: "messages", label: "Messages", icon: MessageSquare },
-  { id: "requests", label: "My requests", icon: Inbox },
-  { id: "record", label: "Health record", icon: FileHeart },
+const VIEWS: { id: View; label: MessageKey; icon: typeof Home }[] = [
+  { id: "home", label: "portal.nav.home", icon: Home },
+  { id: "care", label: "portal.nav.care", icon: ClipboardCheck },
+  { id: "appointments", label: "portal.nav.appointments", icon: CalendarClock },
+  { id: "messages", label: "portal.nav.messages", icon: MessageSquare },
+  { id: "requests", label: "portal.nav.requests", icon: Inbox },
+  { id: "record", label: "portal.nav.record", icon: FileHeart },
 ];
 
 /**
@@ -46,6 +49,7 @@ const VIEWS: { id: View; label: string; icon: typeof Home }[] = [
  */
 export function PatientPortal() {
   const { state, signOut, retry } = useAuth();
+  const { t } = useLocale();
   const me = state.status === "signed_in" ? state.me : null;
   const [view, setView] = useState<View>("home");
   const [attempt, setAttempt] = useState(0);
@@ -59,18 +63,19 @@ export function PatientPortal() {
           <LogoMark />
           <div className="min-w-0">
             <LogoWordmark />
-            <p className="text-[11px] text-faint">Patient portal</p>
+            <p className="text-[11px] text-faint">{t("portal.subtitle")}</p>
           </div>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ms-auto flex items-center gap-2">
             <span className="hidden text-sm text-muted sm:inline">{me?.user.full_name}</span>
+            <LanguageSwitcher />
             <ThemeToggle />
             <button type="button" className={buttonClass("secondary")} onClick={() => void signOut()}>
-              <LogOut size={14} aria-hidden="true" /> Sign out
+              <LogOut size={14} aria-hidden="true" className="rtl:-scale-x-100" /> {t("user.sign_out")}
             </button>
           </div>
         </div>
         {me?.patient_linked && (
-          <nav aria-label="Portal" className="mx-auto flex max-w-[1120px] gap-1 overflow-x-auto px-4 sm:px-6">
+          <nav aria-label={t("portal.nav.label")} className="mx-auto flex max-w-[1120px] gap-1 overflow-x-auto px-4 sm:px-6">
             {VIEWS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -83,7 +88,7 @@ export function PatientPortal() {
                 )}
               >
                 <Icon size={15} aria-hidden="true" className={view === id ? "text-accent" : undefined} />
-                {label}
+                {t(label)}
                 <span
                   aria-hidden="true"
                   className={cn("absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent transition-transform duration-300", view === id ? "scale-x-100" : "scale-x-0")}
@@ -108,7 +113,7 @@ export function PatientPortal() {
         )}
       </main>
       <footer className="border-t border-border py-4 text-center text-xs text-faint">
-        PulseReach never sends e-mail or SMS. Information here is synthetic and not medical advice.
+        {t("portal.footer")}
       </footer>
     </div>
   );
@@ -130,6 +135,7 @@ function num<T>(r: Resource<T>, pick: (d: T) => number): number | string {
 /* ── Overview ─────────────────────────────────────────────────────────── */
 
 function Overview({ onNavigate, attempt }: { onNavigate: (v: View) => void; attempt: number }) {
+  const { t } = useLocale();
   const summary = useResource(`p-sum|${attempt}`, "patients.read_self", (s) => portalApi.summary(s), attempt);
   const recs = useResource(`p-rec|active|${attempt}`, "patients.read_self", (s) => portalApi.recommendations("active", s), attempt);
   const appts = useResource(`p-appt|${attempt}`, "patients.read_self", (s) => portalApi.appointments(s), attempt);
@@ -138,24 +144,24 @@ function Overview({ onNavigate, attempt }: { onNavigate: (v: View) => void; atte
 
   return (
     <>
-      <Title title={name ? `Hello, ${name}` : "Your health overview"} subtitle="Recommended preventive care, appointments and messages from your care team." />
+      <Title title={name ? t("portal.home.hello", { name }) : t("portal.home.title")} subtitle={t("portal.home.subtitle")} />
       <dl className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Tile label="Recommended care" value={num(summary, (d) => d.open_recommendations)} note="open recommendations" onClick={() => onNavigate("care")} />
-        <Tile label="Upcoming appointments" value={num(summary, (d) => d.upcoming_appointments)} note="scheduled visits" onClick={() => onNavigate("appointments")} />
-        <Tile label="Awaiting your reply" value={num(summary, (d) => d.awaiting_your_reply)} note="messages from your care team" onClick={() => onNavigate("messages")} />
-        <Tile label="Open requests" value={num(summary, (d) => d.open_requests)} note="being handled" onClick={() => onNavigate("requests")} />
+        <Tile label={t("portal.home.tile.care")} value={num(summary, (d) => d.open_recommendations)} note={t("portal.home.tile.care_note")} onClick={() => onNavigate("care")} />
+        <Tile label={t("portal.home.tile.appointments")} value={num(summary, (d) => d.upcoming_appointments)} note={t("portal.home.tile.appointments_note")} onClick={() => onNavigate("appointments")} />
+        <Tile label={t("portal.home.tile.reply")} value={num(summary, (d) => d.awaiting_your_reply)} note={t("portal.home.tile.reply_note")} onClick={() => onNavigate("messages")} />
+        <Tile label={t("portal.home.tile.requests")} value={num(summary, (d) => d.open_requests)} note={t("portal.home.tile.requests_note")} onClick={() => onNavigate("requests")} />
       </dl>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <Plate title="What to do next" description="Care your programme recommends, based on your recorded history." flush>
-          <ResourceView resource={recs} what="Recommendations">
+        <Plate title={t("portal.home.next.title")} description={t("portal.home.next.description")} flush>
+          <ResourceView resource={recs} what={t("portal.what.recommendations")}>
             {(r) =>
               r.items.length === 0 ? (
-                <p className="px-5 py-4 text-sm text-muted">You are up to date — nothing is recommended right now.</p>
+                <p className="px-5 py-4 text-sm text-muted">{t("portal.home.next.empty")}</p>
               ) : (
                 <ul className="divide-y divide-border">
                   {r.items.slice(0, 4).map((x) => (
                     <li key={x.recommendation_id}>
-                      <button type="button" onClick={() => onNavigate("care")} className="group flex w-full items-start gap-3 px-5 py-3.5 text-left transition-colors hover:bg-hover">
+                      <button type="button" onClick={() => onNavigate("care")} className="group flex w-full items-start gap-3 px-5 py-3.5 text-start transition-colors hover:bg-hover">
                         <HeartPulse size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-warm-text" />
                         <span className="min-w-0 flex-1">
                           <span className="block text-sm font-medium text-foreground">{x.title}</span>
@@ -163,7 +169,7 @@ function Overview({ onNavigate, attempt }: { onNavigate: (v: View) => void; atte
                             {x.programme_label} · {x.next_step_text}
                           </span>
                         </span>
-                        <ChevronRight size={15} aria-hidden="true" className="mt-0.5 text-faint group-hover:text-foreground" />
+                        <ChevronRight size={15} aria-hidden="true" className="mt-0.5 text-faint group-hover:text-foreground rtl:-scale-x-100" />
                       </button>
                     </li>
                   ))}
@@ -172,8 +178,8 @@ function Overview({ onNavigate, attempt }: { onNavigate: (v: View) => void; atte
             }
           </ResourceView>
         </Plate>
-        <Plate title="Next appointment">
-          <ResourceView resource={appts} what="Appointments">
+        <Plate title={t("portal.home.appointment.title")}>
+          <ResourceView resource={appts} what={t("portal.what.appointments")}>
             {() =>
               next ? (
                 <div>
@@ -182,14 +188,14 @@ function Overview({ onNavigate, attempt }: { onNavigate: (v: View) => void; atte
                     {next.appointment_type_label} · {next.status_label}
                   </p>
                   <button type="button" className={buttonClass("secondary", "mt-4")} onClick={() => onNavigate("appointments")}>
-                    Manage appointments
+                    {t("portal.home.appointment.manage")}
                   </button>
                 </div>
               ) : (
                 <div>
-                  <p className="text-sm text-muted">No appointment is scheduled.</p>
+                  <p className="text-sm text-muted">{t("portal.home.appointment.none")}</p>
                   <button type="button" className={buttonClass("primary", "mt-4")} onClick={() => onNavigate("appointments")}>
-                    Request an appointment
+                    {t("portal.appointments.request")}
                   </button>
                 </div>
               )
@@ -203,7 +209,7 @@ function Overview({ onNavigate, attempt }: { onNavigate: (v: View) => void; atte
 
 function Tile({ label, value, note, onClick }: { label: string; value: React.ReactNode; note: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="text-left transition-transform duration-200 hover:-translate-y-0.5">
+    <button type="button" onClick={onClick} className="text-start transition-transform duration-200 hover:-translate-y-0.5">
       <KpiCard label={label} value={value} note={note} className="h-full hover:border-accent" />
     </button>
   );
@@ -212,23 +218,24 @@ function Tile({ label, value, note, onClick }: { label: string; value: React.Rea
 /* ── Recommended care ─────────────────────────────────────────────────── */
 
 function Recommendations({ attempt, onChanged }: { attempt: number; onChanged: () => void }) {
+  const { t } = useLocale();
   const [status, setStatus] = useState<"active" | "all">("active");
   const [open, setOpen] = useState<string | null>(null);
   const recs = useResource(`p-rec|${status}|${attempt}`, "patients.read_self", (s) => portalApi.recommendations(status, s), attempt);
   return (
     <>
-      <Title title="Recommended care" subtitle="Preventive care recommended for you. Only your care team can mark care as complete." />
+      <Title title={t("portal.care.title")} subtitle={t("portal.care.subtitle")} />
       <div className="flex gap-2">
         {(["active", "all"] as const).map((s) => (
           <button key={s} type="button" aria-pressed={status === s} onClick={() => setStatus(s)} className={cn(buttonClass("secondary"), status === s && "border-accent bg-accent-soft")}>
-            {s === "active" ? "Open" : "All, including closed"}
+            {s === "active" ? t("portal.care.filter.open") : t("portal.care.filter.all")}
           </button>
         ))}
       </div>
-      <ResourceView resource={recs} what="Recommendations">
+      <ResourceView resource={recs} what={t("portal.what.recommendations")}>
         {(r) =>
           r.items.length === 0 ? (
-            <QuietEmpty title="Nothing recommended">You are up to date.</QuietEmpty>
+            <QuietEmpty title={t("portal.care.empty.title")}>{t("portal.care.empty.body")}</QuietEmpty>
           ) : (
             <ul className="flex flex-col gap-3">
               {r.items.map((x) => (
@@ -245,39 +252,40 @@ function Recommendations({ attempt, onChanged }: { attempt: number; onChanged: (
 function RecommendationCard({ rec, open, onToggle, onChanged }: { rec: RecommendationOut; open: boolean; onToggle: () => void; onChanged: () => void }) {
   const detail = useResource(open ? `p-recd|${rec.recommendation_id}` : null, "patients.read_self", (s) => portalApi.recommendation(rec.recommendation_id, s), 0);
   const [requesting, setRequesting] = useState(false);
+  const { t } = useLocale();
   return (
     <li className="rounded-xl border border-border bg-surface-raised">
-      <button type="button" aria-expanded={open} onClick={onToggle} className="flex w-full items-start gap-3 px-5 py-4 text-left">
+      <button type="button" aria-expanded={open} onClick={onToggle} className="flex w-full items-start gap-3 px-5 py-4 text-start">
         <HeartPulse size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-warm-text" />
         <span className="min-w-0 flex-1">
           <span dir="auto" className="block font-medium text-foreground">{rec.title}</span>
           <span dir="auto" className="mt-0.5 block text-sm text-muted">{rec.description}</span>
           <span className="mt-2 flex flex-wrap gap-x-3 text-xs text-faint">
             <span>{rec.programme_label}</span>
-            <span>Identified {rec.identified_date_display}</span>
+            <span>{t("portal.care.identified", { date: rec.identified_date_display })}</span>
             <span>{rec.status_label}</span>
           </span>
         </span>
-        <ChevronRight size={16} aria-hidden="true" className={cn("mt-1 text-faint transition-transform duration-200", open && "rotate-90")} />
+        <ChevronRight size={16} aria-hidden="true" className={cn("mt-1 text-faint transition-transform duration-200 rtl:-scale-x-100", open && "rotate-90")} />
       </button>
       {open && (
         <div className="reveal-fade border-t border-border px-5 py-4">
-          <ResourceView resource={detail} what="Details">
+          <ResourceView resource={detail} what={t("portal.what.details")}>
             {(d) => (
               <div className="grid gap-5 md:grid-cols-2">
                 <div>
-                  <h3 className="text-xs font-medium text-muted">Why this is recommended</h3>
+                  <h3 className="text-xs font-medium text-muted">{t("portal.care.why")}</h3>
                   <ul dir="auto" className="mt-2 list-disc space-y-1 ps-5 text-sm text-foreground">
                     {d.evidence.map((e, i) => (
                       <li key={i}>{e}</li>
                     ))}
                   </ul>
                   <p dir="auto" className="mt-3 rounded-lg bg-accent-soft px-3 py-2 text-sm text-foreground">
-                    <span className="font-medium">Next step:</span> {d.next_step_text}
+                    <span className="font-medium">{t("portal.care.next_step")}</span> {d.next_step_text}
                   </p>
                 </div>
                 <div>
-                  <h3 className="text-xs font-medium text-muted">History</h3>
+                  <h3 className="text-xs font-medium text-muted">{t("portal.care.history")}</h3>
                   <ol dir="auto" className="mt-2 space-y-2 border-s border-border ps-4 text-sm">
                     {d.history.map((h, i) => (
                       <li key={i}>
@@ -296,7 +304,7 @@ function RecommendationCard({ rec, open, onToggle, onChanged }: { rec: Recommend
               <AppointmentRequestForm recommendationId={rec.recommendation_id} onDone={() => (setRequesting(false), onChanged())} onCancel={() => setRequesting(false)} />
             ) : (
               <button type="button" className={buttonClass("primary", "mt-4")} onClick={() => setRequesting(true)}>
-                <CalendarClock size={15} aria-hidden="true" /> Request an appointment for this
+                <CalendarClock size={15} aria-hidden="true" /> {t("portal.care.request_appointment")}
               </button>
             ))}
         </div>
@@ -307,11 +315,11 @@ function RecommendationCard({ rec, open, onToggle, onChanged }: { rec: Recommend
 
 /* ── Recommendation assistant ─────────────────────────────────────────── */
 
-const TOPICS: { id: AssistantTopic; label: string }[] = [
-  { id: "why", label: "Why is this recommended?" },
-  { id: "next_steps", label: "What happens next?" },
-  { id: "prepare_questions", label: "Questions for my clinician" },
-  { id: "appointments", label: "Appointments and follow-up" },
+const TOPICS: { id: AssistantTopic; label: MessageKey }[] = [
+  { id: "why", label: "portal.assistant.topic_why" },
+  { id: "next_steps", label: "portal.assistant.topic_next" },
+  { id: "prepare_questions", label: "portal.assistant.topic_questions" },
+  { id: "appointments", label: "portal.assistant.topic_appointments" },
 ];
 
 /**
@@ -323,36 +331,37 @@ function RecommendationAssistant({ recommendationId }: { recommendationId: strin
   const [topic, setTopic] = useState<AssistantTopic | null>(null);
   const [state, setState] = useState<{ pending: boolean; error: string | null; data: PatientAssistantOut | null }>({ pending: false, error: null, data: null });
   const [asking, setAsking] = useState(false);
-  const ask = async (t: AssistantTopic) => {
-    setTopic(t);
+  const { t } = useLocale();
+  const ask = async (x: AssistantTopic) => {
+    setTopic(x);
     setState({ pending: true, error: null, data: null });
     try {
-      setState({ pending: false, error: null, data: await portalApi.assistant(recommendationId, t) });
+      setState({ pending: false, error: null, data: await portalApi.assistant(recommendationId, x) });
     } catch (err) {
       setState({ pending: false, error: apiErrorMessage(err), data: null });
     }
   };
   const d = state.data;
   return (
-    <section aria-label="Understand this recommendation" className="mt-5 rounded-xl border border-border bg-surface p-4">
+    <section aria-label={t("portal.assistant.title")} className="mt-5 rounded-xl border border-border bg-surface p-4">
       <h3 className="flex items-center gap-2 text-sm font-medium text-foreground">
-        <Sparkles size={15} aria-hidden="true" className="text-accent" /> Understand this recommendation
+        <Sparkles size={15} aria-hidden="true" className="text-accent" /> {t("portal.assistant.title")}
       </h3>
-      <div role="group" aria-label="Choose a topic" className="mt-3 flex flex-wrap gap-2">
+      <div role="group" aria-label={t("portal.assistant.choose")} className="mt-3 flex flex-wrap gap-2">
         {TOPICS.map((x) => (
           <button key={x.id} type="button" aria-pressed={topic === x.id} disabled={state.pending} onClick={() => void ask(x.id)} className={cn(buttonClass("secondary"), topic === x.id && "border-accent bg-accent-soft")}>
-            {x.label}
+            {t(x.label)}
           </button>
         ))}
       </div>
       <div aria-live="polite" className="mt-3">
-        {state.pending && <p className="skeleton h-16 rounded-lg" aria-label="Preparing an answer" />}
+        {state.pending && <p className="skeleton h-16 rounded-lg" aria-label={t("portal.assistant.preparing")} />}
         {state.error && (
           <div className="flex flex-wrap items-center gap-3">
             <FormError message={state.error} />
             {topic && (
               <button type="button" className={buttonClass("secondary")} onClick={() => void ask(topic)}>
-                Try again
+                {t("portal.assistant.retry")}
               </button>
             )}
           </div>
@@ -375,7 +384,7 @@ function RecommendationAssistant({ recommendationId }: { recommendationId: strin
           <HelpForm initial={`${d.topic_label}: `} onDone={() => setAsking(false)} onCancel={() => setAsking(false)} />
         ) : (
           <button type="button" className={buttonClass("primary", "mt-3")} onClick={() => setAsking(true)}>
-            <LifeBuoy size={15} aria-hidden="true" /> Ask your care team
+            <LifeBuoy size={15} aria-hidden="true" /> {t("portal.assistant.ask_team")}
           </button>
         ))}
     </section>
@@ -385,17 +394,18 @@ function RecommendationAssistant({ recommendationId }: { recommendationId: strin
 function HelpForm({ initial = "", onDone, onCancel }: { initial?: string; onDone: () => void; onCancel: () => void }) {
   const [msg, setMsg] = useState(initial);
   const [state, setState] = useState<{ pending: boolean; error: string | null; done: string | null }>({ pending: false, error: null, done: null });
+  const { t } = useLocale();
   if (state.done) return <div className="mt-3"><Confirmation>{state.done}</Confirmation></div>;
   return (
     <form
-      aria-label="Ask for help"
+      aria-label={t("portal.requests.ask_help")}
       className="reveal mt-3 flex flex-col gap-3 rounded-xl border border-border bg-surface-raised p-4"
       onSubmit={async (e) => {
         e.preventDefault();
         setState({ pending: true, error: null, done: null });
         try {
           const out = await portalApi.requestAssistance(msg.trim(), null);
-          setState({ pending: false, error: null, done: out.confirmation ?? "Your request was sent to your care team." });
+          setState({ pending: false, error: null, done: out.confirmation ?? t("portal.assistant.sent") });
           setTimeout(onDone, 1500);
         } catch (err) {
           setState({ pending: false, error: apiErrorMessage(err), done: null });
@@ -403,19 +413,19 @@ function HelpForm({ initial = "", onDone, onCancel }: { initial?: string; onDone
       }}
     >
       <label className={labelClass}>
-        How can your care team help?
+        {t("portal.requests.help_label")}
         <textarea dir="auto" className={textareaClass} maxLength={1000} value={msg} onChange={(e) => setMsg(e.target.value)} required />
       </label>
       <FormError message={state.error} />
       <div className="flex gap-2">
         <button type="submit" className={buttonClass("primary")} disabled={!msg.trim() || state.pending}>
-          {state.pending ? "Sending…" : "Send"}
+          {state.pending ? t("portal.sending") : t("portal.requests.send")}
         </button>
         <button type="button" className={buttonClass("secondary")} onClick={onCancel}>
-          Cancel
+          {t("portal.cancel")}
         </button>
       </div>
-      <p className="text-xs text-faint">Your care team replies here in the portal. PulseReach does not send e-mail or SMS.</p>
+      <p className="text-xs text-faint">{t("portal.assistant.replies_note")}</p>
     </form>
   );
 }
@@ -429,10 +439,11 @@ function AppointmentRequestForm({ recommendationId, followUpId, onDone, onCancel
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  const { t } = useLocale();
   if (done) return <div className="mt-4"><Confirmation>{done}</Confirmation></div>;
   return (
     <form
-      aria-label="Appointment request"
+      aria-label={t("portal.appointment_form.label")}
       className="reveal mt-4 flex flex-col gap-4 rounded-xl border border-border bg-surface p-4"
       onSubmit={async (e) => {
         e.preventDefault();
@@ -446,7 +457,7 @@ function AppointmentRequestForm({ recommendationId, followUpId, onDone, onCancel
             preferred_time_of_day: time || null,
             message: message.trim() || null,
           });
-          setDone(out.confirmation ?? "Your request was sent to your care team. They will contact you to confirm a time.");
+          setDone(out.confirmation ?? t("portal.appointment_form.sent"));
           setTimeout(onDone, 1500);
         } catch (err) {
           setError(apiErrorMessage(err));
@@ -457,33 +468,33 @@ function AppointmentRequestForm({ recommendationId, followUpId, onDone, onCancel
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <label className={labelClass}>
-          Preferred date (optional)
+          {t("portal.appointment_form.date")}
           <input type="date" className={inputClass} value={date} min={new Date().toISOString().slice(0, 10)} onChange={(e) => setDate(e.target.value)} />
         </label>
         <label className={labelClass}>
-          Preferred time of day
+          {t("portal.appointment_form.time")}
           <select className={inputClass} value={time} onChange={(e) => setTime(e.target.value as TimeOfDay | "")}>
-            <option value="">No preference</option>
-            <option value="morning">Morning</option>
-            <option value="afternoon">Afternoon</option>
-            <option value="evening">Evening</option>
+            <option value="">{t("portal.time.any")}</option>
+            <option value="morning">{t("portal.time.morning")}</option>
+            <option value="afternoon">{t("portal.time.afternoon")}</option>
+            <option value="evening">{t("portal.time.evening")}</option>
           </select>
         </label>
       </div>
       <label className={labelClass}>
-        Message to your care team (optional)
+        {t("portal.appointment_form.message")}
         <textarea dir="auto" className={textareaClass} maxLength={1000} value={message} onChange={(e) => setMessage(e.target.value)} />
       </label>
       <FormError message={error} />
       <div className="flex gap-2">
         <button type="submit" className={buttonClass("primary")} disabled={pending}>
-          {pending ? "Sending…" : "Send request"}
+          {pending ? t("portal.sending") : t("portal.appointment_form.submit")}
         </button>
         <button type="button" className={buttonClass("secondary")} onClick={onCancel}>
-          Cancel
+          {t("portal.cancel")}
         </button>
       </div>
-      <p className="text-xs text-faint">A request is not a booking: your care team confirms the time with you.</p>
+      <p className="text-xs text-faint">{t("portal.appointment_form.note")}</p>
     </form>
   );
 }
@@ -492,22 +503,23 @@ function Appointments({ attempt, onChanged }: { attempt: number; onChanged: () =
   const appts = useResource(`p-appt|${attempt}`, "patients.read_self", (s) => portalApi.appointments(s), attempt);
   const refs = useResource(`p-ref|${attempt}`, "patients.read_self", (s) => portalApi.referrals(s), attempt);
   const [requesting, setRequesting] = useState(false);
+  const { t } = useLocale();
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <Title title="Appointments" subtitle="Visits recorded by your care team, and referrals made for you." />
+        <Title title={t("portal.appointments.title")} subtitle={t("portal.appointments.subtitle")} />
         {!requesting && (
           <button type="button" className={buttonClass("primary")} onClick={() => setRequesting(true)}>
-            <CalendarClock size={15} aria-hidden="true" /> Request an appointment
+            <CalendarClock size={15} aria-hidden="true" /> {t("portal.appointments.request")}
           </button>
         )}
       </div>
       {requesting && <AppointmentRequestForm onDone={() => (setRequesting(false), onChanged())} onCancel={() => setRequesting(false)} />}
-      <Plate title="Your appointments" flush>
-        <ResourceView resource={appts} what="Appointments">
+      <Plate title={t("portal.appointments.list")} flush>
+        <ResourceView resource={appts} what={t("portal.what.appointments")}>
           {(a) =>
             a.items.length === 0 ? (
-              <p className="px-5 py-4 text-sm text-muted">No appointments are recorded.</p>
+              <p className="px-5 py-4 text-sm text-muted">{t("portal.appointments.empty")}</p>
             ) : (
               <ul className="divide-y divide-border">
                 {[...a.items].sort((x, y) => y.scheduled_datetime.localeCompare(x.scheduled_datetime)).map((x) => (
@@ -518,18 +530,18 @@ function Appointments({ attempt, onChanged }: { attempt: number; onChanged: () =
           }
         </ResourceView>
       </Plate>
-      <Plate title="Referrals" flush>
-        <ResourceView resource={refs} what="Referrals">
+      <Plate title={t("portal.referrals.title")} flush>
+        <ResourceView resource={refs} what={t("portal.what.referrals")}>
           {(r) =>
             r.items.length === 0 ? (
-              <p className="px-5 py-4 text-sm text-muted">No referrals.</p>
+              <p className="px-5 py-4 text-sm text-muted">{t("portal.referrals.empty")}</p>
             ) : (
               <ul className="divide-y divide-border">
                 {r.items.map((x) => (
                   <li key={x.referral_id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
                     <span>
                       <span dir="auto" className="block text-foreground">{x.referral_target}</span>
-                      <span className="text-xs text-faint">Since {x.trigger_date_display}</span>
+                      <span className="text-xs text-faint">{t("portal.referrals.since", { date: x.trigger_date_display })}</span>
                     </span>
                     <span className="rounded-full border border-border px-2.5 py-0.5 text-xs text-foreground">{x.status_label}</span>
                   </li>
@@ -547,6 +559,7 @@ function AppointmentRow({ appt, onChanged }: { appt: PortalAppointmentOut; onCha
   const [action, setAction] = useState<"cancel" | "reschedule" | null>(null);
   const [message, setMessage] = useState("");
   const [state, setState] = useState<{ pending: boolean; error: string | null; done: string | null }>({ pending: false, error: null, done: null });
+  const { t } = useLocale();
   return (
     <li className="px-5 py-3.5">
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
@@ -559,10 +572,10 @@ function AppointmentRow({ appt, onChanged }: { appt: PortalAppointmentOut; onCha
           {appt.can_request_change && !action && !state.done && (
             <>
               <button type="button" className={buttonClass("quiet")} onClick={() => setAction("reschedule")}>
-                Reschedule
+                {t("portal.appointments.reschedule")}
               </button>
               <button type="button" className={buttonClass("quiet", "text-status-error")} onClick={() => setAction("cancel")}>
-                Cancel
+                {t("portal.appointments.cancel")}
               </button>
             </>
           )}
@@ -577,7 +590,7 @@ function AppointmentRow({ appt, onChanged }: { appt: PortalAppointmentOut; onCha
             setState({ pending: true, error: null, done: null });
             try {
               const out = await portalApi.requestAppointmentChange(appt.appointment_id, { action, message: message.trim() || null });
-              setState({ pending: false, error: null, done: out.confirmation ?? "Your request was sent to your care team." });
+              setState({ pending: false, error: null, done: out.confirmation ?? t("portal.request_sent") });
               setAction(null);
               setTimeout(onChanged, 1500);
             } catch (err) {
@@ -586,16 +599,16 @@ function AppointmentRow({ appt, onChanged }: { appt: PortalAppointmentOut; onCha
           }}
         >
           <label className={labelClass}>
-            {action === "cancel" ? "Reason for cancelling (optional)" : "Which times suit you better? (optional)"}
+            {action === "cancel" ? t("portal.appointments.cancel_reason") : t("portal.appointments.reschedule_times")}
             <textarea dir="auto" className={textareaClass} maxLength={1000} value={message} onChange={(e) => setMessage(e.target.value)} />
           </label>
           <FormError message={state.error} />
           <div className="flex gap-2">
             <button type="submit" className={buttonClass(action === "cancel" ? "warm" : "primary")} disabled={state.pending}>
-              {state.pending ? "Sending…" : action === "cancel" ? "Ask to cancel" : "Ask to reschedule"}
+              {state.pending ? t("portal.sending") : action === "cancel" ? t("portal.appointments.ask_cancel") : t("portal.appointments.ask_reschedule")}
             </button>
             <button type="button" className={buttonClass("secondary")} onClick={() => setAction(null)}>
-              Keep appointment
+              {t("portal.appointments.keep")}
             </button>
           </div>
         </form>
@@ -606,24 +619,25 @@ function AppointmentRow({ appt, onChanged }: { appt: PortalAppointmentOut; onCha
 
 /* ── Messages (follow-ups) ────────────────────────────────────────────── */
 
-const RESPONSES: { value: PatientResponse; label: string }[] = [
-  { value: "will_book", label: "I will book it" },
-  { value: "already_done", label: "I already had it done" },
-  { value: "need_help", label: "I need help" },
-  { value: "question", label: "I have a question" },
-  { value: "not_interested", label: "Not right now" },
+const RESPONSES: { value: PatientResponse; label: MessageKey }[] = [
+  { value: "will_book", label: "portal.response.will_book" },
+  { value: "already_done", label: "portal.response.already_done" },
+  { value: "need_help", label: "portal.response.need_help" },
+  { value: "question", label: "portal.response.question" },
+  { value: "not_interested", label: "portal.response.not_interested" },
 ];
 
 function Messages({ attempt, onChanged }: { attempt: number; onChanged: () => void }) {
   const list = useResource(`p-fu|${attempt}`, "patients.read_self", (s) => portalApi.followUps(s), attempt);
   const [open, setOpen] = useState<string | null>(null);
+  const { t } = useLocale();
   return (
     <>
-      <Title title="Messages" subtitle="Messages from your care team. Reply to let them know how you would like to continue." />
-      <ResourceView resource={list} what="Messages">
+      <Title title={t("portal.messages.title")} subtitle={t("portal.messages.subtitle")} />
+      <ResourceView resource={list} what={t("portal.what.messages")}>
         {(l) =>
           l.items.length === 0 ? (
-            <QuietEmpty title="No messages">Your care team has not sent you a message.</QuietEmpty>
+            <QuietEmpty title={t("portal.messages.empty.title")}>{t("portal.messages.empty.body")}</QuietEmpty>
           ) : (
             <ul className="flex flex-col gap-3">
               {l.items.map((f) => (
@@ -643,30 +657,31 @@ function MessageCard({ item, open, onToggle, onChanged }: { item: PortalFollowUp
   const [response, setResponse] = useState<PatientResponse | "">("");
   const [message, setMessage] = useState("");
   const [state, setState] = useState<{ pending: boolean; error: string | null; done: string | null }>({ pending: false, error: null, done: null });
+  const { t } = useLocale();
   return (
     <li className="rounded-xl border border-border bg-surface-raised">
-      <button type="button" aria-expanded={open} onClick={onToggle} className="flex w-full items-start gap-3 px-5 py-4 text-left">
+      <button type="button" aria-expanded={open} onClick={onToggle} className="flex w-full items-start gap-3 px-5 py-4 text-start">
         <MessageSquare size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-accent" />
         <span className="min-w-0 flex-1">
           <span dir="auto" className="line-clamp-2 block text-sm text-foreground">{item.message}</span>
           <span className="mt-1.5 flex flex-wrap gap-x-3 text-xs text-faint">
             <span>{item.status_label}</span>
-            {item.due_date_display && <span className={item.is_overdue ? "text-status-due" : undefined}>Due {item.due_date_display}</span>}
+            {item.due_date_display && <span className={item.is_overdue ? "text-status-due" : undefined}>{t("portal.messages.due", { date: item.due_date_display })}</span>}
             <span>{item.updated_display}</span>
           </span>
           <span dir="auto" className="mt-1 block text-xs text-muted">{item.status_hint}</span>
         </span>
-        <ChevronRight size={16} aria-hidden="true" className={cn("mt-1 text-faint transition-transform duration-200", open && "rotate-90")} />
+        <ChevronRight size={16} aria-hidden="true" className={cn("mt-1 text-faint transition-transform duration-200 rtl:-scale-x-100", open && "rotate-90")} />
       </button>
       {open && (
         <div className="reveal-fade border-t border-border px-5 py-4">
-          <ResourceView resource={detail} what="Conversation">
+          <ResourceView resource={detail} what={t("portal.what.conversation")}>
             {(d) => (
               <ol className="flex flex-col gap-3">
                 {d.history.map((h) => (
                   <li key={h.event_id} className={cn("max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm", h.from_care_team ? "self-start bg-surface-sunken" : "self-end bg-accent-soft")}>
                     <span className="block text-xs text-faint">
-                      {h.from_care_team ? "Care team" : "You"} · {h.created_display}
+                      {h.from_care_team ? t("portal.messages.care_team") : t("portal.messages.you")} · {h.created_display}
                     </span>
                     <span dir="auto" className="text-foreground">{h.response_label ? `${h.response_label}${h.message ? ` — ${h.message}` : ""}` : (h.message ?? h.label)}</span>
                   </li>
@@ -679,7 +694,7 @@ function MessageCard({ item, open, onToggle, onChanged }: { item: PortalFollowUp
           ) : (
             !["completed", "cancelled"].includes(item.status) && (
               <form
-                aria-label="Reply"
+                aria-label={t("portal.messages.reply")}
                 className="mt-4 flex flex-col gap-3"
                 onSubmit={async (e) => {
                   e.preventDefault();
@@ -687,7 +702,7 @@ function MessageCard({ item, open, onToggle, onChanged }: { item: PortalFollowUp
                   setState({ pending: true, error: null, done: null });
                   try {
                     const out = await portalApi.respond(item.follow_up_id, response, message.trim() || null);
-                    setState({ pending: false, error: null, done: out.confirmation ?? "Your reply was sent to your care team." });
+                    setState({ pending: false, error: null, done: out.confirmation ?? t("portal.messages.reply_sent") });
                     setV((n) => n + 1);
                     setTimeout(onChanged, 1500);
                   } catch (err) {
@@ -696,7 +711,7 @@ function MessageCard({ item, open, onToggle, onChanged }: { item: PortalFollowUp
                 }}
               >
                 <fieldset>
-                  <legend className="mb-2 text-xs font-medium text-muted">Your reply</legend>
+                  <legend className="mb-2 text-xs font-medium text-muted">{t("portal.messages.your_reply")}</legend>
                   <div className="flex flex-wrap gap-2">
                     {RESPONSES.map((r) => (
                       <label
@@ -707,18 +722,18 @@ function MessageCard({ item, open, onToggle, onChanged }: { item: PortalFollowUp
                         )}
                       >
                         <input type="radio" name={`resp-${item.follow_up_id}`} value={r.value} className="sr-only" checked={response === r.value} onChange={() => setResponse(r.value)} />
-                        {r.label}
+                        {t(r.label)}
                       </label>
                     ))}
                   </div>
                 </fieldset>
-                <textarea dir="auto" aria-label="Message (optional)" placeholder="Add a message (optional)" className={textareaClass} maxLength={1000} value={message} onChange={(e) => setMessage(e.target.value)} />
+                <textarea dir="auto" aria-label={t("portal.messages.message_label")} placeholder={t("portal.messages.message_placeholder")} className={textareaClass} maxLength={1000} value={message} onChange={(e) => setMessage(e.target.value)} />
                 {response === "already_done" && (
-                  <p className="text-xs text-faint">Thanks — your care team will verify this. A report does not close a recommendation on its own.</p>
+                  <p className="text-xs text-faint">{t("portal.messages.already_done_note")}</p>
                 )}
                 <FormError message={state.error} />
                 <button type="submit" className={buttonClass("primary", "self-start")} disabled={!response || state.pending}>
-                  {state.pending ? "Sending…" : "Send reply"}
+                  {state.pending ? t("portal.sending") : t("portal.messages.send_reply")}
                 </button>
               </form>
             )
@@ -734,23 +749,24 @@ function MessageCard({ item, open, onToggle, onChanged }: { item: PortalFollowUp
 function Requests({ attempt, onChanged }: { attempt: number; onChanged: () => void }) {
   const list = useResource(`p-req|${attempt}`, "patients.read_self", (s) => portalApi.requests(s), attempt);
   const [help, setHelp] = useState(false);
+  const { t } = useLocale();
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <Title title="My requests" subtitle="Appointment, change and help requests you sent, and your care team’s replies." />
+        <Title title={t("portal.requests.title")} subtitle={t("portal.requests.subtitle")} />
         {!help && (
           <button type="button" className={buttonClass("secondary")} onClick={() => setHelp(true)}>
-            <LifeBuoy size={15} aria-hidden="true" /> Ask for help
+            <LifeBuoy size={15} aria-hidden="true" /> {t("portal.requests.ask_help")}
           </button>
         )}
       </div>
       {help && <HelpForm onDone={() => (setHelp(false), onChanged())} onCancel={() => setHelp(false)} />}
-      <ResourceView resource={list} what="Requests">
+      <ResourceView resource={list} what={t("portal.what.requests")}>
         {(l) =>
           l.items.length === 0 ? (
-            <QuietEmpty title="No requests yet">Requests you send to your care team, and their replies, appear here.</QuietEmpty>
+            <QuietEmpty title={t("portal.requests.empty")}>{t("portal.requests.empty_body")}</QuietEmpty>
           ) : (
-            <Plate title="Requests" flush>
+            <Plate title={t("portal.requests.list")} flush>
               <ul className="divide-y divide-border">
                 {l.items.map((r) => (
                   <RequestRow key={r.request_id} request={r} onChanged={onChanged} />
@@ -767,6 +783,7 @@ function Requests({ attempt, onChanged }: { attempt: number; onChanged: () => vo
 function RequestRow({ request: r, onChanged }: { request: PatientRequestOut; onChanged: () => void }) {
   const [confirming, setConfirming] = useState(false);
   const [state, setState] = useState<{ pending: boolean; error: string | null }>({ pending: false, error: null });
+  const { t, rich } = useLocale();
   const withdraw = async () => {
     setState({ pending: true, error: null });
     try {
@@ -786,13 +803,13 @@ function RequestRow({ request: r, onChanged }: { request: PatientRequestOut; onC
         {r.message && <span dir="auto" className="block text-muted">{r.message}</span>}
         {r.staff_response && (
           <span className="mt-1 block rounded-lg bg-surface-sunken px-3 py-2 text-foreground">
-            Care team: <span dir="auto">{r.staff_response}</span>
+            {rich("portal.requests.care_team_reply", { reply: <span dir="auto">{r.staff_response}</span> })}
           </span>
         )}
         <span dir="auto" className="mt-1 block text-xs text-foreground">{r.status_hint}</span>
         <span className="mt-1 block text-xs text-faint">
-          Sent {r.created_display}
-          {r.updated_at !== r.created_at && ` · Updated ${r.updated_display}`}
+          {t("portal.requests.sent", { date: r.created_display })}
+          {r.updated_at !== r.created_at && ` · ${t("portal.requests.updated", { date: r.updated_display })}`}
         </span>
         <FormError message={state.error} />
       </span>
@@ -802,15 +819,15 @@ function RequestRow({ request: r, onChanged }: { request: PatientRequestOut; onC
           (confirming ? (
             <>
               <button type="button" className={buttonClass("warm")} disabled={state.pending} onClick={() => void withdraw()}>
-                {state.pending ? "Withdrawing…" : "Yes, withdraw"}
+                {t(state.pending ? "portal.requests.withdrawing" : "portal.requests.withdraw_yes")}
               </button>
               <button type="button" className={buttonClass("secondary")} onClick={() => setConfirming(false)}>
-                Keep request
+                {t("portal.requests.keep")}
               </button>
             </>
           ) : (
             <button type="button" className={buttonClass("quiet", "text-status-error")} onClick={() => setConfirming(true)}>
-              Withdraw
+              {t("portal.requests.withdraw")}
             </button>
           ))}
       </span>
@@ -823,32 +840,38 @@ function RequestRow({ request: r, onChanged }: { request: PatientRequestOut; onC
 function HealthRecord({ attempt }: { attempt: number }) {
   const health = useResource(`p-health|${attempt}`, "patients.read_self", (s) => portalApi.healthSummary(s), attempt);
   const profile = useResource(`p-sum|${attempt}`, "patients.read_self", (s) => portalApi.summary(s), attempt);
+  const { t } = useLocale();
+  const channel = (c: string) => {
+    const key = `portal.channel.${c}` as MessageKey;
+    const label = t(key);
+    return label === key ? c.replace(/_/g, " ") : label;
+  };
   return (
     <>
-      <Title title="Health record" subtitle="Your programmes and recorded screenings and visits." />
+      <Title title={t("portal.record.title")} subtitle={t("portal.record.subtitle")} />
       <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-        <Plate title="About you">
-          <ResourceView resource={profile} what="Profile">
+        <Plate title={t("portal.record.about")}>
+          <ResourceView resource={profile} what={t("portal.what.profile")}>
             {(p) => (
               <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-                <dt className="text-muted">Name</dt>
+                <dt className="text-muted">{t("portal.record.name")}</dt>
                 <dd className="text-foreground">
                   {p.given_name} {p.family_name}
                 </dd>
-                <dt className="text-muted">Date of birth</dt>
+                <dt className="text-muted">{t("portal.record.dob")}</dt>
                 <dd className="text-foreground">{p.date_of_birth_display ?? "—"}</dd>
-                <dt className="text-muted">Language</dt>
-                <dd className="text-foreground">{p.preferred_language === "ar" ? "Arabic" : "English"}</dd>
-                <dt className="text-muted">Contact by</dt>
-                <dd className="text-foreground">{p.preferred_channel.replace(/_/g, " ")}</dd>
-                <dt className="text-muted">Record</dt>
-                <dd className="font-mono text-xs text-faint">{p.patient_id}</dd>
+                <dt className="text-muted">{t("language.label")}</dt>
+                <dd className="text-foreground">{p.preferred_language === "ar" ? t("portal.record.lang_ar") : t("portal.record.lang_en")}</dd>
+                <dt className="text-muted">{t("portal.record.contact")}</dt>
+                <dd className="text-foreground">{channel(p.preferred_channel)}</dd>
+                <dt className="text-muted">{t("portal.record.record")}</dt>
+                <dd className="font-mono text-xs text-faint"><span className="ltr-value">{p.patient_id}</span></dd>
               </dl>
             )}
           </ResourceView>
         </Plate>
-        <Plate title="Screenings and visits" flush>
-          <ResourceView resource={health} what="Health summary">
+        <Plate title={t("portal.record.events")} flush>
+          <ResourceView resource={health} what={t("portal.what.health")}>
             {(h) => (
               <>
                 <ul className="flex flex-wrap gap-2 border-b border-border px-5 py-3">
@@ -859,17 +882,17 @@ function HealthRecord({ attempt }: { attempt: number }) {
                   ))}
                 </ul>
                 {h.events.length === 0 ? (
-                  <p className="px-5 py-4 text-sm text-muted">No screenings or visits are recorded.</p>
+                  <p className="px-5 py-4 text-sm text-muted">{t("portal.record.events_empty")}</p>
                 ) : (
                   <ul className="divide-y divide-border">
                     {h.events.map((e, i) => (
                       <li key={i} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
                         <span>
-                          <span className="block text-foreground">{e.kind === "screening" ? "Screening" : "Well-child visit"}</span>
+                          <span className="block text-foreground">{e.kind === "screening" ? t("portal.record.screening") : t("portal.record.well_child")}</span>
                           <span className="text-xs text-faint">{e.programme_label}</span>
                         </span>
-                        <span className="text-right">
-                          <span className="block text-foreground">{e.performed_date_display ?? "Date not recorded"}</span>
+                        <span className="text-end">
+                          <span className="block text-foreground">{e.performed_date_display ?? t("portal.record.no_date")}</span>
                           <span className="text-xs text-muted">{e.status_label}</span>
                         </span>
                       </li>
@@ -892,10 +915,11 @@ function LinkAccount({ onLinked }: { onLinked: () => void }) {
   const [code, setCode] = useState("");
   const [dob, setDob] = useState("");
   const [state, setState] = useState<{ pending: boolean; error: string | null }>({ pending: false, error: null });
+  const { t } = useLocale();
   return (
     <div className="mx-auto max-w-md pt-10">
       <form
-        aria-label="Link your record"
+        aria-label={t("portal.link.label")}
         className="reveal rounded-2xl border border-border bg-surface-raised p-7 shadow-[var(--shadow-lift)]"
         onSubmit={async (e) => {
           e.preventDefault();
@@ -904,24 +928,24 @@ function LinkAccount({ onLinked }: { onLinked: () => void }) {
             await portalApi.link(code.trim(), dob);
             onLinked();
           } catch (err) {
-            setState({ pending: false, error: apiErrorMessage(err, "The code or date of birth did not match.") });
+            setState({ pending: false, error: apiErrorMessage(err, t("portal.link.error")) });
           }
         }}
       >
-        <h1 className="font-display text-[26px] font-medium text-foreground">Link your health record</h1>
-        <p className="mt-1.5 text-sm text-muted">Enter the invitation code your care team gave you and your date of birth.</p>
+        <h1 className="font-display text-[26px] font-medium text-foreground">{t("portal.link.title")}</h1>
+        <p className="mt-1.5 text-sm text-muted">{t("portal.link.intro")}</p>
         <div className="mt-6 flex flex-col gap-4">
           <label className={labelClass}>
-            Invitation code
+            {t("portal.link.code")}
             <input className={cn(inputClass, "font-mono uppercase")} value={code} onChange={(e) => setCode(e.target.value)} autoComplete="one-time-code" required />
           </label>
           <label className={labelClass}>
-            Date of birth
+            {t("portal.record.dob")}
             <input type="date" className={inputClass} value={dob} onChange={(e) => setDob(e.target.value)} required />
           </label>
           <FormError message={state.error} />
           <button type="submit" className={buttonClass("primary", "w-full")} disabled={state.pending || code.trim().length < 4 || !dob}>
-            {state.pending ? "Linking…" : "Link my record"}
+            {state.pending ? t("portal.link.pending") : t("portal.link.submit")}
           </button>
         </div>
       </form>
