@@ -24,6 +24,7 @@ import { useMutation } from "@/lib/coordination/use-coordination";
 import { buttonClass } from "@/components/ui/button-styles";
 import { Confirmation, FormError, inputClass, labelClass } from "@/components/coordination/primitives";
 import { cn } from "@/lib/cn";
+import { CopilotPanel } from "@/components/copilot/copilot-panel";
 import { ProfileSection, UnavailableNote } from "./profile-section";
 import { useLocale } from "@/lib/i18n/use-locale";
 
@@ -37,6 +38,7 @@ export function CareGapsSection({
   onTrace: (evaluationId: string) => void;
 }) {
   const { t, rich } = useLocale();
+  const { can } = useAuth();
   const gaps = data.evaluations.care_gaps;
   const open = gaps.filter((g) => gapStatusFlags(g.status).isOpen);
   const closed = gaps.filter((g) => !gapStatusFlags(g.status).isOpen);
@@ -87,6 +89,9 @@ export function CareGapsSection({
               )
           )}
         </div>
+      )}
+      {can("ai.explain") && can("care_gaps.read") && (
+        <CopilotPanel target={{ kind: "clinical_review", patientId: data.patient.patient_id }} className="mt-6" />
       )}
     </ProfileSection>
   );

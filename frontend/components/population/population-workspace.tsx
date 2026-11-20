@@ -15,6 +15,7 @@ import { EvaluationStatusCard, EvidenceCard, GapsByRuleCard, SegmentationCard } 
 import { UnavailableCapabilities } from "./unavailable-capabilities";
 import { PopulationMap } from "./geo/population-map";
 import { CohortComparison } from "./cohort-comparison";
+import { CopilotPanel } from "@/components/copilot/copilot-panel";
 import { Segmented } from "@/components/ui/segmented";
 import { buttonClass } from "@/components/ui/button-styles";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -24,7 +25,7 @@ import { useLocale } from "@/lib/i18n/use-locale";
 
 export function PopulationWorkspace() {
   const searchParams = useSearchParams();
-  const { scope } = useAuth();
+  const { scope, can } = useAuth();
   const { t } = useLocale();
   const [view, setView] = useState<"compare" | "people">("compare");
   const router = useRouter();
@@ -127,6 +128,8 @@ export function PopulationWorkspace() {
           </>
         )}
       </section>
+
+      {can("insights.read") && <CopilotPanel target={{ kind: "population" }} level={2} />}
 
       <PopulationMap />
 

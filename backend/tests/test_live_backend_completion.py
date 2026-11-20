@@ -406,6 +406,38 @@ def test_ai_audit_retrievable_after_restart(db):
 # --- migrations -----------------------------------------------------------------------------
 
 
+def test_0015_accepts_portal_assistant_and_staff_copilot_and_guards_downgrade(db):
+    row = ("INSERT INTO synthetic.ai_audit_record (audit_id, run_id, recorded_at, feature, patient_id, "
+           "prompt_version, generation_mode) VALUES (md5(random()::text), 'SYNTH-RUN-0001', now(), :f, :p, 'x', "
+           "'deterministic_fallback')")
+    new = "SELECT count(*) FROM synthetic.ai_audit_record WHERE feature IN ('portal_assistant', 'staff_copilot')"
+    with db.begin() as c:
+        for f in ("portal_assistant", "staff_copilot"):
+            c.execute(text(row), {"f": f, "p": PID})
+    with pytest.raises(IntegrityError):
+        with db.begin() as c:
+            c.execute(text(row), {"f": "unknown_feature", "p": PID})
+    assert {i["feature"] for i in client.get("/api/v1/ai/audit?feature=staff_copilot").json()["items"]} == {"staff_copilot"}
+
+    with pytest.raises(RuntimeError, match="Refusing to downgrade 0015"):
+        command.downgrade(_alembic_cfg(), "0014")
+    assert _count(db, "SELECT version_num FROM alembic_version") == "0015"
+    assert _count(db, new) == 2
+
+    others = _count(db, "SELECT count(*) FROM synthetic.ai_audit_record")
+    command.downgrade(_alembic_cfg(allow_data_loss=True), "0014")
+    try:
+        assert _count(db, new) == 0
+        assert _count(db, "SELECT count(*) FROM synthetic.ai_audit_record") == others - 2
+        for f in ("portal_assistant", "staff_copilot"):
+            with pytest.raises(IntegrityError):
+                with db.begin() as c:
+                    c.execute(text(row), {"f": f, "p": PID})
+    finally:
+        command.upgrade(_alembic_cfg(), "head")
+    assert _count(db, "SELECT version_num FROM alembic_version") == "0015"
+
+
 def test_migration_chain_upgrade_downgrade_safeguard_and_legacy_rows():
     """Fresh upgrade; refusal to drop history; 0009 -> head upgrade over existing workflow data."""
     from test_official_integrity import scratch_database
@@ -424,9 +456,9 @@ def test_migration_chain_upgrade_downgrade_safeguard_and_legacy_rows():
                 with pytest.raises(RuntimeError, match="Refusing to downgrade"):
                     command.downgrade(_alembic_cfg(), target)
             # env.py runs a downgrade in one transaction: the refused run is rolled back entirely
-            # (including the 0014..0011 steps that succeeded before 0010 refused), so we stay at head.
+            # (including the 0015..0011 steps that succeeded before 0010 refused), so we stay at head.
             with eng.connect() as c:
-                assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0014"
+                assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0015"
 
             # Explicitly allowed: back to the previous supported schema (0009).
             command.downgrade(_alembic_cfg(allow_data_loss=True), "0009")

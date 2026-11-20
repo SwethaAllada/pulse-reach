@@ -32,6 +32,8 @@ from app.schemas.portal import (
     HistoryItemOut,
     PatientAssistantIn,
     PatientAssistantOut,
+    PortalAssistantIn,
+    PortalAssistantOut,
     PatientEvaluationHistoryOut,
     PatientRequestDetailOut,
     PatientRequestOut,
@@ -59,7 +61,16 @@ from app.services.care_pathway import recommended_pathway
 from app.services.identity import directory, engagement
 from app.services.identity.audit import record_event
 from app.services.identity.store import identity_session
-from app.services.portal_assistant import AssistantContext, build_facts, deterministic_answer
+from app.services.ai.guardrails import sanitize_question, screen_question
+from app.services.portal_assistant import (
+    AssistantContext,
+    PortalContext,
+    build_facts,
+    build_portal_facts,
+    deterministic_answer,
+    deterministic_portal_answer,
+    screened_answer,
+)
 
 router = APIRouter(prefix="/api/v1/portal", tags=["portal"], dependencies=[Depends(_users_mode_only)])
 
@@ -397,22 +408,94 @@ def ask_assistant(
                       for o in (_appointment_out(a, loc) for a in appts)],
         open_requests=open_requests, follow_ups=follow_ups,
     )
+    question, fallback, screened, kind = _screen(p, req, loc, deterministic_answer(ctx, req.topic))
     answer, gen = ai.patient_assistant(
-        build_facts(ctx, req.topic), topic=req.topic, language=loc, fallback=deterministic_answer(ctx, req.topic),
+        build_facts(ctx, req.topic), topic=req.topic, language=loc, fallback=fallback,
         allow_completed=gap.status == "closed_completed",
         subject={"patient_id": p.patient_id, "care_gap_id": gap.care_gap_id, "rule_id": gap.rule_id},
-        run_id=patient.run_id, actor=p.audit_actor(),
+        run_id=patient.run_id, actor=p.audit_actor(), question=question, skip_reason=screened,
     )
     record_event(p, "ai.patient_assistant", "care_gap", resource_id=gap.care_gap_id, patient_id=p.patient_id,
                  status_code=200, permission="patients.read_self",
-                 details={"topic": req.topic, "generation_mode": gen.generation_mode, "ai_audit_id": gen.audit_id})
-    grounded = gen.generation_mode == LLM_GROUNDED
+                 details={"topic": req.topic, "generation_mode": gen.generation_mode, "ai_audit_id": gen.audit_id,
+                          "screened": screened})
     return PatientAssistantOut(
-        recommendation_id=gap.care_gap_id, topic=req.topic, topic_label=t(f"assistant.topic.{req.topic}", loc),
-        answer=answer, generation_mode=gen.generation_mode,
-        source_note=t("assistant.source.ai" if grounded else "assistant.source.standard", loc),
-        escalation=t("assistant.escalation", loc), disclaimer=t("explain.disclaimer", loc), **meta,
+        recommendation_id=gap.care_gap_id, topic=req.topic, answer=answer, **_answer_meta(req.topic, gen, kind, loc),
+        **meta,
     )
+
+
+def _screen(p: Principal, req: Any, loc: str, fallback: list[str]) -> tuple[str | None, list[str], str | None, str]:
+    """Free-text questions: sanitize, apply the stricter question rate limit and screen before any
+    model call. Returns `(question, fallback, skip_reason, answer_kind)`."""
+    if req.topic != "question":
+        return None, fallback, None, "answer"
+    check_rate_limit(f"portal_question:user:{p.user_id}", limit=10)
+    question = sanitize_question(req.question)
+    reason = screen_question(question)
+    lines, kind = screened_answer(reason, loc)
+    return question, lines, (f"blocked:{reason}" if reason else None), (kind if reason else "answer")
+
+
+def _answer_meta(topic: str, gen: Any, kind: str, loc: str) -> dict[str, Any]:
+    grounded = gen.generation_mode == LLM_GROUNDED
+    if not grounded and kind == "answer" and topic == "question":
+        kind = "unavailable"
+    if grounded:
+        note = t("assistant.source.ai", loc) + (" " + t("assistant.source.ai_translation", loc) if loc == "ar" else "")
+    else:
+        note = t("assistant.source.screened" if kind != "answer" and kind != "unavailable" else "assistant.source.standard", loc)
+    return dict(topic_label=t(f"assistant.topic.{topic}", loc), generation_mode=gen.generation_mode, answer_kind=kind,
+                ai_generated=grounded, source_note=note, escalation=t("assistant.escalation", loc),
+                disclaimer=t("explain.disclaimer", loc))
+
+
+@router.post("/assistant", response_model=PortalAssistantOut)
+def ask_portal_assistant(
+    req: PortalAssistantIn,
+    request: Request,
+    p: Principal = Depends(portal_patient),
+    repo: ReadRepository = Depends(get_read_repository),
+    followups: FollowUpRepository = Depends(get_followup_repository),
+    ai: AIService = Depends(get_ai_service),
+) -> PortalAssistantOut:
+    """Care navigation across the portal: the patient's own open recommendations and counts, the
+    portal sections and the routes to the care team. The patient comes from the session's account
+    link; only de-identified labels and counts reach the model; nothing is changed, booked or sent."""
+    check_rate_limit(f"portal_guide:user:{p.user_id}", limit=20)
+    loc, meta = _loc(request, p)
+    patient = repo.get_patient(p.patient_id)
+    if patient is None:
+        raise AppError(404, "portal.not_linked")
+    cache: dict[str, Any] = {}
+    recs = [_recommendation(g, loc, _next_step(repo, g, cache)) for g in _gaps(repo, p.patient_id) if g.status == "open"]
+    ts = datetime.now(timezone.utc)
+    upcoming = sorted((a for a in _appointments(followups, p.patient_id)
+                       if a.status in ("scheduled", "rescheduled") and a.scheduled_datetime >= ts),
+                      key=lambda a: a.scheduled_datetime)
+    nxt = _appointment_out(upcoming[0], loc) if upcoming else None
+    with identity_session() as s:
+        counts = engagement.summary_counts(s, organization_id=p.organization_id, patient_id=p.patient_id)
+    ctx = PortalContext(
+        locale=loc,
+        recommendations=[{"title": r["title"], "programme": r["programme_label"], "next_step": r["next_step_text"]}
+                         for r in recs],
+        open_recommendations=len(recs), upcoming_appointments=len(upcoming),
+        awaiting_your_reply=counts["awaiting_your_reply"], open_requests=counts["open_requests"],
+        next_appointment={"type": nxt.appointment_type_label, "when": nxt.scheduled_display, "status": nxt.status_label}
+        if nxt else None,
+    )
+    question, fallback, screened, kind = _screen(p, req, loc, deterministic_portal_answer(ctx, req.topic))
+    answer, gen = ai.portal_assistant(
+        build_portal_facts(ctx, req.topic), topic=req.topic, language=loc, fallback=fallback,
+        subject={"patient_id": p.patient_id}, run_id=patient.run_id, actor=p.audit_actor(), question=question,
+        skip_reason=screened,
+    )
+    record_event(p, "ai.portal_assistant", "patient", resource_id=p.patient_id, patient_id=p.patient_id,
+                 status_code=200, permission="patients.read_self",
+                 details={"topic": req.topic, "generation_mode": gen.generation_mode, "ai_audit_id": gen.audit_id,
+                          "screened": screened})
+    return PortalAssistantOut(topic=req.topic, answer=answer, **_answer_meta(req.topic, gen, kind, loc), **meta)
 
 
 # --- appointments and referrals ------------------------------------------------------------

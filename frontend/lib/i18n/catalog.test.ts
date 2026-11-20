@@ -151,6 +151,7 @@ const CONVERTED = [
   "components/coordination/appointments-workspace.tsx",
   "components/people/profile/coordination-section.tsx",
   "components/portal/patient-portal.tsx",
+  "components/copilot/copilot-panel.tsx",
 ];
 const ROOT = join(__dirname, "..", "..");
 const PHYSICAL = /(?<![\w-])-?(?:[a-z]+:)*(?:ml|mr|pl|pr|left|right|border-l|border-r|rounded-l|rounded-r|rounded-tl|rounded-tr|rounded-bl|rounded-br|space-x|text-left|text-right|float-left|float-right)(?:-[\w.[\]/%-]+)?(?![\w-])/;

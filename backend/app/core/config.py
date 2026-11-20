@@ -35,12 +35,21 @@ class Settings(BaseSettings):
     # AI assistance (explanations, outreach drafts, population summaries). Off by default; the
     # deterministic templates are always used when disabled, misconfigured or failing.
     llm_enabled: bool = False
-    llm_provider: Literal["openai_compatible", "anthropic"] = "openai_compatible"
-    llm_api_key: SecretStr | None = None
-    llm_base_url: str | None = None  # default per provider
-    llm_model: str | None = None
-    llm_timeout_seconds: float = 20.0
-    llm_max_output_tokens: int = 400
+    llm_provider: Literal["openai_compatible", "anthropic", "gemini"] = "openai_compatible"
+    llm_api_key: SecretStr | None = None  # openai_compatible / anthropic only
+    llm_base_url: str | None = None  # default per provider (not used by gemini)
+    llm_model: str | None = None  # overrides GEMINI_MODEL when LLM_PROVIDER=gemini
+    llm_timeout_seconds: float = Field(default=20.0, gt=0, le=120)  # per attempt
+    llm_max_retries: int = Field(default=2, ge=0, le=5)  # transient failures only (timeouts, 429, 5xx)
+    llm_total_timeout_seconds: float = Field(default=45.0, gt=0, le=300)  # all attempts + backoff
+    llm_max_output_tokens: int = Field(default=400, ge=64, le=8192)
+    # Google Gemini API (LLM_PROVIDER=gemini). The key comes from its own secret (Secret Manager
+    # `pulsereach-gemini-api-key` on Cloud Run); it is never sent to the frontend.
+    gemini_api_key: SecretStr | None = None
+    gemini_model: str = "gemini-3.5-flash-lite"
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
+    # Optional `thinkingConfig.thinkingLevel` (minimal|low|medium|high); empty = model default.
+    gemini_thinking_level: Literal["", "minimal", "low", "medium", "high"] = ""
 
     # Identity and access control (docs/authentication-and-rbac.md).
     # 'users': per-user bearer tokens, RBAC and organization isolation on every /api/v1 route.

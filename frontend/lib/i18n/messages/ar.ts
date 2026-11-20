@@ -12,6 +12,7 @@ import { coordinationAr } from "./coordination";
 import { homeAr } from "./home";
 import { adminAr } from "./admin";
 import { portalAr } from "./portal";
+import { copilotAr } from "./copilot";
 
 export const ar: Record<MessageKey, string> = {
   ...commonAr,
@@ -22,4 +23,5 @@ export const ar: Record<MessageKey, string> = {
   ...homeAr,
   ...adminAr,
   ...portalAr,
+  ...copilotAr,
 };

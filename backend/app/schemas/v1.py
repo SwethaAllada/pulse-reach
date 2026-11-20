@@ -476,6 +476,10 @@ class AIStatusOut(BaseModel):
     model: str | None = None
     last_provider_call_at: datetime | None = None
     last_provider_outcome: str | None = None
+    # Error kind of the most recent failed call (timeout, network, rate_limited, server_error, auth,
+    # bad_request, invalid_response, blocked, truncated, quota_exhausted, adapter_error, unknown);
+    # never provider text.
+    last_provider_error: str | None = None
     prompt_versions: dict[str, str]
 
 

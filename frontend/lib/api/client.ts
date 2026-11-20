@@ -94,7 +94,7 @@ async function apiGet<T>(path: string, query: object = {}, signal?: AbortSignal)
   return apiRequest<T>(path, `${path}${qs ? `?${qs}` : ""}`, { signal });
 }
 
-async function apiPost<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+export async function apiPost<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
   return apiRequest<T>(path, path, {
     method: "POST",
     signal,
@@ -423,8 +423,10 @@ export const portalApi = {
   requestAppointment: (body: P.AppointmentRequestIn) => apiPost<P.PatientRequestDetailOut>("/portal/appointment-requests", body),
   requestAppointmentChange: (appointmentId: string, body: P.AppointmentChangeIn) =>
     apiPost<P.PatientRequestDetailOut>(`/portal/appointments/${enc(appointmentId)}/change-requests`, body),
-  assistant: (recommendationId: string, topic: P.AssistantTopic) =>
-    apiPost<P.PatientAssistantOut>(`/portal/recommendations/${enc(recommendationId)}/assistant`, { topic }),
+  assistant: (recommendationId: string, topic: P.AssistantTopic, question?: string) =>
+    apiPost<P.PatientAssistantOut>(`/portal/recommendations/${enc(recommendationId)}/assistant`, question ? { topic, question } : { topic }),
+  guide: (topic: P.PortalAssistantTopic, question?: string) =>
+    apiPost<P.PortalAssistantOut>("/portal/assistant", question ? { topic, question } : { topic }),
   requestAssistance: (message: string, preferredTime: P.TimeOfDay | null) =>
     apiPost<P.PatientRequestDetailOut>("/portal/assistance", { message, preferred_time_of_day: preferredTime }),
 };

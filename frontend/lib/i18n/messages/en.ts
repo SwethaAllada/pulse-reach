@@ -15,9 +15,10 @@ import { coordinationEn } from "./coordination";
 import { homeEn } from "./home";
 import { adminEn } from "./admin";
 import { portalEn } from "./portal";
+import { copilotEn } from "./copilot";
 
 /** Domain modules, for the duplicate-key check. */
-export const EN_MODULES = { commonEn, populationEn, programmesEn, peopleEn, coordinationEn, homeEn, adminEn, portalEn };
+export const EN_MODULES = { commonEn, populationEn, programmesEn, peopleEn, coordinationEn, homeEn, adminEn, portalEn, copilotEn };
 
 export const en = {
   ...commonEn,
@@ -28,6 +29,7 @@ export const en = {
   ...homeEn,
   ...adminEn,
   ...portalEn,
+  ...copilotEn,
 } as const;
 
 export type MessageKey = keyof typeof en;

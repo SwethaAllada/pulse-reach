@@ -195,16 +195,29 @@ export interface PortalFollowUpDetailOut extends Localized, PortalFollowUpOut {
   confirmation?: string | null;
 }
 
-export type AssistantTopic = "why" | "next_steps" | "prepare_questions" | "appointments";
+export type AssistantTopic = "why" | "meaning" | "next_steps" | "prepare_questions" | "appointments" | "question";
+export type PortalAssistantTopic = "overview" | "portal_help" | "contact_care_team" | "question";
+/** `emergency` / `clinical_question` / `out_of_scope`: screened before any model call. */
+export type AnswerKind = "answer" | "emergency" | "clinical_question" | "out_of_scope" | "unavailable";
 
-/** Answer to a fixed topic about one of the patient's own recommendations (portal facts only). */
-export interface PatientAssistantOut extends Localized {
-  recommendation_id: string;
-  topic: AssistantTopic;
+interface AssistantAnswer extends Localized {
   topic_label: string;
   answer: string[];
   generation_mode: "llm_grounded" | "deterministic_fallback";
+  answer_kind?: AnswerKind;
+  ai_generated?: boolean;
   source_note: string;
   escalation: string;
   disclaimer: string;
+}
+
+/** Answer about one of the patient's own recommendations (portal facts only). */
+export interface PatientAssistantOut extends AssistantAnswer {
+  recommendation_id: string;
+  topic: AssistantTopic;
+}
+
+/** Portal-wide care navigation (own overview, portal sections, care-team routes). */
+export interface PortalAssistantOut extends AssistantAnswer {
+  topic: PortalAssistantTopic;
 }

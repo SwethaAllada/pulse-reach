@@ -52,7 +52,7 @@ WRITE_API_KEY=pulsereach-write-key:latest`) and share it out of band.
 ## 3. No outbound messages
 
 - [x] No SMS/e-mail/push/telephony integration exists in the codebase. The only outbound HTTP call
-  is the optional LLM provider (`app/services/ai/provider.py`), off by default.
+  is the optional LLM provider (`app/services/ai/provider.py`, e.g. the Gemini API), off by default.
 - [x] Outreach is simulated: approval records `outcome_status = "simulated_not_sent"`; DB `CHECK`s
   reject `sent`/`delivered` statuses; responses carry `sendable: false`, `delivered: false`.
 - [x] Consent and eligibility are checked before any provider call and re-checked at approval.
@@ -61,12 +61,18 @@ WRITE_API_KEY=pulsereach-write-key:latest`) and share it out of band.
 
 ## 4. Secrets
 
-- [x] No secrets in code or images: `DATABASE_URL` and `LLM_API_KEY` are `SecretStr` from the
-  environment; `.dockerignore` excludes `.env*` (except `.env.example`), `.venv`, tests and `.git`.
+- [x] No secrets in code or images: `DATABASE_URL`, `LLM_API_KEY` and `GEMINI_API_KEY` are
+  `SecretStr` from the environment; `.dockerignore` excludes `.env*` (except `.env.example`), `.venv`, tests and `.git`.
 - [x] Errors never return SQL, parameters or tracebacks; the API key is never logged or returned
   (`/ai/status` reports configuration only). The AI audit stores SHA-256 fingerprints, not texts.
-- [ ] In GCP, put `DATABASE_URL` and `LLM_API_KEY` in Secret Manager (`--set-secrets`), never in
-  `--set-env-vars`, and use a strong generated database password.
+- [ ] In GCP, put `DATABASE_URL` and `GEMINI_API_KEY` in Secret Manager (`pulsereach-database-url`,
+  `pulsereach-gemini-api-key`; `--set-secrets`), never in `--set-env-vars`, build args, images or
+  `NEXT_PUBLIC_*`, and use a strong generated database password. Create the Gemini secret from
+  stdin (`read -s` + `--data-file=-`), grant only `roles/secretmanager.secretAccessor` on that
+  secret to the Cloud Run runtime service account, and never create service-account keys
+  (`docs/deployment-gcp.md` §3a, `docs/ai-gemini.md`).
+- [ ] Restrict the Gemini API key to `generativelanguage.googleapis.com`, create it in the
+  hackathon project (budget alert applies) and revoke it after judging.
 - [x] Passwords, tokens, invitation/reset codes are never logged or returned after issuance; audit
   `details` hold identifiers only.
 
@@ -125,9 +131,12 @@ ACCEPTED LIMITATION = known, accepted for the hackathon. Runbook: `docs/deployme
 | Differencing (parent − visible children with small hidden total) | PASS after fix | was FAIL: Abu Dhabi district diabetes 12-month new cases revealed a hidden area as 1–2; fixed in `population/privacy.py`, swept by `test_parent_minus_visible_children_never_reveals_a_small_cell` |
 | Differencing across nested time windows / trend direction of suppressed cells | ACCEPTED LIMITATION | documented in `geospatial-population-intelligence.md` §10 |
 | Programme summary suppression vs. exact member lists | ACCEPTED LIMITATION (by design) | summaries cover only the caller's own patient scope, which the caller may already list individually |
-| AI safety (no status changes, human approval, simulated outreach, guardrails, fallback) | PASS (mocked provider) | `test_ai_*.py`; live Gemini call NOT RUN (no key) |
+| AI safety (no status changes, human approval, simulated outreach, guardrails, fallback) | PASS (mocked provider) | `test_ai_*.py`; native Gemini provider (`LLM_PROVIDER=gemini`) covered with mocked `httpx.post` only |
+| Live Gemini API call (real smoke test, `docs/ai-gemini.md` §8) | NOT RUN | no key created; AI stays disabled (`LLM_ENABLED=false`) until it is |
+| Gemini API key created in AI Studio and restricted to the Generative Language API | NOT RUN | `docs/deployment-gcp.md` §3a step 1 |
 | Secrets server-side, never logged | PASS | `test_auth.py::test_secrets_never_logged`, `test_ai_service.py` |
-| Secret Manager in GCP | NOT RUN | no GCP resources exist yet |
+| Secret Manager in GCP (`pulsereach-database-url`, `pulsereach-gemini-api-key`, accessor on the runtime SA only) | NOT RUN | no GCP resources exist yet; commands in `docs/deployment-gcp.md` §3/§3a |
+| Gemini key rotation / revocation | NOT RUN | documented in `docs/deployment-gcp.md` §3a steps 6–8 |
 | Database migrations 0001→0013 on a fresh DB; idempotent init + seed | PASS | disposable PG 17: `app.db.init --seed` twice, `alembic current` = 0013, startup validation OK |
 | Live PostgreSQL regression | PASS | full suite inside the Podman VM (see final report) |
 | Database backups / restore | NOT RUN | Cloud SQL automated backups configured by the runbook; restore drill not performed |

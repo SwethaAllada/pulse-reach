@@ -51,11 +51,25 @@
 - Condition scenarios live in `synthetic_generator/conditions.py` on a separate RNG stream; never change the
   main generator's random sequence.
 
+## Gemini provider and AI copilot (migration 0015, docs/ai-gemini.md)
+
+- `LLM_ENABLED=true LLM_PROVIDER=gemini GEMINI_API_KEY=…` (key only in untracked `backend/.env` or Secret Manager
+  `pulsereach-gemini-api-key`; never in `.env.example`). `GeminiProvider` in `provider.py`; retries only timeouts/network/429/5xx
+  (daily quota 429 → `quota_exhausted`, no retry). Tests: `tests/test_gemini_provider.py` (httpx mocked; patch `provider._sleep`).
+- Free-text questions: `guardrails.screen_question` (emergency / prompt_injection / other_person / clinical_question → fixed answer,
+  no provider call); output guard `validate_portal_answer`; question text never stored (length + SHA-256 only).
+- Portal-wide guide `POST /api/v1/portal/assistant` (feature `portal_assistant`, prompt `portal-assistant-v1`); recommendation
+  assistant adds topics `meaning`/`question` (prompt `patient-assistant-v2`).
+- Staff copilot `app/api/copilot.py` + `app/services/copilot.py` (feature `staff_copilot`, prompt `staff-copilot-v1`, strict JSON via
+  `parse_copilot_output`): `/ai/copilot/patients/{id}/coordination` (followups.read), `/clinical-review` (ai.explain+care_gaps.read),
+  `/ai/copilot/population` (insights.read). Tests: `tests/test_staff_copilot.py`. Frontend: `components/copilot/`, `components/portal/portal-assistant.tsx`.
+- Head migration is `0015`.
+
 ## Patient portal assistant (Phase 9, migration 0014)
 
-- `POST /api/v1/portal/recommendations/{id}/assistant` `{topic: why|next_steps|prepare_questions|appointments}`:
+- `POST /api/v1/portal/recommendations/{id}/assistant` `{topic: why|meaning|next_steps|prepare_questions|appointments|question}`:
   facts/fallback in `app/services/portal_assistant.py`, generation via `AIService.patient_assistant` (prompt
-  `patient-assistant-v1`, guard `validate_patient_assistant_output`). Only de-identified portal facts reach the model.
+  `patient-assistant-v2`, guard `validate_portal_answer`). Only de-identified portal facts reach the model.
   AI audit feature `patient_assistant` (migration 0014 widens `ck_ai_audit_record_feature`). Tests: `tests/test_patient_assistant.py`.
 - Portal `format_datetime` renders UTC with a ` UTC` suffix (matches staff views).
 - Frontend: `/portal/*` requests issued before `allowPortalRequests(true)` wait in `waitForPortal` (child effects run before

@@ -15,6 +15,7 @@ import { InlineError } from "@/components/programmes/resource-state";
 import { CreateTaskForm } from "@/components/coordination/create-task-form";
 import { TaskList } from "@/components/coordination/follow-up-workspace";
 import { Confirmation, QuietEmpty, ToneGlyph, VisibilityBadge } from "@/components/coordination/primitives";
+import { CopilotPanel } from "@/components/copilot/copilot-panel";
 import { ProfileSection } from "./profile-section";
 import { useLocale } from "@/lib/i18n/use-locale";
 
@@ -125,6 +126,8 @@ export function CoordinationSection({ data }: { data: PersonProfileData }) {
             </Link>
           </Confirmation>
         )}
+
+        {can("followups.read") && <CopilotPanel target={{ kind: "coordination", patientId: pid }} />}
 
         {errors.length > 0 && <InlineError message={t("coord.profile.unavailable", { message: errors[0].message })} onRetry={() => setAttempt((n) => n + 1)} />}
         {refused.length > 0 && (

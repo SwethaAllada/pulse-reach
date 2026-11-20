@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.admin import router as admin_router
 from app.api.auth import router as auth_router
+from app.api.copilot import router as copilot_router
 from app.api.engagement import router as engagement_router
 from app.api.health import router as health_router
 from app.api.population import router as population_router
@@ -133,3 +134,4 @@ app.include_router(admin_router)
 app.include_router(portal_router)
 app.include_router(engagement_router)
 app.include_router(population_router)
+app.include_router(copilot_router)

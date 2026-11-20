@@ -240,3 +240,146 @@ def validate_patient_assistant_output(
         if (latin or not _ARABIC_LETTER_RE.search(text)) and "language_mismatch" not in out:
             out.append("language_mismatch")
     return out
+
+
+# --- untrusted input screening (before any provider call) -----------------------------------
+
+_INJECTION_RE = re.compile(
+    r"\b(?:ignore|disregard|forget|override|bypass)\b.{0,40}\b(?:instruction|rule|prompt|guideline|"
+    r"polic|previous|above|earlier|system)\w*|\bsystem\s*prompt\b|\b(?:developer|admin|god|dan|debug)\s+mode\b|"
+    r"\byou\s+are\s+now\b|\b(?:act|behave)\s+as\b|\bpretend\s+(?:to\s+be|you)\b|\bjailbreak\w*\b|"
+    r"\b(?:reveal|show|print|repeat|output|tell me)\b.{0,30}\b(?:instruction|prompt|rule|config\w*|"
+    r"secret|api\s*key)\w*|\bnew\s+(?:instructions|rules|role)\b|</?\s*(?:system|assistant|instructions?)\s*>|"
+    r"\bFACTS:|\bPATIENT_QUESTION\b|"
+    r"تجاهل.{0,30}(?:التعليمات|القواعد|الأوامر|السابق)|تعليمات النظام|موجه النظام|تظاهر بأنك|أنت الآن|"
+    r"اكشف.{0,20}(?:التعليمات|القواعد|المفتاح)|وضع المطور",
+    re.IGNORECASE | re.DOTALL,
+)
+_EMERGENCY_RE = re.compile(
+    r"\b(?:emergenc\w*|chest\s+pain|can'?t\s+breathe|cannot\s+breathe|short(?:ness)?\s+of\s+breath|"
+    r"suicid\w*|kill\s+myself|self[- ]harm|overdos\w*|unconscious|faint(?:ed|ing)|stroke|heart\s+attack|"
+    r"severe\s+(?:pain|bleeding)|bleeding\s+heavily|seizure)\b|"
+    r"طوارئ|ألم في الصدر|ألم بالصدر|ضيق (?:في )?التنفس|لا أستطيع التنفس|انتحار|أقتل نفسي|إيذاء النفس|جرعة زائدة|"
+    r"فقدان الوعي|إغماء|جلطة|نوبة قلبية|نزيف",
+    re.IGNORECASE,
+)
+_CLINICAL_QUESTION_RE = re.compile(
+    r"\b(?:do\s+i\s+have|have\s+i\s+got|am\s+i\s+(?:sick|ill|at\s+risk)|diagnos\w*|what(?:'s|\s+is)\s+wrong\s+with\s+me|"
+    r"should\s+i\s+(?:take|stop|start)|dos(?:e|age)|medicin\w*|medicat\w*|prescri\w*|treat(?:ment)?s?|"
+    r"symptoms?|test\s+results?|my\s+results?|cancer|tumou?r|diabet\w*|blood\s+pressure|cholesterol)\b|"
+    r"هل (?:لدي|عندي|أنا مصاب)|تشخيص|ماذا بي|دواء|أدوية|جرعة|علاج|أعراض|نتائج (?:التحليل|الفحص)|نتيجتي|سرطان|"
+    r"ورم|السكري|ضغط الدم|الكوليسترول",
+    re.IGNORECASE,
+)
+_OTHER_PERSON_RE = re.compile(
+    r"\b(?:other|another|all|every)\s+(?:patients?|people|persons?|members?)\b|\bsomeone\s+else'?s?\b|"
+    r"\bmy\s+(?:wife|husband|son|daughter|child|mother|father|friend|neighbou?r)'?s?\b|"
+    r"\b(?:his|her|their)\s+(?:record|results?|appointments?)\b|"
+    r"مرضى آخرين|مريض آخر|جميع المرضى|شخص آخر|زوجتي|زوجي|ابني|ابنتي|أمي|أبي|صديقي",
+    re.IGNORECASE,
+)
+_CONTROL_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f\u200b-\u200f\u202a-\u202e\u2066-\u2069]")
+
+
+def sanitize_question(text: str) -> str:
+    """Strip control / bidi-override characters and collapse whitespace (length is schema-bounded)."""
+    return re.sub(r"\s+", " ", _CONTROL_RE.sub(" ", text)).strip()
+
+
+def screen_question(text: str) -> str | None:
+    """Classify a person's free-text question before it can reach a model.
+
+    Returns None (may be answered from the facts) or the reason it is answered deterministically
+    without any provider call: `emergency` (urgent-help escalation first), `prompt_injection`,
+    `other_person` or `clinical_question`."""
+    if _EMERGENCY_RE.search(text):
+        return "emergency"
+    if _INJECTION_RE.search(text):
+        return "prompt_injection"
+    if _OTHER_PERSON_RE.search(text):
+        return "other_person"
+    if _CLINICAL_QUESTION_RE.search(text):
+        return "clinical_question"
+    return None
+
+
+# Model output that echoes the prompt scaffolding or claims an action was taken by the assistant.
+_LEAK_RE = re.compile(
+    r"\bFACTS:|PATIENT_QUESTION|untrusted text|system (?:prompt|instruction)s?|my instructions|"
+    r"Use ONLY the facts|these instructions|التعليمات التي|تعليمات النظام",
+    re.IGNORECASE,
+)
+_AGENT_ACTION_RE = re.compile(
+    r"\b(?:i|we)(?:'ve|'ll| have| will| just)?\s+(?:already\s+)?(?:booked|scheduled|sent|messaged|texted|"
+    r"e-?mailed|contacted|called|referred|completed|closed|updated|marked|changed|cancelled|approved)\b|"
+    r"\b(?:has|have)\s+been\s+(?:sent|booked|referred|marked\s+(?:as\s+)?complete\w*)\b|"
+    r"قمت ب(?:حجز|إرسال|تحديث|إغلاق|إلغاء)|تم (?:إرسال|حجز|الإرسال|الحجز|الإحالة|إغلاق)|أرسلت|حجزت",
+    re.IGNORECASE,
+)
+
+
+def validate_portal_answer(
+    text: str | None, *, facts: Any, language: str, max_chars: int, allow_completed: bool = False
+) -> list[str]:
+    """Patient-assistant rules plus no prompt leakage and no claims that the assistant acted."""
+    out = validate_patient_assistant_output(
+        text, facts=facts, language=language, max_chars=max_chars, allow_completed=allow_completed
+    )
+    if text and text.strip():
+        out += [v for rx, v in ((_LEAK_RE, "prompt_leak"), (_AGENT_ACTION_RE, "action_claim"))
+                if rx.search(text) and v not in out]
+    return out
+
+
+# --- staff copilot (structured JSON output) ---------------------------------------------------
+
+COPILOT_LIMITS = {"summary": 500, "item": 220, "points": 6, "questions": 5}
+_FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
+
+
+def parse_copilot_output(text: str | None) -> dict[str, Any] | None:
+    """Strict parse of `{"summary": str, "points": [str], "questions": [str]}`; None if malformed.
+    Model JSON is never trusted: unknown keys, wrong types or exceeded limits are rejected."""
+    if not text or not text.strip():
+        return None
+    try:
+        data = json.loads(_FENCE_RE.sub("", text.strip()))
+    except ValueError:
+        return None
+    if not isinstance(data, dict) or set(data) - {"summary", "points", "questions"}:
+        return None
+    summary, points, questions = data.get("summary"), data.get("points", []), data.get("questions", [])
+    if not isinstance(summary, str) or not summary.strip() or len(summary) > COPILOT_LIMITS["summary"]:
+        return None
+    for items, limit in ((points, COPILOT_LIMITS["points"]), (questions, COPILOT_LIMITS["questions"])):
+        if (not isinstance(items, list) or len(items) > limit
+                or any(not isinstance(i, str) or not i.strip() or len(i) > COPILOT_LIMITS["item"] for i in items)):
+            return None
+    return {"summary": summary.strip(), "points": [p.strip() for p in points],
+            "questions": [q.strip() for q in questions]}
+
+
+def validate_copilot_output(text: str | None, *, facts: Any, language: str) -> list[str]:
+    """Structure first, then every text field: no clinical/risk/eligibility/completion claims, no
+    invented numbers, identifiers, links, markdown, prompt leakage or claims that anything was done."""
+    parsed = parse_copilot_output(text)
+    if parsed is None:
+        return ["invalid_structure"]
+    arabic = language == "ar"
+    known = json.dumps(facts, default=str, ensure_ascii=False).lower()
+    out: list[str] = []
+    for field_text in [parsed["summary"], *parsed["points"], *parsed["questions"]]:
+        t = field_text.translate(_EASTERN_DIGITS) if arabic else field_text
+        found = validate_output(t, facts=facts, max_chars=COPILOT_LIMITS["summary"], allow_completed=False,
+                                allow_eligibility=False)
+        found += [v for rx, v in ((_MARKDOWN_RE, "format_markdown"), (_LEAK_RE, "prompt_leak"),
+                                  (_AGENT_ACTION_RE, "action_claim"), (_SENT_RE, "sent_claim"))
+                  if rx.search(t)]
+        if not arabic and _NON_LATIN_LETTER_RE.search(t):
+            found.append("language_mismatch")
+        if arabic:
+            found += [v for rx, v in _AR_ASSISTANT_CHECKS if rx.search(t)]
+            if any(w.lower() not in known for w in _LATIN_WORD_RE.findall(t)) or not _ARABIC_LETTER_RE.search(t):
+                found.append("language_mismatch")
+        out += [v for v in found if v not in out]
+    return out

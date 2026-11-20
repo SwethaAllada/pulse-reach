@@ -12,11 +12,10 @@ import {
   LifeBuoy,
   LogOut,
   MessageSquare,
-  Sparkles,
 } from "lucide-react";
 import { portalApi, apiErrorMessage } from "@/lib/api/client";
 import { useResource, type Resource } from "@/lib/api/resource";
-import type { AssistantTopic, PatientAssistantOut, PatientRequestOut, PatientResponse, PortalAppointmentOut, PortalFollowUpOut, RecommendationOut, TimeOfDay } from "@/lib/api/portal-types";
+import type { AssistantTopic, PortalAssistantTopic, PatientRequestOut, PatientResponse, PortalAppointmentOut, PortalFollowUpOut, RecommendationOut, TimeOfDay } from "@/lib/api/portal-types";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useLocale } from "@/lib/i18n/use-locale";
 import type { MessageKey } from "@/lib/i18n/translate";
@@ -30,6 +29,8 @@ import { buttonClass } from "@/components/ui/button-styles";
 import { ResourceView } from "@/components/programmes/resource-state";
 import { Confirmation, FormError, QuietEmpty, inputClass, labelClass, textareaClass } from "@/components/coordination/primitives";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/use-locale";
+import { AssistantPanel } from "./portal-assistant";
 
 type View = "home" | "care" | "appointments" | "messages" | "requests" | "record";
 
@@ -203,6 +204,7 @@ function Overview({ onNavigate, attempt }: { onNavigate: (v: View) => void; atte
           </ResourceView>
         </Plate>
       </div>
+      <PortalGuide />
     </>
   );
 }
@@ -313,81 +315,40 @@ function RecommendationCard({ rec, open, onToggle, onChanged }: { rec: Recommend
   );
 }
 
-/* ── Recommendation assistant ─────────────────────────────────────────── */
+/* ── Assistant ─────────────────────────────────────────────────────────── */
 
-const TOPICS: { id: AssistantTopic; label: MessageKey }[] = [
-  { id: "why", label: "portal.assistant.topic_why" },
-  { id: "next_steps", label: "portal.assistant.topic_next" },
-  { id: "prepare_questions", label: "portal.assistant.topic_questions" },
-  { id: "appointments", label: "portal.assistant.topic_appointments" },
-];
-
-/**
- * Plain-language help on fixed topics about this recommendation. The backend answers from the
- * patient's own portal facts (a guarded AI answer when enabled, otherwise the standard
- * explanation); it never changes, books or sends anything.
- */
 function RecommendationAssistant({ recommendationId }: { recommendationId: string }) {
-  const [topic, setTopic] = useState<AssistantTopic | null>(null);
-  const [state, setState] = useState<{ pending: boolean; error: string | null; data: PatientAssistantOut | null }>({ pending: false, error: null, data: null });
-  const [asking, setAsking] = useState(false);
-  const { t } = useLocale();
-  const ask = async (x: AssistantTopic) => {
-    setTopic(x);
-    setState({ pending: true, error: null, data: null });
-    try {
-      setState({ pending: false, error: null, data: await portalApi.assistant(recommendationId, x) });
-    } catch (err) {
-      setState({ pending: false, error: apiErrorMessage(err), data: null });
-    }
-  };
-  const d = state.data;
+  const t = useT();
   return (
-    <section aria-label={t("portal.assistant.title")} className="mt-5 rounded-xl border border-border bg-surface p-4">
-      <h3 className="flex items-center gap-2 text-sm font-medium text-foreground">
-        <Sparkles size={15} aria-hidden="true" className="text-accent" /> {t("portal.assistant.title")}
-      </h3>
-      <div role="group" aria-label={t("portal.assistant.choose")} className="mt-3 flex flex-wrap gap-2">
-        {TOPICS.map((x) => (
-          <button key={x.id} type="button" aria-pressed={topic === x.id} disabled={state.pending} onClick={() => void ask(x.id)} className={cn(buttonClass("secondary"), topic === x.id && "border-accent bg-accent-soft")}>
-            {t(x.label)}
-          </button>
-        ))}
-      </div>
-      <div aria-live="polite" className="mt-3">
-        {state.pending && <p className="skeleton h-16 rounded-lg" aria-label={t("portal.assistant.preparing")} />}
-        {state.error && (
-          <div className="flex flex-wrap items-center gap-3">
-            <FormError message={state.error} />
-            {topic && (
-              <button type="button" className={buttonClass("secondary")} onClick={() => void ask(topic)}>
-                {t("portal.assistant.retry")}
-              </button>
-            )}
-          </div>
-        )}
-        {d && (
-          <div dir={d.direction} lang={d.locale} className="reveal-fade flex flex-col gap-2 text-sm">
-            <h4 className="font-medium text-foreground">{d.topic_label}</h4>
-            {d.topic === "prepare_questions" ? (
-              <ul className="list-disc space-y-1 ps-5 text-foreground">{d.answer.map((a, i) => <li key={i}>{a}</li>)}</ul>
-            ) : (
-              d.answer.map((a, i) => <p key={i} className="text-foreground">{a}</p>)
-            )}
-            <p className="rounded-lg bg-surface-sunken px-3 py-2 text-foreground">{d.escalation}</p>
-            <p className="text-xs text-faint">{d.source_note}</p>
-          </div>
-        )}
-      </div>
-      {d &&
-        (asking ? (
-          <HelpForm initial={`${d.topic_label}: `} onDone={() => setAsking(false)} onCancel={() => setAsking(false)} />
-        ) : (
-          <button type="button" className={buttonClass("primary", "mt-3")} onClick={() => setAsking(true)}>
-            <LifeBuoy size={15} aria-hidden="true" /> {t("portal.assistant.ask_team")}
-          </button>
-        ))}
-    </section>
+    <AssistantPanel<AssistantTopic>
+      title={t("portal.assistant.title")}
+      topics={[
+        { id: "why", label: "portal.assistant.topic_why" },
+        { id: "meaning", label: "portal.assistant.topic_meaning" },
+        { id: "next_steps", label: "portal.assistant.topic_next" },
+        { id: "prepare_questions", label: "portal.assistant.topic_questions" },
+        { id: "appointments", label: "portal.assistant.topic_appointments" },
+      ]}
+      ask={(topic, question) => portalApi.assistant(recommendationId, topic, question)}
+      renderHelp={(initial, close) => <HelpForm initial={initial} onDone={close} onCancel={close} />}
+    />
+  );
+}
+
+function PortalGuide() {
+  const t = useT();
+  return (
+    <AssistantPanel<PortalAssistantTopic>
+      title={t("portal.assistant.guide_title")}
+      description={t("portal.assistant.guide_description")}
+      topics={[
+        { id: "overview", label: "portal.assistant.topic_overview" },
+        { id: "portal_help", label: "portal.assistant.topic_portal_help" },
+        { id: "contact_care_team", label: "portal.assistant.topic_contact" },
+      ]}
+      ask={(topic, question) => portalApi.guide(topic, question)}
+      renderHelp={(initial, close) => <HelpForm initial={initial} onDone={close} onCancel={close} />}
+    />
   );
 }
 

@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from app.schemas.identity import Locale
 
@@ -149,25 +149,59 @@ class RecommendationExplanationOut(LocalizedOut):
     disclaimer: str
 
 
-AssistantTopic = Literal["why", "next_steps", "prepare_questions", "appointments"]
+AssistantTopic = Literal["why", "meaning", "next_steps", "prepare_questions", "appointments", "question"]
+PortalAssistantTopic = Literal["overview", "portal_help", "contact_care_team", "question"]
+# answer: restates the record; emergency / clinical_question / out_of_scope: screened before any
+# model call (deterministic escalation); unavailable: a free-text question the AI could not answer.
+AnswerKind = Literal["answer", "emergency", "clinical_question", "out_of_scope", "unavailable"]
+AssistantQuestion = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=500)]
 
 
-class PatientAssistantIn(_In):
+class _AssistantIn(_In):
+    """`question` is required for topic `question` and refused for every other topic. It is
+    untrusted text: screened, never stored (only its length and SHA-256 are audited)."""
+
+    question: AssistantQuestion | None = None
+
+    @model_validator(mode="after")
+    def _question_matches_topic(self):
+        if (self.topic == "question") != (self.question is not None):  # type: ignore[attr-defined]
+            raise ValueError("question is required for topic 'question' and not allowed otherwise")
+        return self
+
+
+class PatientAssistantIn(_AssistantIn):
     topic: AssistantTopic
 
 
-class PatientAssistantOut(LocalizedOut):
-    """Answer to a fixed topic about one of the patient's own recommendations. `answer` restates
-    portal facts (model text that passed the guardrails, or the deterministic template)."""
+class PortalAssistantIn(_AssistantIn):
+    topic: PortalAssistantTopic
 
-    recommendation_id: str
-    topic: AssistantTopic
+
+class _AssistantOut(LocalizedOut):
     topic_label: str
     answer: list[str]
     generation_mode: Literal["llm_grounded", "deterministic_fallback"]
+    answer_kind: AnswerKind = "answer"
+    ai_generated: bool = False
     source_note: str
     escalation: str
     disclaimer: str
+
+
+class PatientAssistantOut(_AssistantOut):
+    """Answer about one of the patient's own recommendations. `answer` restates portal facts
+    (model text that passed the guardrails, or the deterministic template)."""
+
+    recommendation_id: str
+    topic: AssistantTopic
+
+
+class PortalAssistantOut(_AssistantOut):
+    """Portal-level care navigation over the patient's own overview, portal features and
+    contact routes."""
+
+    topic: PortalAssistantTopic
 
 
 class PortalAppointmentOut(BaseModel):

@@ -1007,8 +1007,20 @@ def population_insight(
     ai: AIService = Depends(get_ai_service),
     p: Principal = Depends(require("insights.read")),
 ) -> PopulationInsightOut:
+    facts = population_insight_facts(repo, p)
+    insight = ai.population_insight(facts, actor=None if p.legacy else p.audit_actor())
+    return PopulationInsightOut(
+        facts=insight.facts,
+        summary_text=insight.summary_text,
+        disclaimer=_INSIGHT_DISCLAIMER,
+        ai=_ai_out(insight.meta),
+    )
+
+
+def population_insight_facts(repo: ReadRepository, p: Principal) -> dict[str, Any]:
+    """Server-side aggregate counts over the caller's patient scope (no individual records)."""
     d = repo.get_dashboard_summary(patient_ids=p.patient_scope())
-    facts = {
+    return {
         "run_id": d.run_id,
         "evaluation_run_id": d.evaluation_run_id,
         "reference_date": d.reference_date.isoformat(),
@@ -1024,13 +1036,6 @@ def population_insight(
         "review_flagged_patients_count": d.review_flagged_patients_count,
         "rule_review_patients_count": d.rule_review_patients_count,
     }
-    insight = ai.population_insight(facts, actor=None if p.legacy else p.audit_actor())
-    return PopulationInsightOut(
-        facts=insight.facts,
-        summary_text=insight.summary_text,
-        disclaimer=_INSIGHT_DISCLAIMER,
-        ai=_ai_out(insight.meta),
-    )
 
 
 @router.get("/ai/status", response_model=AIStatusOut)
@@ -1044,7 +1049,8 @@ def ai_status(
 def ai_audit(
     limit: int = Query(default=50, ge=1, le=500),
     feature: Literal[
-        "explanation", "outreach_draft", "outreach_review", "population_insight", "patient_assistant"
+        "explanation", "outreach_draft", "outreach_review", "population_insight", "patient_assistant",
+        "portal_assistant", "staff_copilot",
     ] | None = Query(default=None),
     ai: AIService = Depends(get_ai_service),
     p: Principal = Depends(require("audit_logs.read")),

@@ -1929,7 +1929,7 @@ class AIAuditRecord(Base):
         CheckConstraint("audit_id ~ '^[0-9a-f]{32}$'", name="audit_id_format"),
         CheckConstraint(
             "feature IN ('explanation', 'outreach_draft', 'outreach_review', 'population_insight', "
-            "'patient_assistant')",
+            "'patient_assistant', 'portal_assistant', 'staff_copilot')",
             name="feature",
         ),
         CheckConstraint(

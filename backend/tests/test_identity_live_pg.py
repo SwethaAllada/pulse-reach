@@ -195,7 +195,7 @@ def test_zz_downgrade_refused_while_identity_data_exists(pg):
     with pytest.raises(RuntimeError, match="Refusing to downgrade 001[13]"):
         command.downgrade(_cfg(), "0010")
     with eng.connect() as c:  # one transaction: the 0013/0012 steps are rolled back too
-        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0014"
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0015"
     command.downgrade(_cfg(allow_data_loss=True), "0010")
     with eng.connect() as c:
         assert c.execute(text("SELECT to_regclass('identity.user_account')")).scalar_one() is None
