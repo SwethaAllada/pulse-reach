@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { CARE_GAPS, OPEN_QUESTIONS, RULES, SUMMARY } from "@/test/fixtures";
+import { CARE_GAPS, fakeBackend, fakeSummaryConfig, OPEN_QUESTIONS, RULES } from "@/test/fixtures";
+import type { ProgrammeSummaryOut } from "@/lib/api/types";
 import {
   buildProgrammeModel,
   evidenceFigures,
+  summaryBand,
   pathwayFromSlug,
   programmeHref,
   ruleHref,
@@ -43,12 +45,38 @@ describe("programme model", () => {
     expect(wcv.openQuestions).toEqual([]);
   });
 
-  it("reports unknown gap figures as null, never as zero", () => {
-    const m = buildProgrammeModel("ifhas", RULES, [], []);
-    const figures = evidenceFigures(SUMMARY.pathway_breakdown!.ifhas, m, null, false);
-    const byCls = Object.fromEntries(figures.map((f) => [f.cls, f.value]));
-    expect(byCls).toEqual({ calculated: 2, recorded_gap: null, completed: null, missing_history: 1 });
-    expect(evidenceFigures(undefined, m, null)[0].value).toBeNull();
+  it("takes evidence figures from the server-side summary, keeping evidence classes apart", () => {
+    const s = fakeBackend("http://api/api/v1/programmes/ifhas/summary") as ProgrammeSummaryOut;
+    const byCls = Object.fromEntries(evidenceFigures(s).map((f) => [f.cls, f.value]));
+    expect(byCls).toEqual({ calculated: 3, recorded_gap: 2, completed: 0, missing_history: 1 });
+    expect(evidenceFigures(s)[0].detail).toContain("filters applied");
+  });
+
+  it("reports an unavailable summary and suppressed cells as null, never as zero", () => {
+    expect(evidenceFigures(null).every((f) => f.value === null && f.detail === "Programme summary not available")).toBe(true);
+    fakeSummaryConfig.minCellSize = 5;
+    try {
+      const s = fakeBackend("http://api/api/v1/programmes/ifhas/summary") as ProgrammeSummaryOut;
+      expect(s.members).toBeNull();
+      const f = evidenceFigures(s);
+      expect(f.map((x) => x.value)).toEqual([null, null, 0, null]);
+      expect(f[0].detail).toMatch(/Suppressed for privacy/);
+      expect(summaryBand(s)).toBeNull();
+    } finally {
+      fakeSummaryConfig.minCellSize = 1;
+    }
+  });
+
+  it("builds a composition band from summary segments", () => {
+    const s = fakeBackend("http://api/api/v1/programmes/ifhas/summary") as ProgrammeSummaryOut;
+    const band = summaryBand(s)!;
+    expect(band.people).toBe(4);
+    expect(band.segments.map((x) => [x.segment, x.people])).toEqual([
+      ["open_gap", 1],
+      ["available", 1],
+      ["partial", 1],
+      ["not_available", 1],
+    ]);
   });
 
   it("maps segments to the closest backend People filters", () => {

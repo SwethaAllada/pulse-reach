@@ -112,8 +112,8 @@ export function PeopleWorkspace() {
           <p className="flex gap-2 text-xs leading-relaxed text-faint">
             <Info size={14} aria-hidden="true" className="mt-0.5 shrink-0" />
             <span>
-              Every filter is applied by <code className="font-mono">GET /patients</code>. Open-care-gap and history filters
-              match any programme; age groups are computed by the backend from date of birth at the reference date (people
+              Every filter is applied by <code className="font-mono">GET /patients</code>. With a programme selected, open-care-gap
+              and history filters apply to that programme (otherwise to any programme); age groups are computed by the backend from date of birth at the reference date (people
               without a recorded date of birth are excluded from every age group).
             </span>
           </p>

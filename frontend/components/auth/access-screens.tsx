@@ -2,6 +2,7 @@
 
 import { LogOut, RotateCcw } from "lucide-react";
 import { roleLabel, useAuth } from "@/lib/auth/auth-context";
+import { API_BASE_URL } from "@/lib/api/client";
 import { buttonClass } from "@/components/ui/button-styles";
 import { LogoMark } from "@/components/shell/logo";
 import { AtlasOrnament } from "./atlas-ornament";
@@ -18,8 +19,8 @@ export function CheckingScreen() {
   );
 }
 
-/** Full-page states outside the staff workspace: patient accounts, unreachable API. */
-export function AccessScreen({ kind, message }: { kind: "not_staff" | "unreachable"; message?: string }) {
+/** Full-page states outside the staff workspace: patient accounts, unreachable or unsupported API. */
+export function AccessScreen({ kind, message }: { kind: "not_staff" | "unreachable" | "unsupported"; message?: string }) {
   const { state, signOut, retry } = useAuth();
   const role = state.status === "signed_in" ? state.me.role : null;
   return (
@@ -35,6 +36,17 @@ export function AccessScreen({ kind, message }: { kind: "not_staff" | "unreachab
               You are signed in as <span className="text-foreground">{roleLabel(role)}</span>. Population, programme and
               people views are staff-facing and are not available to this account. Patients use the PulseReach patient
               portal.
+            </p>
+          </>
+        ) : kind === "unsupported" ? (
+          <>
+            <h1 className="font-display text-3xl font-medium tracking-[-0.02em] text-foreground">
+              This API does not support sign-in
+            </h1>
+            <p role="alert" className="mt-3 text-sm leading-relaxed text-muted">
+              The PulseReach API at <span className="font-mono text-foreground">{API_BASE_URL}</span> has no authentication
+              endpoint (<span className="font-mono">{message ?? "/me"}</span> is not available). The staff workspace needs
+              a backend running <span className="font-mono">AUTH_MODE=users</span>, so nothing is loaded from this one.
             </p>
           </>
         ) : (

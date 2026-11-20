@@ -159,6 +159,21 @@ class ReadRepository(Protocol):
         age_band: str | None = None,
         patient_ids: frozenset[str] | None = None,
     ) -> PaginatedPatientsOut: ...
+    # Programme summary inputs (`app.services.programmes`): members = people with a history record
+    # for the pathway (as `list_patients(pathway=…)`), their gaps under the pathway's rules, and the
+    # reference dates of the persisted evaluation runs.
+    def list_programme_members(
+        self,
+        pathway: str,
+        sex: str | None = None,
+        region_id: int | None = None,
+        age_band: str | None = None,
+        patient_ids: frozenset[str] | None = None,
+    ) -> list[tuple[str, str]]: ...
+    def list_programme_gaps(
+        self, pathway: str, patient_ids: frozenset[str]
+    ) -> list[tuple[str, str, str, date, date | None]]: ...
+    def evaluation_reference_dates(self) -> list[date]: ...
     def get_patient(self, patient_id: str) -> PatientSummaryOut | None: ...
     def get_patient_evaluations(self, patient_id: str) -> PatientEvaluationsOut | None: ...
     def get_evaluation_run_info(self) -> tuple[str, date, int]: ...
@@ -954,16 +969,25 @@ class MemoryReadRepository:
                 if eval_summary_map[p["patient_id"]].get(evaluation_status, 0) > 0
             ]
         if has_open_care_gaps is not None:
-            filtered = [
-                p
-                for p in filtered
-                if (open_gaps_map[p["patient_id"]] > 0) is has_open_care_gaps
-            ]
+            # With `pathway`, only open gaps under that programme's rules count (programme views).
+            rule_pathway = {r["rule_id"]: r["pathway"] for r in get_cached_bundle().rules}
+
+            def has_open(pid: str) -> bool:
+                return any(
+                    g["status"] == "open" and (pathway is None or rule_pathway.get(g["rule_id"]) == pathway)
+                    for g in idx.care_gaps_by_patient.get(pid, [])
+                )
+
+            filtered = [p for p in filtered if has_open(p["patient_id"]) is has_open_care_gaps]
         if history_status is not None:
             filtered = [
                 p
                 for p in filtered
-                if history_status in idx.history_by_patient.get(p["patient_id"], {}).values()
+                if (
+                    idx.history_by_patient.get(p["patient_id"], {}).get(pathway) == history_status
+                    if pathway is not None
+                    else history_status in idx.history_by_patient.get(p["patient_id"], {}).values()
+                )
             ]
         if age_band is not None:
             filtered = [
@@ -1026,6 +1050,48 @@ class MemoryReadRepository:
                 for p in page
             ],
         )
+
+    def list_programme_members(
+        self,
+        pathway: str,
+        sex: str | None = None,
+        region_id: int | None = None,
+        age_band: str | None = None,
+        patient_ids: frozenset[str] | None = None,
+    ) -> list[tuple[str, str]]:
+        idx = get_cached_index()
+        ref_date = idx.dataset.evaluation_run["reference_date"]
+        dob_gt, dob_lte = _age_band_bounds(age_band, ref_date) if age_band else (None, None)
+        out: list[tuple[str, str]] = []
+        for p in idx.dataset.patients:
+            pid, dob = p["patient_id"], p["date_of_birth"]
+            hst = idx.history_by_patient.get(pid, {}).get(pathway)
+            if (
+                hst is None
+                or (patient_ids is not None and pid not in patient_ids)
+                or (sex is not None and p["sex"] != sex)
+                or (region_id is not None and p["region_id"] != region_id)
+                or (age_band is not None and (
+                    dob is None or (dob_gt is not None and dob <= dob_gt) or (dob_lte is not None and dob > dob_lte)))
+            ):
+                continue
+            out.append((pid, hst))
+        return out
+
+    def list_programme_gaps(
+        self, pathway: str, patient_ids: frozenset[str]
+    ) -> list[tuple[str, str, str, date, date | None]]:
+        idx = get_cached_index()
+        rule_pathway = {r["rule_id"]: r["pathway"] for r in get_cached_bundle().rules}
+        return [
+            (g["patient_id"], g["gap_type"], g["status"], g["identified_date"], g["closed_date"])
+            for pid in sorted(patient_ids)
+            for g in idx.care_gaps_by_patient.get(pid, [])
+            if rule_pathway.get(g["rule_id"]) == pathway
+        ]
+
+    def evaluation_reference_dates(self) -> list[date]:
+        return [get_cached_dataset().evaluation_run["reference_date"]]
 
     def get_patient(self, patient_id: str) -> PatientSummaryOut | None:
         idx = get_cached_index()
@@ -1900,6 +1966,74 @@ class PostgresReadRepository:
             eval_summaries.setdefault(pid, {})[st] = int(cnt)
         return open_gaps, eval_summaries
 
+    def list_programme_members(
+        self,
+        pathway: str,
+        sex: str | None = None,
+        region_id: int | None = None,
+        age_band: str | None = None,
+        patient_ids: frozenset[str] | None = None,
+    ) -> list[tuple[str, str]]:
+        try:
+            gr, er = self._latest_runs()
+            stmt = (
+                select(Patient.patient_id, HistoryAvailability.history_status)
+                .join(
+                    HistoryAvailability,
+                    (HistoryAvailability.patient_id == Patient.patient_id)
+                    & (HistoryAvailability.run_id == gr.run_id)
+                    & (HistoryAvailability.pathway == pathway),
+                )
+                .where(Patient.run_id == gr.run_id)
+            )
+            if patient_ids is not None:
+                stmt = stmt.where(Patient.patient_id.in_(sorted(patient_ids)))
+            if sex is not None:
+                stmt = stmt.where(Patient.sex == sex)
+            if region_id is not None:
+                stmt = stmt.where(Patient.region_id == region_id)
+            if age_band is not None:
+                dob_gt, dob_lte = _age_band_bounds(age_band, er.reference_date)
+                stmt = stmt.where(Patient.date_of_birth.is_not(None))
+                if dob_gt is not None:
+                    stmt = stmt.where(Patient.date_of_birth > dob_gt)
+                if dob_lte is not None:
+                    stmt = stmt.where(Patient.date_of_birth <= dob_lte)
+            rows = self._session.execute(stmt.order_by(Patient.patient_id)).all()
+        except SQLAlchemyError as exc:
+            raise _db_query_failed(exc) from exc
+        return [(pid, hst) for pid, hst in rows]
+
+    def list_programme_gaps(
+        self, pathway: str, patient_ids: frozenset[str]
+    ) -> list[tuple[str, str, str, date, date | None]]:
+        if not patient_ids:
+            return []
+        try:
+            gr, _ = self._latest_runs()
+            rows = self._session.execute(
+                select(CareGap.patient_id, CareGap.gap_type, CareGap.status, CareGap.identified_date,
+                       CareGap.closed_date)
+                .where(
+                    CareGap.run_id == gr.run_id,
+                    CareGap.patient_id.in_(sorted(patient_ids)),
+                    CareGap.rule_id.in_(select(Rule.rule_id).where(Rule.pathway == pathway)),
+                )
+                .order_by(CareGap.care_gap_id)
+            ).all()
+        except SQLAlchemyError as exc:
+            raise _db_query_failed(exc) from exc
+        return [tuple(r) for r in rows]
+
+    def evaluation_reference_dates(self) -> list[date]:
+        try:
+            gr, _ = self._latest_runs()
+            return sorted(set(self._session.scalars(
+                select(EvaluationRun.reference_date).where(EvaluationRun.run_id == gr.run_id)
+            )))
+        except SQLAlchemyError as exc:
+            raise _db_query_failed(exc) from exc
+
     def list_patients(
         self,
         limit: int,
@@ -1952,6 +2086,10 @@ class PostgresReadRepository:
                     CareGap.run_id == gr.run_id,
                     CareGap.status == "open",
                 )
+                if pathway is not None:
+                    gap_subq = gap_subq.where(
+                        CareGap.rule_id.in_(select(Rule.rule_id).where(Rule.pathway == pathway))
+                    )
                 if has_open_care_gaps:
                     stmt = stmt.where(Patient.patient_id.in_(gap_subq))
                 else:
@@ -1961,6 +2099,8 @@ class PostgresReadRepository:
                     HistoryAvailability.run_id == gr.run_id,
                     HistoryAvailability.history_status == history_status,
                 )
+                if pathway is not None:
+                    hs_subq = hs_subq.where(HistoryAvailability.pathway == pathway)
                 stmt = stmt.where(Patient.patient_id.in_(hs_subq))
             if age_band is not None:
                 dob_gt, dob_lte = _age_band_bounds(age_band, er.reference_date)

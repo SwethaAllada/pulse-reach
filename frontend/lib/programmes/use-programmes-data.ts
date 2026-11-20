@@ -10,6 +10,7 @@ import type {
   OpenQuestionOut,
   Pathway,
   PopulationSummaryOut,
+  ProgrammeSummaryOut,
   RuleDetailOut,
   RuleSummaryOut,
 } from "@/lib/api/types";
@@ -75,12 +76,9 @@ export interface ProgrammeReference {
 /** Programme explorer filters: the `GET /patients` filters that keep a programme's meaning intact. */
 export type ProgrammeFilters = Pick<PeopleFilters, "region_id" | "sex" | "age_band">;
 
-export function useProgrammesData(filters: ProgrammeFilters, pathway?: Pathway) {
+/** Dashboard summary, rules, open questions and organization surveillance — shared by every programme view. */
+function useProgrammeReference(attempt: number) {
   const { can } = useAuth();
-  const [attempt, setAttempt] = useState(0);
-  const retry = useCallback(() => setAttempt((n) => n + 1), []);
-  const filterKey = peopleFiltersToSearchParams({ ...filters, pathway }).toString();
-
   const summary = useResource<DashboardSummaryOut>(can("insights.read") ? "summary" : null, "insights.read", loadSummary, attempt);
   const rules = useResource<RuleSummaryOut[]>(can("rules.read") ? "rules" : null, "rules.read", loadRules, attempt);
   const openQuestions = useResource<OpenQuestionOut[]>(
@@ -89,6 +87,60 @@ export function useProgrammesData(filters: ProgrammeFilters, pathway?: Pathway) 
     loadOpenQuestions,
     attempt
   );
+  /** Organization-level surveillance aggregates (managers and clinicians). */
+  const surveillance = useResource<PopulationSummaryOut>(
+    can("population.read") ? "population-summary" : null,
+    "population.read",
+    (signal) => api.populationSummary(signal),
+    attempt
+  );
+  return { summary, rules, openQuestions, surveillance };
+}
+
+/**
+ * Server-side programme aggregates (`GET /programmes/{pathway}/summary`) for the role's patient
+ * scope and the filters. An API without the endpoint is reported as such, never approximated.
+ */
+function useProgrammeSummary(pathway: Pathway, filters: ProgrammeFilters, attempt: number): Resource<ProgrammeSummaryOut> {
+  const { can } = useAuth();
+  const query = { region_id: filters.region_id, sex: filters.sex, age_band: filters.age_band };
+  const key = peopleFiltersToSearchParams({ ...query, pathway }).toString();
+  return useResource<ProgrammeSummaryOut>(
+    can("insights.read") && can("care_gaps.read") ? `programme-summary|${key}` : null,
+    "insights.read and care_gaps.read",
+    (signal) =>
+      api.programmeSummary(pathway, query, signal).catch((err) => {
+        if (err instanceof ApiError && err.status === 404)
+          throw new ApiError(
+            "This API version has no programme summary (GET /programmes/{pathway}/summary), so programme figures are not shown.",
+            404,
+            err.path
+          );
+        throw err;
+      }),
+    attempt
+  );
+}
+
+/** Programmes overview: reference data plus one server-side summary per programme — no patient or gap pages. */
+export function useProgrammesOverviewData(filters: ProgrammeFilters) {
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
+  const reference = useProgrammeReference(attempt);
+  const ifhas = useProgrammeSummary("ifhas", filters, attempt);
+  const wellChild = useProgrammeSummary("well_child", filters, attempt);
+  const summaries: Record<Pathway, Resource<ProgrammeSummaryOut>> = { ifhas, well_child: wellChild };
+  return { ...reference, summaries, retry };
+}
+
+export function useProgrammesData(filters: ProgrammeFilters, pathway: Pathway) {
+  const { can } = useAuth();
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
+  const filterKey = peopleFiltersToSearchParams({ ...filters, pathway }).toString();
+
+  const { summary, rules, openQuestions, surveillance } = useProgrammeReference(attempt);
+  const programmeSummary = useProgrammeSummary(pathway, filters, attempt);
   const careGaps = useResource<CareGapOut[]>(can("care_gaps.read") ? "gaps" : null, "care_gaps.read", loadCareGaps, attempt);
 
   /** Members: backend-filtered patients joined with rules + gap records into programme segments. */
@@ -102,15 +154,7 @@ export function useProgrammesData(filters: ProgrammeFilters, pathway?: Pathway) 
     attempt
   );
 
-  /** Organization-level surveillance aggregates (managers and clinicians). */
-  const surveillance = useResource<PopulationSummaryOut>(
-    can("population.read") ? "population-summary" : null,
-    "population.read",
-    (signal) => api.populationSummary(signal),
-    attempt
-  );
-
-  return { summary, rules, openQuestions, careGaps, population, surveillance, retry };
+  return { summary, rules, openQuestions, careGaps, population, surveillance, programmeSummary, retry };
 }
 
 /** People per backend age band for one programme (plus the share without a recorded date of birth). */

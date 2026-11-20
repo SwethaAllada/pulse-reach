@@ -1,5 +1,5 @@
 import { ArrowDownRight, ArrowRight, ArrowUpRight, CircleHelp } from "lucide-react";
-import type { PopulationSummaryOut } from "@/lib/api/types";
+import type { PopulationSummaryOut, ProgrammeSummaryOut } from "@/lib/api/types";
 import { Footnote } from "@/components/ui/plate";
 import { cn } from "@/lib/cn";
 
@@ -12,9 +12,24 @@ const TREND: Record<string, { label: string; icon: typeof ArrowRight }> = {
 
 const REASONS: Record<string, string> = {
   history_incomplete: "the comparison period starts before care-gap history begins",
+  evaluation_history_incomplete: "no persisted evaluation run covers the previous period, so it was not observed",
 };
 
-function Compare({ label, current, previous, i }: { label: string; current: number | null; previous: number | null; i: number }) {
+function Compare({
+  label,
+  current,
+  previous,
+  i,
+  previousText = "Suppressed",
+  window = "90 days",
+}: {
+  label: string;
+  current: number | null;
+  previous: number | null;
+  i: number;
+  previousText?: string;
+  window?: string;
+}) {
   const max = Math.max(1, current ?? 0, previous ?? 0);
   return (
     <div className="reveal" style={{ "--i": i } as React.CSSProperties}>
@@ -22,11 +37,11 @@ function Compare({ label, current, previous, i }: { label: string; current: numb
       <dl className="mt-2 flex flex-col gap-1.5">
         {(
           [
-            ["Last 90 days", current, "var(--accent)"],
-            ["Previous 90 days", previous, "var(--border-strong)"],
+            [`Last ${window}`, current, "var(--accent)", "Suppressed"],
+            [`Previous ${window}`, previous, "var(--border-strong)", previousText],
           ] as const
-        ).map(([name, v, color]) => (
-          <div key={name} className="grid grid-cols-[110px_minmax(0,1fr)_48px] items-center gap-3 text-xs">
+        ).map(([name, v, color, empty]) => (
+          <div key={name} className="grid grid-cols-[110px_minmax(0,1fr)_80px] items-center gap-3 text-xs">
             <dt className="text-muted">{name}</dt>
             <dd className="h-2 rounded-full bg-surface-sunken">
               {v !== null && (
@@ -36,7 +51,7 @@ function Compare({ label, current, previous, i }: { label: string; current: numb
                 />
               )}
             </dd>
-            <dd className="text-right font-mono tabular-nums text-foreground">{v ?? "Suppressed"}</dd>
+            <dd className="text-right font-mono tabular-nums text-foreground">{v ?? empty}</dd>
           </div>
         ))}
       </dl>
@@ -96,6 +111,42 @@ export function OrganizationTrend({ data }: { data: PopulationSummaryOut }) {
         {[...pc.suppressed, ...(pm?.suppressed ?? [])].length > 0 &&
           `Suppressed for privacy (small cells): ${[...pc.suppressed, ...(pm?.suppressed ?? [])].map((s) => s.replace(/_/g, " ")).join(", ")}. `}
         {data.disclaimer}
+      </Footnote>
+    </div>
+  );
+}
+
+const WINDOW_LABEL: Record<string, string> = { "7d": "7 days", "30d": "30 days", "90d": "90 days", "6m": "6 months", "12m": "12 months" };
+
+/**
+ * Programme-specific period comparison from `GET /programmes/{pathway}/summary`. The backend
+ * reports the previous window only when persisted evaluation runs cover it; otherwise it is
+ * "not observed" (never zero) and no direction is drawn.
+ */
+export function ProgrammeTrend({ data, name }: { data: ProgrammeSummaryOut; name: string }) {
+  const t = data.trend;
+  const window = WINDOW_LABEL[t.period] ?? t.period;
+  const trend = TREND[t.care_gap_trend.direction] ?? { label: t.care_gap_trend.direction, icon: CircleHelp };
+  const TrendIcon = trend.icon;
+  const notObserved = t.previous_period_observed ? "Suppressed" : "Not observed";
+  return (
+    <div className="flex flex-col gap-5">
+      <Compare label={`${name} care gaps identified`} current={t.care_gaps_identified} previous={t.previous_care_gaps_identified} previousText={notObserved} window={window} i={0} />
+      <Compare label={`${name} gaps closed by documented completion`} current={t.gaps_closed_completed} previous={t.previous_gaps_closed_completed} previousText={notObserved} window={window} i={1} />
+      <p className="reveal flex items-start gap-2 text-sm text-foreground" style={{ "--i": 2 } as React.CSSProperties}>
+        <TrendIcon size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-accent" />
+        <span>
+          {name} care-gap trend: {trend.label}
+          {t.care_gap_trend.reason_codes.length > 0 && (
+            <span className="text-muted"> — {t.care_gap_trend.reason_codes.map((c) => REASONS[c] ?? c.replace(/_/g, " ")).join("; ")}.</span>
+          )}
+        </span>
+      </p>
+      <Footnote>
+        {t.current_start} – {t.current_end} vs {t.previous_start} – {t.previous_end}. Care-gap records come from{" "}
+        {t.evaluation_runs} persisted evaluation run{t.evaluation_runs === 1 ? "" : "s"}
+        {t.evaluation_history_start ? `, the earliest on ${t.evaluation_history_start}` : ""}
+        {t.previous_period_observed ? "." : "; earlier periods are unobserved, not zero, so no historical trend is drawn."}
       </Footnote>
     </div>
   );

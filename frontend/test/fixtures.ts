@@ -4,11 +4,14 @@ import type {
   EvaluationItemOut,
   MeOut,
   OpenQuestionOut,
+  Pathway,
   PatientSummaryOut,
   PopulationSummaryOut,
+  ProgrammeSummaryOut,
   RuleDetailOut,
   RuleSummaryOut,
 } from "@/lib/api/types";
+import ROLE_PERMISSION_MATRIX from "./role-permissions.json";
 
 /** Small synthetic fixture mirroring backend response shapes. */
 const patient = (
@@ -279,6 +282,15 @@ export function me(role: string, permissions: string[], patient_access = "organi
   };
 }
 
+/**
+ * Backend role → permission matrix at each role's default patient access
+ * (`backend/app/core/permissions.py`; parity checked by `backend/tests/test_rbac.py`).
+ */
+export const ROLE_PERMISSIONS = ROLE_PERMISSION_MATRIX as Record<
+  "SYSTEM_ADMIN" | "POPULATION_HEALTH_MANAGER" | "CARE_COORDINATOR" | "CLINICIAN" | "PATIENT",
+  string[]
+>;
+
 export const MANAGER_PERMISSIONS = [
   "care_gaps.read",
   "evaluations.read",
@@ -309,6 +321,8 @@ export function fakeBackend(url: string, init?: RequestInit): unknown {
     return page(CARE_GAPS.filter((g) => !rule || g.rule_id === rule));
   }
   if (path === "/open-questions") return { total: OPEN_QUESTIONS.length, items: OPEN_QUESTIONS };
+  const ps = /^\/programmes\/(ifhas|well_child)\/summary$/.exec(path);
+  if (ps) return programmeSummary(ps[1] as Pathway, u.searchParams);
   if (path === "/population/summary") return POPULATION_SUMMARY;
   if (path === "/explanations") {
     const body = JSON.parse(String(init?.body ?? "{}")) as { patient_id: string; rule_id: string };
@@ -357,6 +371,9 @@ export function fakeBackend(url: string, init?: RequestInit): unknown {
     const band = q.get("age_band");
     const text = q.get("q");
     const openCount = (id: string) => CARE_GAPS.filter((g) => g.patient_id === id && g.status === "open").length;
+    // Like the backend: with `pathway`, open-gap and history filters follow that programme.
+    const ruleIds = new Set(RULES.filter((r) => !pathway || r.pathway === pathway).map((r) => r.rule_id));
+    const scopedOpen = (id: string) => CARE_GAPS.filter((g) => g.patient_id === id && g.status === "open" && ruleIds.has(g.rule_id)).length;
     const years = (dob: string | null) => (dob ? 2026 - Number(dob.slice(0, 4)) - (dob.slice(5) > "11-16" ? 1 : 0) : null);
     const inBand = (dob: string | null) => {
       const y = years(dob);
@@ -368,8 +385,9 @@ export function fakeBackend(url: string, init?: RequestInit): unknown {
         (!pathway || pathway in p.history_by_pathway) &&
         (!region || p.region_id === Number(region)) &&
         (!sex || p.sex === sex) &&
-        (gaps === null || openCount(p.patient_id) > 0 === (gaps === "true")) &&
-        (!history || Object.values(p.history_by_pathway).includes(history as "available")) &&
+        (gaps === null || scopedOpen(p.patient_id) > 0 === (gaps === "true")) &&
+        (!history ||
+          (pathway ? p.history_by_pathway[pathway as "ifhas"] === history : Object.values(p.history_by_pathway).includes(history as "available"))) &&
         (!band || inBand(p.date_of_birth)) &&
         (!text || p.patient_id.toLowerCase().includes(text.toLowerCase()))
     );
@@ -377,6 +395,80 @@ export function fakeBackend(url: string, init?: RequestInit): unknown {
     return page(rows);
   }
   throw new Error(`unexpected ${url}`);
+}
+
+/** Minimum cell size of the fake `/programmes/{pathway}/summary` (1 = no suppression). */
+export const fakeSummaryConfig = { minCellSize: 1 };
+
+/** Same definitions as `backend/app/services/programmes.py`, over the fixture records. */
+function programmeSummary(pathway: Pathway, q: URLSearchParams): ProgrammeSummaryOut {
+  const region = q.get("region_id");
+  const sex = q.get("sex");
+  const k = fakeSummaryConfig.minCellSize;
+  const ruleIds = new Set(RULES.filter((r) => r.pathway === pathway).map((r) => r.rule_id));
+  const members = PATIENTS.filter(
+    (p) => p.history_by_pathway[pathway] !== undefined && (!region || p.region_id === Number(region)) && (!sex || p.sex === sex)
+  );
+  const ids = new Set(members.map((p) => p.patient_id));
+  const gaps = CARE_GAPS.filter((g) => ruleIds.has(g.rule_id) && ids.has(g.patient_id));
+  const openPeople = new Set(gaps.filter((g) => g.status === "open").map((g) => g.patient_id));
+  const hide = (n: number) => (n > 0 && n < k ? null : n);
+  const history = { available: 0, partial: 0, not_available: 0 };
+  const seg = { open_gap: 0, available: 0, partial: 0, not_available: 0 };
+  for (const p of members) {
+    const h = p.history_by_pathway[pathway]!;
+    history[h] += 1;
+    seg[openPeople.has(p.patient_id) ? "open_gap" : h] += 1;
+  }
+  const evals = members.flatMap((p) => (EVALUATIONS[p.patient_id] ?? []).filter((e) => e.pathway === pathway));
+  const people = (statuses: string[]) => new Set(evals.filter((e) => statuses.includes(e.evaluation_status)).map((e) => e.patient_id)).size;
+  const status = (s: string) => hide(gaps.filter((g) => g.status === s).length);
+  const small = members.length > 0 && members.length < k;
+  return {
+    is_synthetic: true,
+    pathway,
+    evaluation_run_id: SUMMARY.evaluation_run_id,
+    reference_date: SUMMARY.reference_date,
+    patient_scope: "organization",
+    filters: { region_id: region ? (Number(region) as 1) : null, sex: (sex as "female") ?? null, age_band: null },
+    min_cell_size: k,
+    members: small ? null : members.length,
+    history: { available: hide(history.available), partial: hide(history.partial), not_available: hide(history.not_available) },
+    segments: (Object.keys(seg) as (keyof typeof seg)[]).map((s) => ({ segment: s, people: small ? null : hide(seg[s]) })),
+    people_with_open_gap: small ? null : hide(seg.open_gap),
+    care_gaps: {
+      open: status("open"),
+      closed_completed: status("closed_completed"),
+      closed_refused: status("closed_refused"),
+      suppressed: status("suppressed"),
+      superseded: status("superseded"),
+      total: hide(gaps.length),
+    },
+    open_gaps_by_type: {},
+    eligibility: {
+      programme_eligible_patients: hide(people(["eligible"])),
+      due_or_upcoming_patients: hide(people(["due", "upcoming", "overdue"])),
+      review_flagged_patients: hide(people(["requires_clinical_review"])),
+      rule_review_patients: 0,
+    },
+    trend: {
+      period: "90d",
+      current_start: "2026-08-19",
+      current_end: "2026-11-16",
+      previous_start: "2026-05-21",
+      previous_end: "2026-08-18",
+      evaluation_runs: 1,
+      evaluation_history_start: "2026-11-16",
+      previous_period_observed: false,
+      care_gaps_identified: hide(gaps.length),
+      previous_care_gaps_identified: null,
+      gaps_closed_completed: status("closed_completed"),
+      previous_gaps_closed_completed: null,
+      care_gap_trend: { direction: "INSUFFICIENT_DATA", reason_codes: ["evaluation_history_incomplete"], absolute_change: null, percentage_change: null },
+    },
+    suppressed: small ? ["all"] : [],
+    disclaimer: "Aggregates of synthetic records.",
+  };
 }
 
 /** `fetch` stand-in over `fakeBackend`, translating thrown HTTP errors to responses. */

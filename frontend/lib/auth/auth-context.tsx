@@ -1,17 +1,29 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { api, ApiError, holdRequests, releaseRequests } from "@/lib/api/client";
+import {
+  allowUnauthenticatedRequests,
+  api,
+  ApiError,
+  holdRequests,
+  identityEndpointMissing,
+  releaseRequests,
+  resetIdentityProbe,
+} from "@/lib/api/client";
 import { clearApiCache } from "@/lib/api/cache";
 import type { MeOut } from "@/lib/api/types";
+import { legacyBackendAllowed } from "./mode";
 import { clearSession, getSession, setSession, subscribeSession } from "./session";
 
 /**
  * Identity state of the browser session.
  *
- * - `signed_in`: `AUTH_MODE=users`, bearer token valid; permissions come from `GET /me`.
- * - `legacy`:    the backend has no identity layer (`/me` → 404, `AUTH_MODE=legacy`);
- *                reads are public and the backend decides everything.
+ * - `signed_in`:   `AUTH_MODE=users`, bearer token valid; permissions come from `GET /me`.
+ * - `unsupported`: the backend has no identity layer (`/me`, `/auth/login` or `/auth/refresh`
+ *                  answered 404 — `AUTH_MODE=legacy` or a pre-authentication API). Nothing is
+ *                  loaded: the workspace never falls back to unauthenticated requests.
+ * - `legacy`:      the same backend, accepted only because local development explicitly allowed
+ *                  it (`legacyBackendAllowed`); reads are public and the backend decides everything.
  * - `signed_out` / `unreachable` / `checking`: self-explanatory.
  *
  * The frontend never authorizes on its own: permissions only shape navigation and
@@ -21,6 +33,7 @@ export type AuthState =
   | { status: "checking" }
   | { status: "signed_out"; reason: "none" | "expired" | "signed_out" }
   | { status: "legacy" }
+  | { status: "unsupported"; endpoint: string }
   | { status: "signed_in"; me: MeOut }
   | { status: "unreachable"; message: string };
 
@@ -47,6 +60,11 @@ function scopeOf(me: MeOut): PatientScope {
   return null;
 }
 
+/** Patient accounts never open staff workspaces, whatever other permissions they hold. */
+function isPatientAccount(me: MeOut): boolean {
+  return me.role === "PATIENT" || me.permissions.includes("patients.read_self");
+}
+
 export function buildAuthValue(state: AuthState, actions: Pick<AuthContextValue, "signIn" | "signOut" | "retry">): AuthContextValue {
   const me = state.status === "signed_in" ? state.me : null;
   const can = (...perms: string[]) =>
@@ -54,13 +72,24 @@ export function buildAuthValue(state: AuthState, actions: Pick<AuthContextValue,
   return {
     state,
     can,
-    isStaff: state.status === "legacy" || (me !== null && STAFF_PERMISSIONS.some((p) => me.permissions.includes(p))),
+    isStaff:
+      state.status === "legacy" ||
+      (me !== null && !isPatientAccount(me) && STAFF_PERMISSIONS.some((p) => me.permissions.includes(p))),
     scope: me ? scopeOf(me) : null,
     ...actions,
   };
 }
 
-/** Without a provider (unit tests, legacy embedding) the app behaves as in legacy mode. */
+/** A `GET /me` body that is not a PulseReach identity (e.g. an HTML fallback) is not a session. */
+function isMe(value: unknown): value is MeOut {
+  const v = value as Partial<MeOut> | null;
+  return !!v && typeof v === "object" && Array.isArray(v.permissions) && !!v.user && typeof v.user.user_id === "string";
+}
+
+/**
+ * Without a provider (unit tests of individual views) permissions are open; the API client
+ * still refuses data requests that carry no access token.
+ */
 const noop = async () => {};
 const AuthContext = createContext<AuthContextValue>(
   buildAuthValue({ status: "legacy" }, { signIn: noop, signOut: noop, retry: () => {} })
@@ -70,22 +99,36 @@ export function useAuth(): AuthContextValue {
   return useContext(AuthContext);
 }
 
+function noIdentityLayer(endpoint: string): AuthState {
+  return legacyBackendAllowed() ? { status: "legacy" } : { status: "unsupported", endpoint };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>(() => {
     // Hold data requests before any child effect can fire them without a session.
-    if (typeof window !== "undefined") holdRequests();
+    if (typeof window !== "undefined") {
+      holdRequests();
+      allowUnauthenticatedRequests(false);
+    }
     return { status: "checking" };
   });
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     const ctrl = new AbortController();
+    resetIdentityProbe();
     api
       .me(ctrl.signal)
-      .then((me) => setState({ status: "signed_in", me }))
+      .then((me) => {
+        if (!isMe(me)) throw new ApiError("The API at this address did not return a PulseReach identity.", null, "/me");
+        setState({ status: "signed_in", me });
+      })
       .catch((err) => {
         if (ctrl.signal.aborted) return;
-        if (err instanceof ApiError && err.status === 404) return setState({ status: "legacy" });
+        if (err instanceof ApiError && err.status === 404) {
+          clearSession();
+          return setState(noIdentityLayer("/me"));
+        }
         if (err instanceof ApiError && err.status === 401) {
           clearSession();
           return setState({ status: "signed_out", reason: "none" });
@@ -98,24 +141,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => ctrl.abort();
   }, [attempt]);
 
-  // A failed refresh clears the session: return to sign-in instead of showing broken workspaces.
+  // A failed refresh clears the session: return to sign-in (or report a backend without
+  // `/auth/refresh`) instead of showing broken workspaces.
   useEffect(
     () =>
       subscribeSession(() => {
         if (getSession()) return;
         holdRequests();
         clearApiCache();
-        setState((prev) => (prev.status === "signed_in" ? { status: "signed_out", reason: "expired" } : prev));
+        const missing = identityEndpointMissing();
+        setState((prev) =>
+          prev.status !== "signed_in" ? prev : missing ? noIdentityLayer(missing) : { status: "signed_out", reason: "expired" }
+        );
       }),
     []
   );
 
   const signIn = useCallback(async (email: string, password: string) => {
     clearSession();
-    const tokens = await api.login(email, password);
-    setSession(tokens);
     clearApiCache();
-    const me = await api.me();
+    let me: MeOut;
+    try {
+      setSession(await api.login(email, password));
+      me = await api.me();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        clearSession();
+        return setState(noIdentityLayer(identityEndpointMissing() ?? "/auth/login"));
+      }
+      clearSession();
+      throw err;
+    }
+    if (!isMe(me)) {
+      clearSession();
+      throw new ApiError("The API at this address did not return a PulseReach identity.", null, "/me");
+    }
+    clearApiCache();
     setState({ status: "signed_in", me });
   }, []);
 
@@ -138,9 +199,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo(() => buildAuthValue(state, { signIn, signOut, retry }), [state, signIn, signOut, retry]);
 
-  // Data requests flow only for a resolved staff session (or a legacy backend, which has no sessions).
+  // Data requests flow only for a resolved staff session, or an explicitly allowed legacy backend.
   useEffect(() => {
-    if (value.isStaff && (state.status === "signed_in" || state.status === "legacy")) releaseRequests();
+    const legacy = state.status === "legacy" && legacyBackendAllowed();
+    allowUnauthenticatedRequests(legacy);
+    if (value.isStaff && (state.status === "signed_in" || legacy)) releaseRequests();
     else holdRequests();
   }, [state, value.isStaff]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -70,6 +70,7 @@ from app.schemas.v1 import (
     PatientEvaluationsOut,
     PatientHistoryOut,
     PatientSummaryOut,
+    ProgrammeSummaryOut,
     ReferralCreateIn,
     ReferralOut,
     ReferralPatchIn,
@@ -87,6 +88,7 @@ from app.services.ai.audit import sha256
 from app.services.ai.guardrails import validate_outreach_output
 from app.services.ai.service import NOT_GENERATED
 from app.services.explanation import BoundedExplanationInput, PrivacyViolationError
+from app.services.programmes import build_programme_summary
 from app.services.explanation.context import build_explanation_context
 from app.services.outreach import OutreachRuleNotFoundError, OutreachService
 from app.services.outreach.drafting import OutreachDraftGate, gate_outreach_draft, pre_consent_block
@@ -464,6 +466,41 @@ def list_care_gaps(
         patient_id=patient_id,
         patient_ids=p.patient_scope(),
     )
+
+
+@router.get("/programmes/{pathway}/summary", response_model=ProgrammeSummaryOut)
+def get_programme_summary(
+    pathway: Literal["ifhas", "well_child"],
+    sex: Literal["female", "male"] | None = Query(default=None),
+    region_id: int | None = Query(default=None, ge=1, le=3),
+    age_band: Literal["child", "adult_18_39", "adult_40_59", "adult_60_plus"] | None = Query(default=None),
+    period: Literal["7d", "30d", "90d", "6m", "12m"] = Query(default="90d"),
+    repo: ReadRepository = Depends(get_read_repository),
+    p: Principal = Depends(require("insights.read", "care_gaps.read")),
+) -> ProgrammeSummaryOut:
+    """Programme aggregates for the caller's patient scope (organization or assigned patients):
+    members, evidence segments, care-gap records, eligibility and a period comparison that is
+    only drawn when persisted evaluation history covers it. Small cells are suppressed."""
+    scope = p.patient_scope()
+    members = repo.list_programme_members(
+        pathway, sex=sex, region_id=region_id, age_band=age_band, patient_ids=scope
+    )
+    member_ids = frozenset(pid for pid, _ in members)
+    dashboard = repo.get_dashboard_summary(patient_ids=member_ids)
+    breakdown = (dashboard.pathway_breakdown or {}).get(pathway)
+    return ProgrammeSummaryOut(**build_programme_summary(
+        pathway=pathway,
+        members=members,
+        gaps=repo.list_programme_gaps(pathway, member_ids),
+        eligibility=breakdown.model_dump() if breakdown else {},
+        evaluation_dates=repo.evaluation_reference_dates(),
+        evaluation_run_id=dashboard.evaluation_run_id,
+        reference_date=dashboard.reference_date,
+        patient_scope="unrestricted" if scope is None else "organization" if p.has("patients.read") else "assigned",
+        filters={"region_id": region_id, "sex": sex, "age_band": age_band},
+        period=period,
+        min_cell_size=settings.population_min_cell_size,
+    ))
 
 
 def _ensure_gap_access(p: Principal, repo: ReadRepository, gap_id: str) -> str | None:

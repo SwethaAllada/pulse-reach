@@ -935,3 +935,79 @@ class CareGapDetailOut(CareGapOut):
         "Facility service profiles are simulated (synthetic); real facility IFHAS/WCV capabilities "
         "are not published by the SDI register and remain unknown."
     )
+
+
+# --- Programme summary (`GET /api/v1/programmes/{pathway}/summary`, `app.services.programmes`) ---
+# Every count is `null` when suppressed for privacy (0 < n < `min_cell_size`, or the complementary
+# cell of a partition); suppressed paths are listed in `suppressed`.
+
+
+class ProgrammeSegmentOut(BaseModel):
+    segment: Literal["open_gap", "available", "partial", "not_available"]
+    people: int | None
+
+
+class ProgrammeHistoryOut(BaseModel):
+    available: int | None
+    partial: int | None
+    not_available: int | None
+
+
+class ProgrammeCareGapsOut(BaseModel):
+    """Care-gap records (not people) under the programme's rules for the members."""
+
+    open: int | None
+    closed_completed: int | None
+    closed_refused: int | None
+    suppressed: int | None
+    superseded: int | None
+    total: int | None
+
+
+class ProgrammeEligibilityOut(BaseModel):
+    """People with in-band evaluation results (dashboard semantics, restricted to the members)."""
+
+    programme_eligible_patients: int | None
+    due_or_upcoming_patients: int | None
+    review_flagged_patients: int | None
+    rule_review_patients: int | None
+
+
+class ProgrammeTrendOut(BaseModel):
+    period: Literal["7d", "30d", "90d", "6m", "12m"]
+    current_start: date
+    current_end: date
+    previous_start: date
+    previous_end: date
+    evaluation_runs: int = Field(description="Persisted evaluation runs behind the care-gap records.")
+    evaluation_history_start: date | None
+    previous_period_observed: bool = Field(
+        description="False when no persisted evaluation run covers the previous window; previous counts are then null."
+    )
+    care_gaps_identified: int | None
+    previous_care_gaps_identified: int | None
+    gaps_closed_completed: int | None
+    previous_gaps_closed_completed: int | None
+    care_gap_trend: dict[str, Any]
+
+
+class ProgrammeSummaryOut(BaseModel):
+    is_synthetic: bool = True
+    pathway: Literal["ifhas", "well_child"]
+    evaluation_run_id: str
+    reference_date: date
+    patient_scope: Literal["organization", "assigned", "unrestricted"]
+    filters: dict[str, Any]
+    min_cell_size: int
+    members: int | None = Field(description="People with a history record for the programme (scope + filters).")
+    history: ProgrammeHistoryOut
+    segments: list[ProgrammeSegmentOut] = Field(
+        description="Mutually exclusive: an open gap under the programme's rules, otherwise the history status."
+    )
+    people_with_open_gap: int | None
+    care_gaps: ProgrammeCareGapsOut
+    open_gaps_by_type: dict[str, int | None]
+    eligibility: ProgrammeEligibilityOut
+    trend: ProgrammeTrendOut
+    suppressed: list[str]
+    disclaimer: str

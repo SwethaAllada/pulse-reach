@@ -3,19 +3,14 @@ import { ChevronDown } from "lucide-react";
 /** Honest list of population capabilities the backend does not expose yet. */
 const MISSING: { capability: string; needs: string }[] = [
   {
-    capability: "Programme-scoped open-gap and history filters",
+    capability: "Per-programme historical trends",
     needs:
-      "GET /patients has has_open_care_gaps and history_status, but they match any programme. The programme views compare totals and disclose differences.",
-  },
-  {
-    capability: "Per-programme coverage, completion rates and trends",
-    needs:
-      "No per-person outcome roll-up per programme. /population/summary gives organization-wide preventive coverage and 90-day comparisons only.",
+      "GET /programmes/{pathway}/summary compares periods only where persisted evaluation runs cover them. The synthetic data has a single evaluation run, so earlier periods are unobserved.",
   },
   {
     capability: "Server-side cohort aggregates",
     needs:
-      "Segments are rolled up in the browser from every page of /patients and /care-gaps. A person-level roll-up endpoint (T-08) should replace this.",
+      "This workspace still rolls segments up in the browser from every page of /patients and /care-gaps. The programme views use GET /programmes/{pathway}/summary instead.",
   },
   {
     capability: "Filtered care-gap and evaluation summaries",

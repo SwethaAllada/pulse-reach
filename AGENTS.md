@@ -31,6 +31,13 @@
   (optional `LLM_BASE_URL`); check `GET /api/v1/ai/status` (`availability`) and `GET /api/v1/ai/audit`.
 - Bump the prompt version in `prompts.py` whenever a template's wording changes.
 
+## Programme summary (`app/services/programmes.py`, `GET /api/v1/programmes/{pathway}/summary`)
+
+- Pure builder + repository inputs (`list_programme_members`, `list_programme_gaps`, `evaluation_reference_dates`; memory and PG).
+  Tests: `tests/test_programme_summary.py`; live PG parity: `tests/test_programme_summary_live_pg.py`.
+- `/patients` with `pathway` scopes `has_open_care_gaps`/`history_status` to that programme (both repositories).
+- Trends are drawn only when persisted evaluation runs cover the previous window; previous counts are `null` otherwise.
+
 ## Population intelligence (BE-33, `backend/app/services/population/`, migration 0012)
 
 - Tests: `tests/test_population_engine.py` (pure engine, privacy, alert sync), `tests/test_population_api.py`

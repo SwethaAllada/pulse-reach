@@ -12,6 +12,8 @@ import type {
   PatientQuery,
   PatientSummaryOut,
   PopulationSummaryOut,
+  ProgrammeSummaryOut,
+  ProgrammeSummaryQuery,
   RuleDetailOut,
   TokenOut,
 } from "./types";
@@ -89,9 +91,32 @@ async function toApiError(res: Response, path: string): Promise<ApiError> {
 /*
  * Request gate. While the session is being resolved (or nobody is signed in) data
  * requests wait here instead of going out unauthenticated. Identity endpoints
- * bypass it. With no AuthProvider (tests, legacy embedding) the gate stays open.
+ * bypass it. With no AuthProvider (tests) the gate stays open, but the token rule
+ * below still applies.
  */
 let gate: { promise: Promise<void>; open: () => void } | null = null;
+
+/*
+ * Token rule: a data request without an access token is refused locally (never sent),
+ * unless the AuthProvider resolved an explicitly allowed legacy backend
+ * (`legacyBackendAllowed`, local development only).
+ */
+let unauthenticatedAllowed = false;
+
+export function allowUnauthenticatedRequests(allowed: boolean): void {
+  unauthenticatedAllowed = allowed;
+}
+
+/** Identity endpoint the backend answered 404 for (no identity layer) — set before the session is cleared. */
+let missingIdentityEndpoint: string | null = null;
+
+export function identityEndpointMissing(): string | null {
+  return missingIdentityEndpoint;
+}
+
+export function resetIdentityProbe(): void {
+  missingIdentityEndpoint = null;
+}
 
 export function holdRequests(): void {
   if (gate) return;
@@ -129,6 +154,7 @@ async function refreshSession(): Promise<boolean> {
         body: JSON.stringify({ refresh_token: session.refreshToken }),
       });
       if (!res.ok) {
+        if (res.status === 404) missingIdentityEndpoint = "/auth/refresh";
         clearSession();
         return false;
       }
@@ -143,13 +169,20 @@ async function refreshSession(): Promise<boolean> {
   return refreshing;
 }
 
+/** Identity endpoints: not held by the gate and allowed without a token (they establish the session). */
 const UNGATED = new Set(["/me", "/auth/login", "/auth/logout"]);
+
+function notSignedIn(path: string): ApiError {
+  return new ApiError(`Sign in to load ${path}. No request was sent without a session.`, 401, path, "not_authenticated");
+}
 
 async function apiRequest<T>(path: string, pathWithQuery: string, init: RequestInit): Promise<T> {
   const url = `${API_BASE_URL}/api/v1${pathWithQuery}`;
-  if (!UNGATED.has(path)) await waitForGate(init.signal);
+  const identity = UNGATED.has(path);
+  if (!identity) await waitForGate(init.signal);
   const send = () => {
     const session = getSession();
+    if (!session && !identity && !unauthenticatedAllowed) throw notSignedIn(path);
     const auth: Record<string, string> = session ? { Authorization: `Bearer ${session.accessToken}` } : {};
     return fetch(url, { ...init, headers: { Accept: "application/json", ...auth, ...init.headers } });
   };
@@ -160,9 +193,10 @@ async function apiRequest<T>(path: string, pathWithQuery: string, init: RequestI
     res = await send();
     if (res.status === 401 && getSession() && (await refreshSession())) res = await send();
   } catch (err) {
-    if ((err as Error).name === "AbortError") throw err;
+    if ((err as Error).name === "AbortError" || err instanceof ApiError) throw err;
     throw new ApiError(`Could not reach the PulseReach API at ${API_BASE_URL}.`, null, path);
   }
+  if (res.status === 404 && path !== "/auth/logout" && identity) missingIdentityEndpoint = path;
   if (!res.ok) throw await toApiError(res, path);
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
@@ -207,6 +241,9 @@ export const api = {
   openQuestions: (signal?: AbortSignal) => apiGet<PaginatedOpenQuestionsOut>("/open-questions", {}, signal),
   /** Organization-level surveillance aggregates (`population.read`; small cells suppressed). */
   populationSummary: (signal?: AbortSignal) => apiGet<PopulationSummaryOut>("/population/summary", {}, signal),
+  /** Programme aggregates computed server-side for the caller's scope (`insights.read` + `care_gaps.read`). */
+  programmeSummary: (pathway: Pathway, query: ProgrammeSummaryQuery, signal?: AbortSignal) =>
+    apiGet<ProgrammeSummaryOut>(`/programmes/${pathway}/summary`, { ...query }, signal),
   explanation: (patientId: string, ruleId: string, signal?: AbortSignal) =>
     apiPost<ExplanationOut>("/explanations", { patient_id: patientId, rule_id: ruleId }, signal),
 

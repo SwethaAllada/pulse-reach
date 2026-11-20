@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { SEGMENT_META, SEGMENT_ORDER, type Programme, type SegmentId } from "@/lib/population/model";
+import { SEGMENT_META, SEGMENT_ORDER, type Cohort, type Programme, type SegmentId } from "@/lib/population/model";
 import { SEGMENT_COLOR, SegmentGlyph, SegmentMark } from "@/components/population/segment-glyph";
 import { cn } from "@/lib/cn";
 
@@ -20,7 +20,8 @@ export function CompositionBand({
   showLegend = true,
   className,
 }: {
-  programme: Programme;
+  /** A loaded programme cohort, or the server-side programme summary (`summaryBand`). */
+  programme: Pick<Programme, "label" | "people"> & { segments: Pick<Cohort, "id" | "segment" | "people">[] };
   tone?: Tone;
   selected?: SegmentId | null;
   onSelect?: (segment: SegmentId | null) => void;

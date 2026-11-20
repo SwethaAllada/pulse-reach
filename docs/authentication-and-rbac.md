@@ -29,7 +29,7 @@ Code map:
 | `AUTH_MODE` | Behaviour |
 |---|---|
 | `users` (default) | Every `/api/v1` route needs `Authorization: Bearer <access token>` (except login, registration, refresh and password-reset endpoints), enforces a permission, and limits patient data to the caller's scope. Client-supplied `recorded_by` / `reviewed_by` / `reviewer` are ignored and replaced by the authenticated user id. |
-| `legacy` | The previous contract: public reads, shared `X-PulseReach-Write-Key` on writes, client-supplied actor (still required). Identity/portal/admin endpoints return 404. Kept only so the existing frontend keeps working during migration. Logged as a warning at startup. Do not use with real accounts. |
+| `legacy` | The previous contract: public reads, shared `X-PulseReach-Write-Key` on writes, client-supplied actor (still required). Identity/portal/admin endpoints return 404. The staff frontend reports such a backend as unsupported and loads nothing, unless a local development build sets `NEXT_PUBLIC_ALLOW_LEGACY_BACKEND=true` (production builds refuse that setting). Logged as a warning at startup. Do not use with real accounts. |
 
 The offline regression suites run in `legacy` mode (set in `tests/conftest.py`); the identity,
 RBAC, isolation, portal, localization and audit suites run in `users` mode.

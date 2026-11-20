@@ -368,8 +368,8 @@ function SegmentFocus({
           {mismatch && (
             <p className={cn("mt-3 flex gap-2 text-[11px] leading-relaxed text-ink-faint")}>
               <Info size={13} aria-hidden="true" className="mt-px shrink-0" />
-              The People list applies open-gap and history filters across all programmes, so it returns{" "}
-              {backendTotal.data} people rather than {cohort?.people}.
+              The People list returns {backendTotal.data} people for this segment rather than {cohort?.people}. This API
+              version applies open-gap and history filters across all programmes.
             </p>
           )}
         </div>

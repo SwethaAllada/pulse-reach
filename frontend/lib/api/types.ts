@@ -133,9 +133,9 @@ export interface PatientQuery {
   pathway?: Pathway;
   region_id?: RegionId;
   sex?: Sex;
-  /** Any open care gap, in any programme (backend semantics). */
+  /** An open care gap — under `pathway`'s rules when `pathway` is set, otherwise in any programme. */
   has_open_care_gaps?: boolean;
-  /** Matches a history record with this status in any programme. */
+  /** History status for `pathway` when set, otherwise a record with this status in any programme. */
   history_status?: HistoryStatus;
   /** Backend-computed from date of birth at the evaluation reference date. */
   age_band?: AgeBand;
@@ -309,4 +309,55 @@ export interface ExplanationOut {
   missing_or_uncertain_text: string;
   rule_citation_text: string;
   warnings: string[];
+}
+
+/**
+ * `GET /programmes/{pathway}/summary` — server-side programme aggregates for the caller's patient
+ * scope and filters. Any count is `null` when suppressed for privacy (listed in `suppressed`;
+ * `"all"` when the member set is below `min_cell_size`).
+ */
+export interface ProgrammeSummaryOut {
+  is_synthetic: boolean;
+  pathway: Pathway;
+  evaluation_run_id: string;
+  reference_date: string;
+  patient_scope: "organization" | "assigned" | "unrestricted";
+  filters: { region_id: RegionId | null; sex: Sex | null; age_band: AgeBand | null };
+  min_cell_size: number;
+  members: number | null;
+  history: Record<HistoryStatus, number | null>;
+  segments: { segment: "open_gap" | HistoryStatus; people: number | null }[];
+  people_with_open_gap: number | null;
+  care_gaps: Record<CareGapStatus, number | null> & { total: number | null };
+  open_gaps_by_type: Partial<Record<CareGapType, number | null>>;
+  eligibility: {
+    programme_eligible_patients: number | null;
+    due_or_upcoming_patients: number | null;
+    review_flagged_patients: number | null;
+    rule_review_patients: number | null;
+  };
+  trend: {
+    period: string;
+    current_start: string;
+    current_end: string;
+    previous_start: string;
+    previous_end: string;
+    evaluation_runs: number;
+    evaluation_history_start: string | null;
+    /** False when no persisted evaluation run covers the previous window (previous counts are then null). */
+    previous_period_observed: boolean;
+    care_gaps_identified: number | null;
+    previous_care_gaps_identified: number | null;
+    gaps_closed_completed: number | null;
+    previous_gaps_closed_completed: number | null;
+    care_gap_trend: { direction: string; reason_codes: string[]; absolute_change: number | null; percentage_change: number | null };
+  };
+  suppressed: string[];
+  disclaimer: string;
+}
+
+export interface ProgrammeSummaryQuery {
+  region_id?: RegionId;
+  sex?: Sex;
+  age_band?: AgeBand;
 }

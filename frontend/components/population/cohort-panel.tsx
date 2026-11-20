@@ -192,8 +192,8 @@ function CohortDetail({
           <p className="mt-3 flex gap-2 text-[11px] leading-relaxed text-ink-faint">
             <Info size={13} aria-hidden="true" className="mt-px shrink-0" />
             <span>
-              The People list filters open gaps and history across all programmes; the programme view keeps this
-              segment exact and says when the two differ.
+              The People list scopes open-gap and history filters to this programme; the programme view says
+              when an older API version returns a different count.
             </span>
           </p>
         )}

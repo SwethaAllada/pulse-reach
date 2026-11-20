@@ -104,8 +104,9 @@ export function UserMenu() {
           <div className="px-4 py-3">
             <p className="text-sm font-semibold text-foreground">No sign-in on this backend</p>
             <p className="mt-1 text-xs leading-relaxed text-faint">
-              The API runs in legacy mode (<code className="font-mono">AUTH_MODE=legacy</code>): reads are public and no roles
-              apply. Use <code className="font-mono">AUTH_MODE=users</code> for role-based access.
+              Local development only (<code className="font-mono">NEXT_PUBLIC_ALLOW_LEGACY_BACKEND=true</code>): the API has
+              no identity layer, so reads are public and no roles apply. Use{" "}
+              <code className="font-mono">AUTH_MODE=users</code> for role-based access.
             </p>
           </div>
         )}

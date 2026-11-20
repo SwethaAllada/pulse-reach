@@ -3,11 +3,11 @@ import type {
   CareGapStatus,
   OpenQuestionOut,
   Pathway,
-  PathwayBreakdownOut,
+  ProgrammeSummaryOut,
   RuleSummaryOut,
 } from "@/lib/api/types";
 import { ruleGroup, type RuleGroup } from "@/lib/people/person";
-import { GAP_TYPE_LABELS, ruleShortLabel, type CountRow, type SegmentId } from "@/lib/population/model";
+import { GAP_TYPE_LABELS, ruleShortLabel, type CohortId, type CountRow, type SegmentId } from "@/lib/population/model";
 import type { PeopleFilters } from "@/lib/people/params";
 
 /**
@@ -16,6 +16,7 @@ import type { PeopleFilters } from "@/lib/people/params";
  *  - open questions linked to those rules      (`GET /open-questions`)
  *  - care-gap records and their status         (`GET /care-gaps`)
  *  - people-level programme breakdown          (`GET /dashboard/summary` → `pathway_breakdown`)
+ *  - programme aggregates and evidence segments (`GET /programmes/{pathway}/summary`)
  * Nothing here decides eligibility, due dates or thresholds — those come from the
  * deterministic evaluation engine. This module only groups and counts.
  */
@@ -247,53 +248,69 @@ export interface EvidenceFigure {
   detail: string;
 }
 
-/** Evidence ledger for one programme, straight from the backend breakdown and gap records. */
-export function evidenceFigures(
-  breakdown: PathwayBreakdownOut | undefined,
-  model: ProgrammeModel,
-  members: { total: number; history: Record<"available" | "partial" | "not_available", number> } | null,
-  /** False when care-gap records are not (yet) available — gap figures are then unknown, never zero. */
-  gapsKnown = true
-): EvidenceFigure[] {
-  const noGaps = "Care-gap records are not available";
+export const SUPPRESSED_TEXT = "Suppressed for privacy";
+
+/** A server-side count: `null` means suppressed (small cell), never zero. */
+export function countText(n: number | null): string {
+  return n === null ? "suppressed" : String(n);
+}
+
+/**
+ * Evidence ledger for one programme, from the server-side programme summary (scope and filters
+ * applied by the backend). `null` summary = not available; `null` values = suppressed for privacy.
+ */
+export function evidenceFigures(s: ProgrammeSummaryOut | null): EvidenceFigure[] {
+  const none = "Programme summary not available";
+  const fig = (cls: EvidenceClass, value: number | null | undefined, unit: string, detail: string): EvidenceFigure => ({
+    cls,
+    value: value ?? null,
+    unit,
+    detail: !s ? none : value === null ? `${SUPPRESSED_TEXT} (fewer than ${s.min_cell_size}, or would reveal such a cell)` : detail,
+  });
   return [
-    {
-      cls: "calculated",
-      value: breakdown?.due_or_upcoming_patients ?? null,
-      unit: "people due or upcoming",
-      detail: breakdown
-        ? `${breakdown.programme_eligible_patients} people with an in-scope programme result · run-wide, filters not applied`
-        : "Programme breakdown not returned by the API",
-    },
-    {
-      cls: "recorded_gap",
-      value: gapsKnown ? model.gaps.open : null,
-      unit: "open gap records",
-      detail: gapsKnown ? `${model.peopleWithOpenGap} people hold at least one` : noGaps,
-    },
-    {
-      cls: "completed",
-      value: gapsKnown ? model.gaps.closed_completed : null,
-      unit: "gaps closed by documented completion",
-      detail: gapsKnown ? `of ${model.gaps.total} gap records ever opened under these rules` : noGaps,
-    },
-    {
-      cls: "missing_history",
-      value: members ? members.history.not_available : (breakdown?.unknown_history_patients ?? null),
-      unit: "people without available history",
-      detail: members
-        ? `${members.history.partial} more with partial history · of ${members.total} members`
-        : "From the programme breakdown",
-    },
+    fig(
+      "calculated",
+      s?.eligibility.due_or_upcoming_patients,
+      "people due or upcoming",
+      `${countText(s?.eligibility.programme_eligible_patients ?? null)} people with an in-scope programme result · filters applied`
+    ),
+    fig("recorded_gap", s?.care_gaps.open, "open gap records", `${countText(s?.people_with_open_gap ?? null)} people hold at least one`),
+    fig(
+      "completed",
+      s?.care_gaps.closed_completed,
+      "gaps closed by documented completion",
+      `of ${countText(s?.care_gaps.total ?? null)} gap records ever opened under these rules`
+    ),
+    fig(
+      "missing_history",
+      s?.history.not_available,
+      "people without available history",
+      `${countText(s?.history.partial ?? null)} more with partial history · of ${countText(s?.members ?? null)} members`
+    ),
   ];
+}
+
+/** Composition-band input from a programme summary; null when the member count or any segment is suppressed. */
+export function summaryBand(s: ProgrammeSummaryOut): {
+  label: string;
+  people: number;
+  segments: { id: CohortId; segment: SegmentId; people: number }[];
+} | null {
+  if (s.members === null || s.segments.some((x) => x.people === null)) return null;
+  return {
+    label: PROGRAMME_META[s.pathway].name,
+    people: s.members,
+    segments: s.segments.map((x) => ({ id: `${s.pathway}:${x.segment}` as CohortId, segment: x.segment, people: x.people ?? 0 })),
+  };
 }
 
 /* ── Segment → People workspace drill-down ─────────────────────────────── */
 
 /**
- * The `GET /patients` filters closest to a programme segment. `has_open_care_gaps`
- * and `history_status` match any programme, so callers compare the backend total
- * with the segment count and disclose any difference.
+ * The `GET /patients` filters for a programme segment. With `pathway` set the backend scopes
+ * `has_open_care_gaps` and `history_status` to that programme; older API versions matched any
+ * programme, so callers still compare the backend total with the segment count and disclose any
+ * difference.
  */
 export function segmentPeopleFilters(pathway: Pathway, segment: SegmentId | null, base: PeopleFilters): PeopleFilters {
   const f: PeopleFilters = { region_id: base.region_id, sex: base.sex, age_band: base.age_band, pathway };

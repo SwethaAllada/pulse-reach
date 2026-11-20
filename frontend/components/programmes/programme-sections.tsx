@@ -12,6 +12,7 @@ import {
   EVIDENCE_META,
   evidenceFigures,
   GAP_STATUS_META,
+  PROGRAMME_META,
   RULE_GROUP_META,
   RULE_GROUP_ORDER,
   ruleHref,
@@ -31,7 +32,7 @@ import { StatusGlyph } from "@/components/ui/status-glyph";
 import { PROGRAMME_COLOR, SegmentGlyph } from "@/components/population/segment-glyph";
 import { RuleSpectrum, SPECTRUM_METRICS, StandingGlyph } from "./rule-spectrum";
 import { ResourceView } from "./resource-state";
-import { OrganizationTrend } from "./organization-trend";
+import { OrganizationTrend, ProgrammeTrend } from "./organization-trend";
 import type { DetailState } from "./programme-detail";
 import { cn } from "@/lib/cn";
 
@@ -52,7 +53,6 @@ export function ProgrammeSections({
   programme: Programme | null;
   data: Data;
 }) {
-  const breakdown = data.summary.status === "ready" ? data.summary.data.pathway_breakdown?.[pathway] : undefined;
   const referenceDate = data.summary.status === "ready" ? data.summary.data.reference_date : null;
   return (
     <div className="flex flex-col gap-16">
@@ -62,18 +62,9 @@ export function ProgrammeSections({
         title="Why people appear in this programme"
         description="Four different kinds of evidence sit behind the numbers. They are kept apart so that missing history is never read as missed care."
       >
-        {model ? (
-          <EvidenceLedger
-            figures={evidenceFigures(
-              breakdown,
-              model,
-              programme ? { total: programme.people, history: programme.history } : null,
-              data.careGaps.status === "ready" && (!hasFilters(state) || data.population.status === "ready")
-            )}
-          />
-        ) : (
-          <LoadingState rows={2} label="Loading evidence" />
-        )}
+        <ResourceView resource={data.programmeSummary} what="Programme evidence" onRetry={data.retry} loading={<LoadingState rows={2} label="Loading evidence" />}>
+          {(s) => <EvidenceLedger figures={evidenceFigures(s)} />}
+        </ResourceView>
       </Plate>
 
       <Plate
@@ -148,20 +139,21 @@ export function ProgrammeSections({
 
       <Plate
         index="06"
-        eyebrow="Organization trend"
-        title="Preventive care across your organization"
-        description="All programmes together — the API does not break surveillance trends down by programme."
+        eyebrow="Programme & organization trend"
+        title="Preventive care over time"
+        description="This programme’s period comparison, drawn only where persisted evaluation history covers both periods, then organization-wide surveillance for all programmes together."
       >
-        <ResourceView resource={data.surveillance} what="Organization surveillance aggregates" onRetry={data.retry}>
-          {(d) => <OrganizationTrend data={d} />}
-        </ResourceView>
+        <div className="flex flex-col gap-12">
+          <ResourceView resource={data.programmeSummary} what={`${PROGRAMME_META[pathway].name} trend figures`} onRetry={data.retry}>
+            {(d) => <ProgrammeTrend data={d} name={PROGRAMME_META[pathway].name} />}
+          </ResourceView>
+          <ResourceView resource={data.surveillance} what="Organization surveillance aggregates" onRetry={data.retry}>
+            {(d) => <OrganizationTrend data={d} />}
+          </ResourceView>
+        </div>
       </Plate>
     </div>
   );
-}
-
-function hasFilters(state: DetailState): boolean {
-  return !!(state.filters.region_id || state.filters.sex || state.filters.age_band);
 }
 
 /* ── 01 Evidence ledger ────────────────────────────────────────────────── */

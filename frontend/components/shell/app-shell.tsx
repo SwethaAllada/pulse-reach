@@ -28,6 +28,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <SignInScreen reason={state.reason} />
     ) : state.status === "unreachable" ? (
       <AccessScreen kind="unreachable" message={state.message} />
+    ) : state.status === "unsupported" ? (
+      <AccessScreen kind="unsupported" message={state.endpoint} />
     ) : !isStaff ? (
       <AccessScreen kind="not_staff" />
     ) : null;

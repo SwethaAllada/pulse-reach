@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { fakeFetchResponse, MANAGER_PERMISSIONS, me } from "@/test/fixtures";
+import { fakeFetchResponse, fakeSummaryConfig, MANAGER_PERMISSIONS, me } from "@/test/fixtures";
 import type { MeOut } from "@/lib/api/types";
 
 const nav = vi.hoisted(() => {
@@ -92,7 +92,7 @@ describe("Programmes overview", () => {
     renderWithAuth(<ProgrammesOverview />);
     const ifhas = await plate("IFHAS");
     await waitFor(() => expect(figure(ifhas, "Members")).toBe("4"));
-    expect(figure(ifhas, "Due or upcoming")).toBe("2");
+    expect(figure(ifhas, "Due or upcoming")).toBe("3");
     expect(figure(ifhas, "Open gaps")).toBe("2");
     expect(figure(ifhas, "Completed")).toBe("0");
     expect(within(ifhas).getByText(/IFHAS Standard \(V10\)/)).toBeTruthy();
@@ -101,6 +101,11 @@ describe("Programmes overview", () => {
     expect(screen.getByText(/Scope: All patients of your organization/)).toBeTruthy();
     // Every request carried through the session-gated client.
     expect(calls("/rules").length).toBeGreaterThan(0);
+    // The overview is computed server-side: no patient or care-gap pages are fetched.
+    expect(calls("/programmes/ifhas/summary")).toHaveLength(1);
+    expect(calls("/programmes/well_child/summary")).toHaveLength(1);
+    expect(calls("/patients")).toHaveLength(0);
+    expect(calls("/care-gaps")).toHaveLength(0);
   });
 
   it("explains ledger measures and shows organization-wide coverage with its backend definition", async () => {
@@ -111,16 +116,16 @@ describe("Programmes overview", () => {
     const trend = screen.getByRole("region", { name: "Preventive care across your organization" });
     await within(trend).findByText("67");
     expect(within(trend).getByText(/in-scope patients without an open preventive-care gap/)).toBeTruthy();
-    expect(within(trend).getByText(/Not enough history to call a trend/)).toBeTruthy();
+    expect(within(trend).getAllByText(/Not enough history to call a trend/)).toHaveLength(3);
   });
 
-  it("applies region/sex filters through the patients API and the URL", async () => {
+  it("applies region/sex filters through the programme summary API and the URL", async () => {
     renderWithAuth(<ProgrammesOverview />);
     await plate("IFHAS");
     fireEvent.change(await screen.findByLabelText("Region"), { target: { value: "2" } });
     expect(nav.get()).toBe("region_id=2");
     await waitFor(async () => expect(figure(await plate("IFHAS"), "Members")).toBe("1"));
-    expect(calls("/patients").at(-1)!.searchParams.get("region_id")).toBe("2");
+    expect(calls("/programmes/ifhas/summary").at(-1)!.searchParams.get("region_id")).toBe("2");
     expect(figure(await plate("IFHAS"), "Open gaps")).toBe("0");
     expect(within(await plate("IFHAS")).getByRole("link", { name: /Explore IFHAS/ }).getAttribute("href")).toBe(
       "/programmes/ifhas?region_id=2"
@@ -132,13 +137,49 @@ describe("Programmes overview", () => {
     renderWithAuth(<ProgrammesOverview />);
     const ifhas = await plate("IFHAS");
     await waitFor(() => expect(within(ifhas).getByText(/29|4 rules/)).toBeTruthy());
+    expect(figure(ifhas, "Members")).toBe("—");
     expect(figure(ifhas, "Open gaps")).toBe("—");
     expect(figure(ifhas, "Completed")).toBe("—");
-    expect(within(ifhas).getByText(/Member segments need patient access/)).toBeTruthy();
-    expect(screen.getByText("Care-gap records are not available for your role")).toBeTruthy();
+    expect(within(ifhas).getByText(/Programme figures need insights.read and care_gaps.read/)).toBeTruthy();
+    expect(screen.getByText("IFHAS care-gap records are not available for your role")).toBeTruthy();
     expect(screen.getByText("Programme breakdowns are not available for your role")).toBeTruthy();
     expect(calls("/care-gaps")).toHaveLength(0);
     expect(calls("/patients")).toHaveLength(0);
+    expect(calls("/summary")).toHaveLength(0);
+  });
+
+  it("shows suppressed programme cells as suppressed, never as zero", async () => {
+    fakeSummaryConfig.minCellSize = 2;
+    try {
+      renderWithAuth(<ProgrammesOverview />);
+      const ifhas = await plate("IFHAS");
+      await waitFor(() => expect(figure(ifhas, "Members")).toBe("4"));
+      expect(figure(ifhas, "Open gaps")).toBe("2");
+      expect(within(ifhas).getByText(/Segment sizes are suppressed for privacy/)).toBeTruthy();
+      const wcv = await plate("Well-Child");
+      expect(figure(wcv, "Open gaps")).toBe("suppressed");
+      expect(figure(wcv, "Members")).toBe("2");
+    } finally {
+      fakeSummaryConfig.minCellSize = 1;
+    }
+  });
+
+  it("reports an API without the programme summary instead of approximating it", async () => {
+    override = (url) => (url.includes("/programmes/") ? new Response(JSON.stringify({ detail: "Not Found" }), { status: 404 }) : null);
+    renderWithAuth(<ProgrammesOverview />);
+    const ifhas = await plate("IFHAS");
+    expect((await within(ifhas).findByRole("alert")).textContent).toContain("This API version has no programme summary");
+    expect(figure(ifhas, "Members")).toBe("—");
+    expect(calls("/patients")).toHaveLength(0);
+  });
+
+  it("states that programme trends need evaluation history instead of drawing one", async () => {
+    renderWithAuth(<ProgrammesOverview />);
+    const trend = await screen.findByRole("region", { name: "Preventive care across your organization" });
+    const notes = await within(trend).findAllByText(/no persisted evaluation run covers the previous period/);
+    expect(notes).toHaveLength(2);
+    expect(within(trend).getAllByText("Not observed").length).toBeGreaterThanOrEqual(4);
+    expect(within(trend).getAllByText(/earlier periods are unobserved, not zero/)).toHaveLength(2);
   });
 
   it("treats a backend 403 as a permission state, not an error", async () => {
@@ -159,6 +200,8 @@ describe("Programme detail", () => {
     renderWithAuth(<ProgrammeDetail />);
     const ledger = await screen.findByRole("region", { name: "Why people appear in this programme" });
     await within(ledger).findByText("Missing history is never evidence that care did not happen.");
+    await within(ledger).findByText(/filters applied/);
+    expect(calls("/programmes/ifhas/summary")).toHaveLength(1);
     expect(within(ledger).getByText("Backend-calculated eligibility")).toBeTruthy();
     expect(within(ledger).getByText("Completed care")).toBeTruthy();
     const people = screen.getByRole("region", { name: "Members who need attention first" });
@@ -182,6 +225,29 @@ describe("Programme detail", () => {
     );
     const people = screen.getByRole("region", { name: "History unavailable" });
     await waitFor(() => expect(within(people).getAllByRole("link").map((a) => a.textContent)).toEqual([expect.stringContaining("SYNTH-PAT-2")]));
+  });
+
+  it("drills into programme-scoped People counts, and discloses an older API that matches any programme", async () => {
+    nav.set("segment=open_gap");
+    renderWithAuth(<ProgrammeDetail />);
+    const focus = await screen.findByRole("complementary", { name: "Segment focus" });
+    await waitFor(() => expect(calls("/patients").some((u) => u.searchParams.get("has_open_care_gaps") === "true")).toBe(true));
+    const drill = calls("/patients").find((u) => u.searchParams.get("has_open_care_gaps") === "true")!;
+    expect(drill.searchParams.get("pathway")).toBe("ifhas");
+    await new Promise((r) => setTimeout(r, 20));
+    expect(within(focus).queryByText(/applies open-gap and history filters across all programmes/)).toBeNull();
+    cleanup();
+
+    // An older backend returns cross-programme totals: the difference is disclosed, not hidden.
+    override = (url) => {
+      const u = new URL(url);
+      return u.pathname.endsWith("/patients") && u.searchParams.get("has_open_care_gaps") === "true" && u.searchParams.get("limit") === "1"
+        ? new Response(JSON.stringify({ total: 9, limit: 1, offset: 0, items: [] }))
+        : null;
+    };
+    renderWithAuth(<ProgrammeDetail />);
+    const again = await screen.findByRole("complementary", { name: "Segment focus" });
+    expect(await within(again).findByText(/returns 9 people for this segment rather than 1/)).toBeTruthy();
   });
 
   it("explores rules by care-gap state and standing, linking each rule", async () => {

@@ -179,7 +179,7 @@ describe("PopulationWorkspace", () => {
     expect(screen.getByRole("link", { name: /Explore 1 person/ }).getAttribute("href")).toBe(
       "/people?pathway=well_child&has_open_care_gaps=true&sort=open_gaps"
     );
-    expect(screen.getByText(/filters open gaps and history across all programmes/)).toBeTruthy();
+    expect(screen.getByText(/scopes open-gap and history filters to this programme/)).toBeTruthy();
   });
 
   it.each(["light", "dark"])("renders in the %s theme using semantic tokens only", async (theme) => {

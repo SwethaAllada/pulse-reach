@@ -206,3 +206,17 @@ def test_patients_cannot_review_outreach_drafts(world):
     ok = client.post("/api/v1/outreach/draft/review", headers=world.h("cc_a"), json=review)
     assert ok.status_code == 200 and ok.json()["review_status"] == "approved"
     assert ok.json()["simulated_outreach_status"] == "simulated_not_sent" and ok.json()["delivered"] is False
+
+
+def test_frontend_role_fixture_matches_the_backend_matrix():
+    """The frontend role tests (`frontend/test/role-permissions.json`) use the real matrix."""
+    import json
+    from pathlib import Path
+
+    from app.core.permissions import DEFAULT_PATIENT_ACCESS
+
+    fixture = Path(__file__).resolve().parents[2] / "frontend" / "test" / "role-permissions.json"
+    if not fixture.exists():
+        pytest.skip("frontend fixtures are not part of this checkout")
+    expected = {r.value: sorted(permissions_for(r.value, a)) for r, a in DEFAULT_PATIENT_ACCESS.items()}
+    assert json.loads(fixture.read_text()) == expected

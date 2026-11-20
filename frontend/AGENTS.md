@@ -17,13 +17,21 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Auth (bearer tokens, `lib/auth/`, `lib/api/client.ts`)
 
-- `AuthProvider` resolves the session via `GET /me`: 401 → sign-in screen, 404 → legacy backend (no sign-in), else roles/permissions.
-  Tokens live in `sessionStorage` (`lib/auth/session.ts`); the client attaches `Authorization`, rotates once on 401 (single-flight refresh).
+- `AuthProvider` resolves the session via `GET /me`: 401 → sign-in screen, else roles/permissions. A 404 from `/me`, `/auth/login`
+  or `/auth/refresh` (no identity layer) → `unsupported` screen, nothing loaded; only a dev build with
+  `NEXT_PUBLIC_ALLOW_LEGACY_BACKEND=true` accepts it as `legacy` (`lib/auth/mode.ts`; `next.config.ts` refuses the flag in production).
+  Tokens live in `sessionStorage` (`lib/auth/session.ts`); the client attaches `Authorization`, rotates once on 401 (single-flight refresh)
+  and refuses (never sends) a data request without a token unless `allowUnauthenticatedRequests` was set for an allowed legacy backend.
+  Patient accounts (`PATIENT` role or `patients.read_self`) are never staff.
 - The API client *holds* data requests (`holdRequests`/`releaseRequests`) until a staff session exists — `AppShell` keeps the
   workspace tree rendered (`inert`) so segments stay prerenderable. Don't gate children with a hidden `<Activity>` (drops the segment
   from instant-navigation validation) or by not rendering them.
 - `can(...)` only shapes nav/empty states; 403 → `forbidden` resource state (`lib/programmes/use-programmes-data.ts`), never fake zeros.
-- Tests without `AuthProvider` behave as legacy (all permissions); use `test/fixtures.ts` `me(role, perms)` for role tests.
+- Tests without `AuthProvider` get all permissions in the UI; `test/setup.ts` signs every test in (`pra_test` session) because the
+  client refuses tokenless requests. Use `test/fixtures.ts` `me(role, ROLE_PERMISSIONS[role])` for role tests — the matrix in
+  `test/role-permissions.json` is checked against the backend by `backend/tests/test_rbac.py`.
+- Programme views read `GET /programmes/{pathway}/summary` (server-side counts; `null` = suppressed, never 0). The overview fetches no
+  patient/care-gap pages; the detail still loads members for the lattice/member list. Fake backend: `fakeSummaryConfig.minCellSize`.
 
 ## Design system ("Prevention Atlas")
 
